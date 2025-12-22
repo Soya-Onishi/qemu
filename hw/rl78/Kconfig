@@ -1,0 +1,7 @@
+config RL78_MCU
+    bool
+
+config RL78_GDBSIM
+    bool
+    default y
+    select RL78_MCU

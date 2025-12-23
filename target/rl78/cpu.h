@@ -95,32 +95,19 @@ void rl78_cpu_do_interrupt(CPUState *cs);
 bool rl78_cpu_exec_interrupt(CPUState *cs, int interrupt_request);
 hwaddr rl78_cpu_get_phys_page_debug(CPUState *cs, vaddr addr);
 
-static inline bool rl78_cpu_psw_ie(const uint8_t psw) {
-    return FIELD_EX8(psw, PSW, IE);
-}
+static inline uint8_t rl78_cpu_pack_psw(RL78PSWReg psw_reg) 
+{
+    uint8_t psw = 0;
 
-static inline bool rl78_cpu_psw_z(const uint8_t psw) {
-    return FIELD_EX8(psw, PSW, Z);
-}
+    psw = FIELD_DP8(psw, PSW, CY,   psw_reg.cy);
+    psw = FIELD_DP8(psw, PSW, ISP,  psw_reg.isp);
+    psw = FIELD_DP8(psw, PSW, RBS0, (psw_reg.rbs >> 0) & 0x1);
+    psw = FIELD_DP8(psw, PSW, AC,   psw_reg.ac);
+    psw = FIELD_DP8(psw, PSW, RBS1, (psw_reg.rbs >> 1) & 0x1);
+    psw = FIELD_DP8(psw, PSW, Z,    psw_reg.z);
+    psw = FIELD_DP8(psw, PSW, IE,   psw_reg.ie);
 
-static inline uint rl78_cpu_psw_rbs(const uint8_t psw) {
-    const uint8_t rbs1 = FIELD_EX8(psw, PSW, RBS1);
-    const uint8_t rbs0 = FIELD_EX8(psw, PSW, RBS0);
-    const uint8_t rbs = (rbs1 << 1) | (rbs0)
-
-    return rbs;
-}
-
-static inline bool rl78_cpu_psw_ac(const uint8_t psw) {
-    return FIELD_EX8(psw, PSW, AC);
-}
-
-static inline uint rl78_cpu_psw_isp(const uint8_t psw) {
-    return FIELD_EX8(psw, PSW, ISP);
-}
-
-static inline bool rl78_cpu_psw_cy(const uint8_t  psw) {
-    return FIELD_EX8(psw, PSW, CY);
+    return psw;
 }
 
 #endif // RL78_CPU_H 

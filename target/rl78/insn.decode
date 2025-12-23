@@ -1,0 +1,5 @@
+&ri rd imm
+
+@mov_ri .... . rd:3 imm:8
+
+MOV_ri 0101 0... .... .... @mov_ri

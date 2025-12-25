@@ -170,8 +170,8 @@ static const TCGCPUOps rl78_tcg_ops = {
     .guest_default_memory_order = TCG_MO_ALL, 
     .mttcg_supported = false,   
 
-    // .initialize = rl78_translate_init,
-    // .translate_code = rl78_translate_code,
+    .initialize = rl78_translate_init,
+    .translate_code = rl78_translate_code,
     .get_tb_cpu_state = rl78_get_tb_cpu_state,
     .synchronize_from_tb = rl78_cpu_synchronize_from_tb,
     .restore_state_to_opc = rl78_restore_state_to_opc,
@@ -197,7 +197,7 @@ static void rl78_cpu_class_init(ObjectClass *oc, const void *data)
                                        &rlc->parent_phases);
 
     cc->class_by_name = rl78_cpu_class_by_name;
-    // cc->dump_state = rl78_cpu_dump_state;
+    cc->dump_state = rl78_cpu_dump_state;
     cc->set_pc = rl78_cpu_set_pc;
     cc->get_pc = rl78_cpu_get_pc;
 

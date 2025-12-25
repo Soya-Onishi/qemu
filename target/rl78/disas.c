@@ -42,10 +42,10 @@ static void dump_bytes(DisasContext *ctx)
     ctx->dis->fprintf_func(ctx->dis->stream, "%*c", (5 - len) * 3, '\t');
 }
 
-#define print(fmt, ...)                                             \
+#define print(...)                                             \
     do {                                                            \
         dump_bytes(ctx);                                            \
-        ctx->dis->fprintf_func(ctx->dis->stream, fmt, __VA_ARGS__); \
+        ctx->dis->fprintf_func(ctx->dis->stream, __VA_ARGS__); \
     } while(0)
 
 #include "decode-insn.c.inc"
@@ -55,6 +55,50 @@ static bool trans_MOV_ri(DisasContext *ctx, arg_MOV_ri *a)
     print("MOV\tR%d, #%d", a->rd, a->imm);
     return true;
 }
+
+static bool trans_MOV_saddr_i(DisasContext *ctx, arg_MOV_saddr_i *a)
+{
+    print("MOV\t!0x%05x, #%d", a->saddr + 0xFFE20, a->imm);
+    return true;
+}
+
+static bool trans_MOV_sfr_i(DisasContext *ctx, arg_MOV_sfr_i *a)
+{
+    print("MOV\t!0x%05x, #%d", a->sfr + 0xFFF00, a->imm);
+    return true;
+}
+
+static bool trans_MOV_addr_i(DisasContext *ctx, arg_MOV_addr_i *a)
+{
+    print("MOV\t!0x%05x, #%d", a->addr + 0xF0000, a->imm);
+    return true;
+}
+
+static bool trans_MOV_PSW_A(DisasContext *ctx, arg_MOV_PSW_A *a)
+{
+    print("MOV\tPSW, A");
+    return true;
+}
+
+static bool trans_MOV_A_PSW(DisasContext *ctx, arg_MOV_A_PSW *a)
+{
+    print("MOV\tA, PSW");
+    return true;
+}
+
+static bool trans_BR_addr16(DisasContext *ctx, arg_BR_addr16 *a)
+{
+    print("BR\t!0x%04x", a->addr);
+    return true;
+}
+
+static bool trans_BNZ(DisasContext *ctx, arg_BNZ *a)
+{
+    print("BNZ\t$%d", (int8_t)a->addr);
+    return true;
+}
+
+
 
 int print_insn_rl78(bfd_vma addr, disassemble_info *dis)
 {

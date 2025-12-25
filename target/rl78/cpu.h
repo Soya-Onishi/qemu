@@ -95,6 +95,12 @@ void rl78_cpu_do_interrupt(CPUState *cs);
 bool rl78_cpu_exec_interrupt(CPUState *cs, int interrupt_request);
 hwaddr rl78_cpu_get_phys_page_debug(CPUState *cs, vaddr addr);
 
+void rl78_translate_init(void);
+void rl78_translate_code(CPUState *cs, TranslationBlock *tb, 
+                         int *max_insns, vaddr pc, void *host_pc);
+
+void rl78_cpu_dump_state(CPUState *cs, FILE *f, int flags);
+
 static inline uint8_t rl78_cpu_pack_psw(RL78PSWReg psw_reg) 
 {
     uint8_t psw = 0;

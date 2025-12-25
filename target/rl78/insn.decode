@@ -1,5 +1,28 @@
 &ri rd imm
+&saddr_i saddr imm
+&sfr_i sfr imm
+&addr_i addr imm
+&a_rs rs
+&rd_a rd
+
+&br_rel_addr addr
+&br_addr16 addr
 
 @mov_ri .... . rd:3 imm:8
+@mov_saddr_i .... ....  saddr:8 imm:8
+@mov_sfr_i .... .... sfr:8 imm:8
+@mov_addr_i .... .... addr:16 imm:8
+
+@br_addr16 .... .... addr:16
+@br_rel_addr .... .... addr:8
 
 MOV_ri 0101 0... .... .... @mov_ri
+MOV_saddr_i 1100 1101 .... .... .... .... @mov_saddr_i
+MOV_sfr_i 1100 1110 .... .... .... .... @mov_sfr_i
+MOV_addr_i 1100 1111 .... .... .... .... .... .... @mov_addr_i
+MOV_PSW_A 1000 1110 1111 1010
+MOV_A_PSW 1001 1110 1111 1010
+
+BR_addr16 1110 1101 .... .... .... .... @br_addr16
+
+BNZ 1101 1111 .... .... @br_rel_addr

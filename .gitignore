@@ -3,6 +3,8 @@
 /.cache/
 /.vscode/
 /.devcontainer/
+/.serena/
+/.cursor/
 *.pyc
 .sdk
 .stgit-*

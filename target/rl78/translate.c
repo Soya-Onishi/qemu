@@ -55,6 +55,11 @@ static uint64_t decode_load_bytes(DisasContext *ctx, uint64_t insn,
     return insn;
 }
 
+static inline uint32_t rl78_word(uint32_t v) 
+{
+    return ((v & 0x0000FF) << 8) | ((v & 0x00FF00) >> 8);
+}
+
 #include "decode-insn.c.inc"
 
 void rl78_cpu_dump_state(CPUState *cs, FILE *f, int flags)
@@ -160,12 +165,14 @@ static bool trans_MOV_sfr_i(DisasContext *ctx, arg_MOV_sfr_i *a)
 
 static bool trans_MOV_addr_i(DisasContext *ctx, arg_MOV_addr_i *a)
 {
+    const uint32_t addr = rl78_word(a->addr);
     TCGv_i32 imm, mem;
+
     imm = tcg_temp_new_i32();
     mem = tcg_temp_new_i32();
 
     tcg_gen_movi_i32(imm, a->imm);
-    tcg_gen_movi_i32(mem, a->addr + 0xF0000);
+    tcg_gen_movi_i32(mem, addr + 0xF0000);
     rl78_gen_sb(ctx, imm, mem);
 
     return true;
@@ -173,10 +180,12 @@ static bool trans_MOV_addr_i(DisasContext *ctx, arg_MOV_addr_i *a)
 
 static bool trans_MOV_addr_r(DisasContext *ctx, arg_MOV_addr_r *a)
 {
+    const uint32_t addr = rl78_word(a->addr);
     TCGv_i32 mem;
+
     mem = tcg_temp_new_i32();
 
-    tcg_gen_movi_i32(mem, a->addr + 0xF0000);
+    tcg_gen_movi_i32(mem, addr + 0xF0000);
     rl78_gen_sb(ctx, cpu_regs[1], mem);
 
     return true;
@@ -257,10 +266,12 @@ static bool trans_MOV_A_PSW(DisasContext *ctx, arg_MOV_A_PSW *a)
 
 static bool trans_MOV_A_addr(DisasContext *ctx, arg_MOV_A_addr *a)
 {
+    const uint32_t addr = rl78_word(a->addr);
     TCGv_i32 mem;
+
     mem = tcg_temp_new_i32();
 
-    tcg_gen_movi_i32(mem, a->addr + 0xF0000);
+    tcg_gen_movi_i32(mem, addr + 0xF0000);
     rl78_gen_lb(ctx, cpu_regs[1], mem);
 
     return true;
@@ -282,7 +293,8 @@ static bool trans_CMP_A_i(DisasContext *ctx, arg_CMP_A_i *a)
 
 static bool trans_BR_addr16(DisasContext *ctx, arg_BR_addr16 *a)
 {
-    gen_goto_tb(ctx, TB_EXIT_IDX0, a->addr);
+    const uint32_t addr = rl78_word(a->addr);
+    gen_goto_tb(ctx, TB_EXIT_IDX0, addr);
     return true;
 }
 

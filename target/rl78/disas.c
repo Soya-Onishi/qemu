@@ -42,6 +42,11 @@ static void dump_bytes(DisasContext *ctx)
     ctx->dis->fprintf_func(ctx->dis->stream, "%*c", (5 - len) * 3, '\t');
 }
 
+static inline uint32_t rl78_word(uint32_t v)
+{
+    return ((v & 0x0000FF) << 8) | ((v & 0x00FF00) >> 8);
+}
+
 #define print(...)                                             \
     do {                                                            \
         dump_bytes(ctx);                                            \
@@ -82,13 +87,13 @@ static bool trans_MOV_sfr_i(DisasContext *ctx, arg_MOV_sfr_i *a)
 
 static bool trans_MOV_addr_i(DisasContext *ctx, arg_MOV_addr_i *a)
 {
-    print("MOV\t!0x%05x, #%d", a->addr + 0xF0000, a->imm);
+    print("MOV\t!0x%05x, #%d", rl78_word(a->addr) + 0xF0000, a->imm);
     return true;
 }
 
 static bool trans_MOV_addr_r(DisasContext *ctx, arg_MOV_addr_r *a)
 {
-    print("MOV\t!0x%05x, A", a->addr + 0xF0000);
+    print("MOV\t!0x%05x, A", rl78_word(a->addr) + 0xF0000);
     return true;
 }
 
@@ -118,7 +123,7 @@ static bool trans_CMP_A_i(DisasContext *ctx, arg_CMP_A_i *a)
 
 static bool trans_BR_addr16(DisasContext *ctx, arg_BR_addr16 *a)
 {
-    print("BR\t!0x%04x", a->addr);
+    print("BR\t!0x%04x", rl78_word(a->addr));
     return true;
 }
 

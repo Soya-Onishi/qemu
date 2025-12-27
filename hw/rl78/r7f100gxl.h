@@ -2,6 +2,7 @@
 #define HW_RL78_RL78_H
 
 #include "target/rl78/cpu.h"
+#include "system/memory.h"
 #include "qemu/typedefs.h"
 #include "qom/object.h"
 
@@ -17,10 +18,8 @@ struct R7F100GXLState {
     /*< public >*/
     RL78CPU cpu;
 
-    MemoryRegion    *sysmem;
-
-    MemoryRegion    insn_flash;
-    MemoryRegion    data_ram; 
+    MemoryRegion    flash;
+    MemoryRegion    sram; 
 };
 
 #endif // HW_RL78_RL78_H

@@ -4,6 +4,7 @@
 #include "hw/rl78/r7f100gxl.h"
 #include "hw/sysbus.h"
 #include "system/system.h"
+#include "system/address-spaces.h"
 #include "hw/qdev-properties.h"
 #include "qom/object.h"
 
@@ -28,18 +29,20 @@ DECLARE_CLASS_CHECKERS(R7F100GXLClass, R7F100GXL_MCU, TYPE_R7F100GXL_MCU)
 
 static void r7f100gxl_realize(DeviceState *dev, Error **errp) 
 {
-    R7F100GXLState *s = RL78_MCU(dev);
-    R7F100GXLClass *rlc = RL78_CPU_GET_CLASS(dev);
+    R7F100GXLState *s = R7F100GXL_MCU(dev);
+    R7F100GXLClass *rlc = R7F100GXL_MCU_GET_CLASS(dev);
 
-    memory_region_init_ram(&s->insn_flash, OBJECT(dev), "flash-insn", 
+    MemoryRegion *system = get_system_memory();
+
+    memory_region_init_ram(&s->flash, OBJECT(dev), "flash-insn", 
                            rlc->insn_flash_size, &error_abort);
-    memory_region_init_ram(&s->data_ram, OBJECT(dev), "ram",
+    memory_region_init_ram(&s->sram, OBJECT(dev), "ram",
                            rlc->data_ram_size, &error_abort);
 
-    memory_region_add_subregion(s->sysmem, R7F100GXL_INSN_FLASH_BASE, 
-                                &s->insn_flash);
-    memory_region_add_subregion(s->sysmem, R7F100GXL_DATA_RAM_BASE,
-                                &s->data_ram)
+    memory_region_add_subregion(system, R7F100GXL_INSN_FLASH_BASE, 
+                                &s->flash);
+    memory_region_add_subregion(system, R7F100GXL_DATA_RAM_BASE,
+                                &s->sram);
 
     /* Initialize CPU */
     object_initialize_child(OBJECT(s), "cpu", &s->cpu, TYPE_R7F100GXL_CPU);

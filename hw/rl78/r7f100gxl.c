@@ -7,6 +7,7 @@
 #include "system/address-spaces.h"
 #include "hw/qdev-properties.h"
 #include "qom/object.h"
+#include "migration/vmstate.h"
 
 /**
  * RL78 Internal Memory Base
@@ -33,14 +34,16 @@ static void r7f100gxl_realize(DeviceState *dev, Error **errp)
     R7F100GXLClass *rlc = R7F100GXL_MCU_GET_CLASS(dev);
 
     MemoryRegion *system = get_system_memory();
+    void *sram_mem = g_malloc0(rlc->data_ram_size);
 
-    memory_region_init_ram(&s->flash, OBJECT(dev), "flash-insn", 
+    memory_region_init_rom(&s->flash, OBJECT(dev), "flash-insn", 
                            rlc->insn_flash_size, &error_abort);
-    memory_region_init_ram(&s->sram, OBJECT(dev), "ram",
-                           rlc->data_ram_size, &error_abort);
-
     memory_region_add_subregion(system, R7F100GXL_INSN_FLASH_BASE, 
                                 &s->flash);
+
+    memory_region_init_ram_device_ptr(&s->sram, OBJECT(dev), "sram",
+                                       rlc->data_ram_size, sram_mem);
+    vmstate_register_ram(&s->sram, dev);
     memory_region_add_subregion(system, R7F100GXL_DATA_RAM_BASE,
                                 &s->sram);
 

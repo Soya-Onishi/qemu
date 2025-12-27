@@ -1,4 +1,5 @@
 #include "qemu/osdep.h"
+#include "qemu/bswap.h"
 #include "qapi/error.h"
 #include "cpu.h"
 #include "exec/cputlb.h"
@@ -75,7 +76,10 @@ static void rl78_cpu_reset_hold(Object *obj, ResetType type)
     }
 
     uint16_t* resetvec = rom_ptr(0x000000, 2);
-    env->pc = *resetvec; 
+    env->pc = 0;
+    if(resetvec) {
+        env->pc = ldl_p(resetvec); 
+    }
 
     env->psw = (RL78PSWReg){
         .cy = 0,
@@ -220,9 +224,15 @@ static const TypeInfo rl78_cpu_info = {
     .class_init = rl78_cpu_class_init,
 };
 
+static const TypeInfo r7f100gxl_rl78_cpu_info = {
+    .name = TYPE_R7F100GXL_CPU,
+    .parent = TYPE_RL78_CPU,
+};
+
 static void rl78_cpu_register_types(void) 
 {
     type_register_static(&rl78_cpu_info);
+    type_register_static(&r7f100gxl_rl78_cpu_info);
 }
 
 type_init(rl78_cpu_register_types)

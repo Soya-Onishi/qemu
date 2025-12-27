@@ -1,6 +1,7 @@
 #include "qemu/osdep.h"
 #include "qemu/qemu-print.h"
 #include "cpu.h"
+#include "tcg/tcg-op-common.h"
 #include "tcg/tcg-op.h"
 #include "exec/helper-proto.h"
 #include "exec/helper-gen.h"
@@ -19,7 +20,8 @@ typedef struct DisasContext {
 } DisasContext;
 
 enum {
-    DISAS_JUMP = DISAS_TARGET_0,
+    DISAS_LOOKUP = DISAS_TARGET_0,
+    DISAS_EXIT = DISAS_TARGET_1,
 };
 
 /* register indexes */
@@ -39,10 +41,16 @@ static TCGv_i32 cpu_cs;
 static uint64_t decode_load_bytes(DisasContext *ctx, uint64_t insn, 
                                   int i, int n)
 {
-    for(int idx = i; idx < n; idx++) {
-        uint64_t b = translator_ldub(ctx->env, &ctx->base, ctx->base.pc_next++);
-        insn |= b << (64 - idx * 8);
+    const int cnt = n - i;
+    for(int idx = 0; idx < cnt; idx++) {
+        const uint64_t shamt = 64 - (i + idx + 1) * 8;
+        const uint64_t b = translator_ldub(ctx->env, &ctx->base, 
+                                           ctx->base.pc_next + idx);
+
+        insn |= b << shamt;
     }
+
+    ctx->base.pc_next += cnt;
 
     return insn;
 }
@@ -71,16 +79,21 @@ static void gen_goto_tb(DisasContext *dc, unsigned tb_slot_idx, vaddr dest)
         tcg_gen_movi_i32(cpu_pc, dest);
         tcg_gen_lookup_and_goto_ptr();
     }
+
     dc->base.is_jmp = DISAS_NORETURN;
 }
 
+static void gen_exit_tb(const vaddr pc_next) {
+    tcg_gen_movi_i32(cpu_pc, pc_next);
+    tcg_gen_exit_tb(NULL, TB_EXIT_IDX0);
+}
+
 /* generic load wrapper */
-/*
 static void rl78_gen_lb(DisasContext *ctx, TCGv_i32 dst, TCGv_i32 mem)
 {
     tcg_gen_qemu_ld_i32(dst, mem, 0, MO_8 | MO_LE);
 }
-*/
+
 
 /*
 static void rl78_gen_lw(DisasContext *ctx, TCGv_i32 dst, TCGv_i32 mem)
@@ -104,6 +117,18 @@ static void rl78_gen_sw(DisasContext *ctx, TCGv_i32 src, TCGv_i32 mem)
 static bool trans_MOV_ri(DisasContext *ctx, arg_MOV_ri *a) 
 {
     tcg_gen_movi_i32(cpu_regs[a->rd], a->imm);
+    return true;
+}
+
+static bool trans_MOV_a_rs(DisasContext *ctx, arg_MOV_a_rs *a) 
+{
+    tcg_gen_mov_i32(cpu_regs[1], cpu_regs[a->rs]);
+    return true;
+}
+
+static bool trans_MOV_rd_a(DisasContext *ctx, arg_MOV_rd_a *a) 
+{
+    tcg_gen_mov_i32(cpu_regs[a->rd], cpu_regs[1]);
     return true;
 }
 
@@ -146,6 +171,17 @@ static bool trans_MOV_addr_i(DisasContext *ctx, arg_MOV_addr_i *a)
     return true;
 }
 
+static bool trans_MOV_addr_r(DisasContext *ctx, arg_MOV_addr_r *a)
+{
+    TCGv_i32 mem;
+    mem = tcg_temp_new_i32();
+
+    tcg_gen_movi_i32(mem, a->addr + 0xF0000);
+    rl78_gen_sb(ctx, cpu_regs[1], mem);
+
+    return true;
+}
+
 static bool trans_MOV_PSW_A(DisasContext *ctx, arg_MOV_PSW_A *a) 
 {
     TCGv_i32 psw_cy, psw_isp, psw_rbs0, psw_rbs1, psw_ac, psw_z, psw_ie;
@@ -180,6 +216,8 @@ static bool trans_MOV_PSW_A(DisasContext *ctx, arg_MOV_PSW_A *a)
     tcg_gen_mov_i32(cpu_psw_ac, psw_ac);
     tcg_gen_mov_i32(cpu_psw_z, psw_z);
     tcg_gen_mov_i32(cpu_psw_ie, psw_ie);
+
+    gen_exit_tb(ctx->base.pc_next);
 
     return true;
 }
@@ -217,9 +255,34 @@ static bool trans_MOV_A_PSW(DisasContext *ctx, arg_MOV_A_PSW *a)
     return true;
 }
 
+static bool trans_MOV_A_addr(DisasContext *ctx, arg_MOV_A_addr *a)
+{
+    TCGv_i32 mem;
+    mem = tcg_temp_new_i32();
+
+    tcg_gen_movi_i32(mem, a->addr + 0xF0000);
+    rl78_gen_lb(ctx, cpu_regs[1], mem);
+
+    return true;
+}
+
+static bool trans_CMP_A_i(DisasContext *ctx, arg_CMP_A_i *a)
+{
+    TCGv_i32 half_acc = tcg_temp_new_i32();
+
+    tcg_gen_andi_i32(half_acc, cpu_regs[1], 0x0F);
+
+    tcg_gen_setcondi_i32(TCG_COND_LTU, cpu_psw_cy, cpu_regs[1], a->imm);
+    tcg_gen_xori_i32(cpu_psw_z, cpu_regs[1], a->imm);
+    tcg_gen_setcondi_i32(TCG_COND_EQ, cpu_psw_z, cpu_psw_z, 0);
+    tcg_gen_setcondi_i32(TCG_COND_LTU, cpu_psw_ac, half_acc, a->imm & 0x0F);
+
+    return true;
+}
+
 static bool trans_BR_addr16(DisasContext *ctx, arg_BR_addr16 *a)
 {
-    gen_goto_tb(ctx, 0, a->addr);
+    gen_goto_tb(ctx, TB_EXIT_IDX0, a->addr);
     return true;
 }
 
@@ -229,8 +292,9 @@ static bool trans_BNZ(DisasContext *ctx, arg_BNZ *a)
     TCGLabel *target = gen_new_label();
 
     tcg_gen_brcondi_i32(TCG_COND_NE, cpu_psw_z, 0, target);
-    gen_goto_tb(ctx, 0, br_pc);
+    gen_goto_tb(ctx, TB_EXIT_IDX0, br_pc);
     gen_set_label(target);
+    gen_goto_tb(ctx, TB_EXIT_IDX1, ctx->base.pc_next);
     
     return true;
 }
@@ -257,11 +321,12 @@ static void rl78_tr_insn_start(DisasContextBase *dcbase, CPUState *cs)
 static void rl78_tr_translate_insn(DisasContextBase *dcbase, CPUState *cs)
 {
     DisasContext *ctx = container_of(dcbase, DisasContext, base);
-    uint64_t insn;
+    volatile uint64_t insn;
 
     ctx->pc = ctx->base.pc_next;
     insn = decode_load(ctx);
     if(!decode(ctx, insn)) {
+        exit(1);
         // TODO: gen_helper_raise_illegal_instruction(tcg_env);
     }
 }
@@ -272,13 +337,15 @@ static void rl78_tr_tb_stop(DisasContextBase *dcbase, CPUState *cs)
 
     switch (ctx->base.is_jmp) {
     case DISAS_NEXT:
-    case DISAS_TOO_MANY:
-        gen_goto_tb(ctx, 0, dcbase->pc_next);
-        break;
-    case DISAS_JUMP:
-        tcg_gen_lookup_and_goto_ptr();
-        break;
     case DISAS_NORETURN:
+    case DISAS_EXIT:
+        break;
+    case DISAS_LOOKUP:
+        tcg_gen_lookup_and_goto_ptr(); 
+        tcg_gen_exit_tb(dcbase->tb, TB_EXIT_IDX0);
+        break;
+    case DISAS_TOO_MANY:
+        gen_goto_tb(ctx, TB_EXIT_IDX0, ctx->base.pc_next);
         break;
     default:
         g_assert_not_reached();

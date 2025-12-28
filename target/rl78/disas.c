@@ -112,7 +112,7 @@ static bool trans_MOV_A_PSW(DisasContext *ctx, arg_MOV_A_PSW *a)
 
 static bool trans_MOV_A_addr(DisasContext *ctx, arg_MOV_A_addr *a)
 {
-    print("MOV\tA, !0x%5x", a->addr);
+    print("MOV\tA, !0x%05x", rl78_word(a->addr) + 0xF0000);
     return true;
 }
 static bool trans_CMP_A_i(DisasContext *ctx, arg_CMP_A_i *a)

@@ -88,9 +88,10 @@ static void gen_goto_tb(DisasContext *dc, unsigned tb_slot_idx, vaddr dest)
     dc->base.is_jmp = DISAS_NORETURN;
 }
 
-static void gen_exit_tb(const vaddr pc_next) {
+static void gen_exit_tb(DisasContext *dc, const vaddr pc_next) {
     tcg_gen_movi_i32(cpu_pc, pc_next);
     tcg_gen_exit_tb(NULL, TB_EXIT_IDX0);
+    dc->base.is_jmp = DISAS_EXIT;
 }
 
 /* generic load wrapper */
@@ -226,7 +227,7 @@ static bool trans_MOV_PSW_A(DisasContext *ctx, arg_MOV_PSW_A *a)
     tcg_gen_mov_i32(cpu_psw_z, psw_z);
     tcg_gen_mov_i32(cpu_psw_ie, psw_ie);
 
-    gen_exit_tb(ctx->base.pc_next);
+    gen_exit_tb(ctx, ctx->base.pc_next);
 
     return true;
 }
@@ -393,7 +394,7 @@ void rl78_translate_init(void)
 
     for(int i = 0; i < GPREG_NUM; i++) {
         cpu_regs[i] = tcg_global_mem_new_i32(tcg_env, 
-                                             offsetof(CPURL78State, regs[i]),
+                                             offsetof(CPURL78State, regs[0][i]),
                                              regnames[i]);
     }
 

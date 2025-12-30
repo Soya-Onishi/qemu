@@ -1,0 +1,34 @@
+<?xml version="1.0"?>
+<!-- Copyright (C) 2019 Free Software Foundation, Inc.
+
+     Copying and distribution of this file, with or without modification,
+     are permitted in any medium without royalty provided the copyright
+     notice and this notice are preserved.  -->
+
+<!DOCTYPE feature SYSTEM "gdb-target.dtd">
+<feature name="org.gnu.gdb.rl78.cpu">
+  <reg name="x" regnum="42" bitsize="8" type="uint8"/>
+  <reg name="a" regnum="43" bitsize="8" type="uint8"/>
+  <reg name="c" regnum="44" bitsize="8" type="uint8"/>
+  <reg name="b" regnum="45" bitsize="8" type="uint8"/>
+  <reg name="e" regnum="46" bitsize="8" type="uint8"/>
+  <reg name="d" regnum="47" bitsize="8" type="uint8"/>
+  <reg name="l" regnum="48" bitsize="8" type="uint8"/>
+  <reg name="h" regnum="49" bitsize="8" type="uint8"/>
+
+  <flags id="psw_flags" size="1">
+    <field name="CY" start="0" end="0"/>
+    <field name="ISP" start="1" end="2"/>
+    <field name="RBS0" start="3" end="3"/>
+    <field name="AC" start="4" end="4"/>
+    <field name="RBS1" start="5" end="5"/>
+    <field name="Z" start="6" end="6"/>
+    <field name="IE" start="7" end="7"/>
+  </flags>
+
+  <reg name="psw" regnum="32" bitsize="8" type="psw_flags"/>
+  <reg name="sp" regnum="41" bitsize="16" type="uint16"/>
+  <reg name="pc" regnum="40" bitsize="20" type="uint32"/>
+  <reg name="es" regnum="33" bitsize="8" type="uint8"/>
+  <reg name="cs" regnum="34" bitsize="8" type="uint8"/>
+</feature>

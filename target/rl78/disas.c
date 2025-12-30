@@ -2,6 +2,7 @@
 #include "disas/dis-asm.h"
 #include "qemu/bitops.h"
 #include "cpu.h"
+#include "qemu/win_dump_defs.h"
 
 typedef struct DisasContext {
     disassemble_info *dis;
@@ -12,6 +13,11 @@ typedef struct DisasContext {
     uint8_t len;
     uint8_t bytes[5];
 } DisasContext;
+
+static const char* rl78_cpu_gp_regnames[GPREG_NUM] = {
+    "X", "A", "C", "B", 
+    "E", "D", "L", "H",
+};
 
 static uint64_t decode_load_bytes(DisasContext *ctx, uint64_t insn, 
                                   int i, int n) 
@@ -55,22 +61,93 @@ static inline uint32_t rl78_word(uint32_t v)
 
 #include "decode-insn.c.inc"
 
+static bool print_MOV_A_rs(DisasContext *ctx, RL78GPRegister rs)
+{
+    print("MOV\t%s, %s", rl78_cpu_gp_regnames[RL78_GPREG_A], rl78_cpu_gp_regnames[rs]);
+    return true;
+}
+
+static bool print_MOV_rd_A(DisasContext *ctx, RL78GPRegister rd)
+{
+    print("MOV\t%s, %s", rl78_cpu_gp_regnames[rd], rl78_cpu_gp_regnames[RL78_GPREG_A]);
+    return true;
+}
+
 static bool trans_MOV_ri(DisasContext *ctx, arg_MOV_ri *a)
 {
     print("MOV\tR%d, #%d", a->rd, a->imm);
     return true;
 }
 
-static bool trans_MOV_a_rs(DisasContext *ctx, arg_MOV_a_rs *a)
+static bool trans_MOV_A_X(DisasContext *ctx, arg_MOV_A_X *a)
 {
-    print("MOV\tA, r%d", a->rs);
-    return true;
+    return print_MOV_A_rs(ctx, RL78_GPREG_X);
 }
 
-static bool trans_MOV_rd_a(DisasContext *ctx, arg_MOV_rd_a *a)
+
+static bool trans_MOV_A_C(DisasContext *ctx, arg_MOV_A_C *a)
 {
-    print("MOV\tr%d, A", a->rd);
-    return true;
+    return print_MOV_A_rs(ctx, RL78_GPREG_C);
+}
+
+static bool trans_MOV_A_B(DisasContext *ctx, arg_MOV_A_B *a)
+{
+    return print_MOV_A_rs(ctx, RL78_GPREG_B);
+}
+
+static bool trans_MOV_A_E(DisasContext *ctx, arg_MOV_A_E *a)
+{
+    return print_MOV_A_rs(ctx, RL78_GPREG_E);
+}
+
+static bool trans_MOV_A_D(DisasContext *ctx, arg_MOV_A_D *a)
+{
+    return print_MOV_A_rs(ctx, RL78_GPREG_D);
+}
+
+static bool trans_MOV_A_L(DisasContext *ctx, arg_MOV_A_L *a)
+{
+    return print_MOV_A_rs(ctx, RL78_GPREG_L);
+}
+
+static bool trans_MOV_A_H(DisasContext *ctx, arg_MOV_A_H *a)
+{
+    return print_MOV_A_rs(ctx, RL78_GPREG_H);
+}
+
+static bool trans_MOV_X_A(DisasContext *ctx, arg_MOV_X_A *a)
+{
+    return print_MOV_rd_A(ctx, RL78_GPREG_X);
+}
+
+static bool trans_MOV_C_A(DisasContext *ctx, arg_MOV_C_A *a)
+{
+    return print_MOV_rd_A(ctx, RL78_GPREG_C);
+}
+
+static bool trans_MOV_B_A(DisasContext *ctx, arg_MOV_B_A *a)
+{
+    return print_MOV_rd_A(ctx, RL78_GPREG_B);
+}
+
+static bool trans_MOV_E_A(DisasContext *ctx, arg_MOV_E_A *a)
+{
+    return print_MOV_rd_A(ctx, RL78_GPREG_E);
+}
+
+static bool trans_MOV_D_A(DisasContext *ctx, arg_MOV_D_A *a)
+{
+    return print_MOV_rd_A(ctx, RL78_GPREG_D);
+}
+
+static bool trans_MOV_L_A(DisasContext *ctx, arg_MOV_L_A *a)
+{
+    return print_MOV_rd_A(ctx, RL78_GPREG_L);
+}
+
+static bool trans_MOV_H_A(DisasContext *ctx, arg_MOV_H_A *a)
+{
+    return print_MOV_rd_A(ctx, RL78_GPREG_H);
 }
 
 static bool trans_MOV_saddr_i(DisasContext *ctx, arg_MOV_saddr_i *a)
@@ -130,6 +207,12 @@ static bool trans_BR_addr16(DisasContext *ctx, arg_BR_addr16 *a)
 static bool trans_BNZ(DisasContext *ctx, arg_BNZ *a)
 {
     print("BNZ\t$%d", (int8_t)a->addr);
+    return true;
+}
+
+static bool trans_SKZ(DisasContext *ctx, arg_SKZ *a)
+{
+    print("SKZ");
     return true;
 }
 

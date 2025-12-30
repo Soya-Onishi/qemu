@@ -9,8 +9,6 @@
 &br_addr16 addr
 
 @mov_ri .... . rd:3 imm:8
-@mov_a_rs .... . rs:3
-@mov_rd_a .... . rd:3
 @mov_saddr_i .... ....  saddr:8 imm:8
 @mov_sfr_i .... .... sfr:8 imm:8
 @mov_addr_i .... .... addr:16 imm:8
@@ -23,14 +21,29 @@
 @br_rel_addr .... .... addr:8
 
 MOV_ri 0101 0... .... .... @mov_ri
-MOV_a_rs 0110 0... @mov_a_rs
-MOV_rd_a 0111 0... @mov_rd_a
+
+MOV_A_X 0110 0000
+MOV_A_C 0110 0010
+MOV_A_B 0110 0011
+MOV_A_E 0110 0100
+MOV_A_D 0110 0101
+MOV_A_L 0110 0110
+MOV_A_H 0110 0111
+
+MOV_X_A 0111 0000
+MOV_C_A 0111 0010
+MOV_B_A 0111 0011
+MOV_E_A 0111 0100
+MOV_D_A 0111 0101
+MOV_L_A 0111 0110
+MOV_H_A 0111 0111
+
 MOV_saddr_i 1100 1101 .... .... .... .... @mov_saddr_i
 MOV_sfr_i 1100 1110 .... .... .... .... @mov_sfr_i
 MOV_addr_i 1100 1111 .... .... .... .... .... .... @mov_addr_i
 MOV_addr_r 1001 1111 .... .... .... .... @mov_addr_r
-MOV_PSW_A 1000 1110 1111 1010
-MOV_A_PSW 1001 1110 1111 1010
+MOV_PSW_A 1001 1110 1111 1010
+MOV_A_PSW 1000 1110 1111 1010
 MOV_A_addr 1000 1111 .... .... .... .... @mov_a_addr
 
 CMP_A_i 0100 1100 .... .... @cmp_a_i
@@ -38,3 +51,5 @@ CMP_A_i 0100 1100 .... .... @cmp_a_i
 BR_addr16 1110 1101 .... .... .... .... @br_addr16
 
 BNZ 1101 1111 .... .... @br_rel_addr
+
+SKZ 0110 0001 1110 1000

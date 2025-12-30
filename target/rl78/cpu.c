@@ -9,6 +9,11 @@
 #include "hw/loader.h"
 #include "accel/tcg/cpu-ops.h"
 
+enum RL78TBFlags {
+    TB_FLAG_SKIP = 1 << 0,
+    TB_FLAG_MAA1 = 1 << 1,
+};
+
 static void rl78_cpu_set_pc(CPUState *cs, vaddr value)
 {
     RL78CPU *cpu = RL78_CPU(cs);
@@ -26,8 +31,13 @@ static vaddr rl78_cpu_get_pc(CPUState *cs)
 static TCGTBCPUState rl78_get_tb_cpu_state(CPUState *cs)
 {
     CPURL78State *env = cpu_env(cs);
+    uint32_t flags = 0;
 
-    return (TCGTBCPUState){ .pc = env->pc, .flags = rl78_cpu_pack_psw(env->psw) };
+    if(env->skip) {
+        flags |= TB_FLAG_SKIP;
+    }
+
+    return (TCGTBCPUState){ .pc = env->pc, .flags = flags };
 }
 
 static void rl78_cpu_synchronize_from_tb(CPUState *cs, 
@@ -206,11 +216,13 @@ static void rl78_cpu_class_init(ObjectClass *oc, const void *data)
     cc->get_pc = rl78_cpu_get_pc;
 
     cc->sysemu_ops = &rl78_sysemu_ops;
-    // cc->gdb_read_register = rl78_cpu_gdb_read_register;
-    // cc->gdb_write_register = rl78_cpu_gdb_write_register;
     cc->disas_set_info = rl78_cpu_disas_set_info;
 
-    // cc->gdb_core_xml_file = "rl78-core.xml";
+    cc->gdb_read_register = rl78_cpu_gdb_read_register;
+    cc->gdb_write_register = rl78_cpu_gdb_write_register;
+    cc->gdb_arch_name = rl78_cpu_gdb_arch_name;
+    cc->gdb_core_xml_file = "rl78-cpu.xml";
+
     cc->tcg_ops = &rl78_tcg_ops;
 }
 

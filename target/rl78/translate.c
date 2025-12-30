@@ -7,6 +7,7 @@
 #include "exec/helper-gen.h"
 #include "exec/translator.h"
 #include "exec/translation-block.h"
+#include "tcg/tcg.h"
 
 #define HELPER_H "helper.h"
 #include "exec/helper-info.c.inc"
@@ -17,12 +18,17 @@ typedef struct DisasContext {
     CPURL78State    *env;
     uint32_t    pc;
     uint32_t    tb_flags;
+
+    bool skip_flag;
 } DisasContext;
 
 enum {
     DISAS_LOOKUP = DISAS_TARGET_0,
     DISAS_EXIT = DISAS_TARGET_1,
 };
+
+#define TB_EXIT_JUMP TB_EXIT_IDX1
+#define TB_EXIT_NOJUMP TB_EXIT_IDX0
 
 /* register indexes */
 static TCGv_i32 cpu_regs[8];
@@ -37,6 +43,10 @@ static TCGv_i32 cpu_pc;
 static TCGv_i32 cpu_sp;
 static TCGv_i32 cpu_es;
 static TCGv_i32 cpu_cs;
+
+static TCGv_i32 cpu_skip;
+
+static TCGLabel *cpu_skip_label = NULL;
 
 static uint64_t decode_load_bytes(DisasContext *ctx, uint64_t insn, 
                                   int i, int n)
@@ -120,22 +130,92 @@ static void rl78_gen_sw(DisasContext *ctx, TCGv_i32 src, TCGv_i32 mem)
 }
 */
 
+static bool MOV_A_rs(RL78GPRegister rs) 
+{
+    tcg_gen_mov_i32(cpu_regs[RL78_GPREG_A], cpu_regs[rs]);
+    return true;
+}
+
+static bool MOV_rd_A(RL78GPRegister rd) 
+{
+    tcg_gen_mov_i32(cpu_regs[rd], cpu_regs[RL78_GPREG_A]);
+    return true;
+}
+
 static bool trans_MOV_ri(DisasContext *ctx, arg_MOV_ri *a) 
 {
     tcg_gen_movi_i32(cpu_regs[a->rd], a->imm);
     return true;
 }
 
-static bool trans_MOV_a_rs(DisasContext *ctx, arg_MOV_a_rs *a) 
+static bool trans_MOV_A_X(DisasContext *ctx, arg_MOV_A_X *a) 
 {
-    tcg_gen_mov_i32(cpu_regs[1], cpu_regs[a->rs]);
-    return true;
+    return MOV_A_rs(RL78_GPREG_X);
 }
 
-static bool trans_MOV_rd_a(DisasContext *ctx, arg_MOV_rd_a *a) 
+static bool trans_MOV_A_C(DisasContext *ctx, arg_MOV_A_C *a) 
 {
-    tcg_gen_mov_i32(cpu_regs[a->rd], cpu_regs[1]);
-    return true;
+    return MOV_A_rs(RL78_GPREG_C);
+}
+
+static bool trans_MOV_A_B(DisasContext *ctx, arg_MOV_A_B *a) 
+{
+    return MOV_A_rs(RL78_GPREG_B);
+}
+
+static bool trans_MOV_A_E(DisasContext *ctx, arg_MOV_A_E *a) 
+{
+    return MOV_A_rs(RL78_GPREG_E);
+}
+
+static bool trans_MOV_A_D(DisasContext *ctx, arg_MOV_A_D *a) 
+{
+    return MOV_A_rs(RL78_GPREG_D);
+}
+
+static bool trans_MOV_A_L(DisasContext *ctx, arg_MOV_A_L *a) 
+{
+    return MOV_A_rs(RL78_GPREG_L);
+}
+
+static bool trans_MOV_A_H(DisasContext *ctx, arg_MOV_A_H *a) 
+{
+    return MOV_A_rs(RL78_GPREG_H);
+}
+
+static bool trans_MOV_X_A(DisasContext *ctx, arg_MOV_X_A *a) 
+{
+    return MOV_rd_A(RL78_GPREG_X);
+}
+
+static bool trans_MOV_C_A(DisasContext *ctx, arg_MOV_X_A *a) 
+{
+    return MOV_rd_A(RL78_GPREG_C);
+}
+
+static bool trans_MOV_B_A(DisasContext *ctx, arg_MOV_B_A *a) 
+{
+    return MOV_rd_A(RL78_GPREG_B);
+}
+
+static bool trans_MOV_E_A(DisasContext *ctx, arg_MOV_E_A *a) 
+{
+    return MOV_rd_A(RL78_GPREG_E);
+}
+
+static bool trans_MOV_D_A(DisasContext *ctx, arg_MOV_D_A *a) 
+{
+    return MOV_rd_A(RL78_GPREG_D);
+}
+
+static bool trans_MOV_L_A(DisasContext *ctx, arg_MOV_L_A *a) 
+{
+    return MOV_rd_A(RL78_GPREG_L);
+}
+
+static bool trans_MOV_H_A(DisasContext *ctx, arg_MOV_H_A *a) 
+{
+    return MOV_rd_A(RL78_GPREG_H);
 }
 
 static bool trans_MOV_saddr_i(DisasContext *ctx, arg_MOV_saddr_i *a)
@@ -295,7 +375,7 @@ static bool trans_CMP_A_i(DisasContext *ctx, arg_CMP_A_i *a)
 static bool trans_BR_addr16(DisasContext *ctx, arg_BR_addr16 *a)
 {
     const uint32_t addr = rl78_word(a->addr);
-    gen_goto_tb(ctx, TB_EXIT_IDX0, addr);
+    gen_goto_tb(ctx, TB_EXIT_JUMP, addr);
     return true;
 }
 
@@ -305,13 +385,19 @@ static bool trans_BNZ(DisasContext *ctx, arg_BNZ *a)
     TCGLabel *target = gen_new_label();
 
     tcg_gen_brcondi_i32(TCG_COND_NE, cpu_psw_z, 0, target);
-    gen_goto_tb(ctx, TB_EXIT_IDX0, br_pc);
+    gen_goto_tb(ctx, TB_EXIT_JUMP, br_pc);
     gen_set_label(target);
-    gen_goto_tb(ctx, TB_EXIT_IDX1, ctx->base.pc_next);
     
     return true;
 }
 
+static bool trans_SKZ(DisasContext *ctx, arg_SKZ *a)
+{
+    tcg_gen_setcondi_i32(TCG_COND_NE, cpu_skip, cpu_psw_z, 0);
+    ctx->skip_flag = true;
+
+    return true;
+}
 
 static void rl78_tr_init_disas_context(DisasContextBase *dcbase, CPUState *cs)
 {
@@ -336,11 +422,23 @@ static void rl78_tr_translate_insn(DisasContextBase *dcbase, CPUState *cs)
     DisasContext *ctx = container_of(dcbase, DisasContext, base);
     volatile uint64_t insn;
 
+    const bool use_skip = ctx->skip_flag;
+    ctx->skip_flag = false;
+    if(use_skip) {
+        cpu_skip_label = gen_new_label();
+        tcg_gen_brcondi_i32(TCG_COND_NE, cpu_skip, 0, cpu_skip_label);
+    }
+
     ctx->pc = ctx->base.pc_next;
     insn = decode_load(ctx);
     if(!decode(ctx, insn)) {
         exit(1);
         // TODO: gen_helper_raise_illegal_instruction(tcg_env);
+    }
+
+    if(cpu_skip_label) {
+        gen_set_label(cpu_skip_label);
+        cpu_skip_label = NULL;
     }
 }
 
@@ -350,8 +448,10 @@ static void rl78_tr_tb_stop(DisasContextBase *dcbase, CPUState *cs)
 
     switch (ctx->base.is_jmp) {
     case DISAS_NEXT:
-    case DISAS_NORETURN:
     case DISAS_EXIT:
+        break;
+    case DISAS_NORETURN:
+        gen_goto_tb(ctx, TB_EXIT_NOJUMP, ctx->base.pc_next);
         break;
     case DISAS_LOOKUP:
         tcg_gen_lookup_and_goto_ptr(); 
@@ -377,6 +477,12 @@ void rl78_translate_code(CPUState *cs, TranslationBlock *tb,
                          int *max_insns, vaddr pc, void *host_pc)
 {
     DisasContext dc;
+    CPUArchState *env = cpu_env(cs);
+
+    dc.env = env;
+    dc.pc = pc;
+    dc.tb_flags = tb->flags;
+    dc.skip_flag = env->skip;
 
     translator_loop(cs, tb, max_insns, pc, host_pc, &rl78_tr_ops, &dc.base);
 }
@@ -409,4 +515,6 @@ void rl78_translate_init(void)
     ALLOC_REGISTER(sp, sp, "SP");
     ALLOC_REGISTER(es, es, "ES");
     ALLOC_REGISTER(cs, cs, "CS");
+
+    ALLOC_REGISTER(skip, skip, "SKIP");
 }

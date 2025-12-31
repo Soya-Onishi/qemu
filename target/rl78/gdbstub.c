@@ -12,20 +12,60 @@ int rl78_cpu_gdb_read_register(CPUState *cs, GByteArray *mem_buf, int n)
     CPURL78State *env = cpu_env(cs);
 
     switch(n) {
-    case 0 ... 7:
-        return gdb_get_reg8(mem_buf, env->regs[0][n]);
-    case 8: {
+    case 0 ... 31:
+        return 0;
+    case 32: {
         const uint8_t psw = rl78_cpu_pack_psw(env->psw);
         return gdb_get_reg8(mem_buf, psw);
     }
-    case 9:
-        return gdb_get_reg16(mem_buf, env->sp);
-    case 10:
-        return gdb_get_reg32(mem_buf, env->pc);
-    case 11:
+    case 33:
         return gdb_get_reg8(mem_buf, env->es);
-    case 12:
+    case 34:
         return gdb_get_reg8(mem_buf, env->cs);
+    case 35 ... 37:
+        return 0;
+    case 38:
+        return gdb_get_reg8(mem_buf, env->pmc);    // TODO: pmc register
+    case 39:
+        return gdb_get_reg8(mem_buf, 0);    // TODO: mem register
+    case 40:
+        return gdb_get_reg32(mem_buf, env->pc);
+    case 41:
+        return gdb_get_reg16(mem_buf, env->sp);
+    case 42 ... 49: {
+        const int rbs = env->psw.rbs;
+        const int reg = n - 42;
+
+        return gdb_get_reg8(mem_buf, env->regs[rbs][reg]);
+    }
+    case 50 ... 53: {
+        const int rbs = env->psw.rbs;
+        const int reg = (n - 50) * 2;
+        const uint16_t reg_lo = env->regs[rbs][reg + 0];
+        const uint16_t reg_hi = env->regs[rbs][reg + 1];
+        const uint16_t ret_reg = reg_lo | (reg_hi << 8);
+
+        return gdb_get_reg16(mem_buf, ret_reg); 
+    }
+    case 54 ... 85: {
+        const int offset = n - 54;
+        const int reg = offset % 8;
+        const int rbs = offset / 8;
+
+        return gdb_get_reg8(mem_buf, env->regs[rbs][reg]);
+    }
+    case 86 ... 101: {
+        const int offset = n - 86;
+        const int reg = (offset % 4) * 2;
+        const int rbs = offset / 4;
+        const uint16_t reg_lo = env->regs[rbs][reg + 0];
+        const uint16_t reg_hi = env->regs[rbs][reg + 1];
+        const uint16_t ret_reg = reg_lo | (reg_hi << 8);
+
+        return gdb_get_reg16(mem_buf, ret_reg);
+    }
+    case 102 ... 117:
+        return gdb_get_reg16(mem_buf, 0);
     }
 
     return 0;

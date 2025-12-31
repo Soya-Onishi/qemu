@@ -33,7 +33,7 @@ static TCGTBCPUState rl78_get_tb_cpu_state(CPUState *cs)
     CPURL78State *env = cpu_env(cs);
     uint32_t flags = 0;
 
-    if(env->skip) {
+    if(env->skip_enabled) {
         flags |= TB_FLAG_SKIP;
     }
 

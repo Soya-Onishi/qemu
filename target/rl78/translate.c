@@ -44,9 +44,8 @@ static TCGv_i32 cpu_sp;
 static TCGv_i32 cpu_es;
 static TCGv_i32 cpu_cs;
 
-static TCGv_i32 cpu_skip;
-
-static TCGLabel *cpu_skip_label = NULL;
+static TCGv_i32 cpu_skip_enabled;
+static TCGv_i32 cpu_skip_required;
 
 static uint64_t decode_load_bytes(DisasContext *ctx, uint64_t insn, 
                                   int i, int n)
@@ -105,9 +104,9 @@ static void gen_exit_tb(DisasContext *dc, const vaddr pc_next) {
 }
 
 /* generic load wrapper */
-static void rl78_gen_lb(DisasContext *ctx, TCGv_i32 dst, TCGv_i32 mem)
+static void rl78_gen_lb(DisasContext *ctx, TCGv_i32 dst, TCGv ptr)
 {
-    tcg_gen_qemu_ld_i32(dst, mem, 0, MO_8 | MO_LE);
+    tcg_gen_qemu_ld_i32(dst, ptr, 0, MO_8);
 }
 
 
@@ -118,9 +117,9 @@ static void rl78_gen_lw(DisasContext *ctx, TCGv_i32 dst, TCGv_i32 mem)
 }
 */
 
-static void rl78_gen_sb(DisasContext *ctx, TCGv_i32 src, TCGv_i32 mem)
+static void rl78_gen_sb(DisasContext *ctx, TCGv_i32 src, TCGv ptr)
 {
-    tcg_gen_qemu_st_i32(src, mem, 0, MO_8 | MO_LE);
+    tcg_gen_qemu_st_i32(src, ptr, 0, MO_8);
 }
 
 /*
@@ -220,26 +219,22 @@ static bool trans_MOV_H_A(DisasContext *ctx, arg_MOV_H_A *a)
 
 static bool trans_MOV_saddr_i(DisasContext *ctx, arg_MOV_saddr_i *a)
 {
-    TCGv_i32 imm, mem;
-    imm = tcg_temp_new_i32();
-    mem = tcg_temp_new_i32();
+    const uint32_t offset = a->saddr;
+    TCGv_i32 imm = tcg_constant_i32(a->imm);
+    TCGv ptr = tcg_constant_tl(0xFFE20 + offset);
 
-    tcg_gen_movi_i32(imm, a->imm);
-    tcg_gen_movi_i32(mem, a->saddr + 0xFFE20);
-    rl78_gen_sb(ctx, imm, mem);
+    rl78_gen_sb(ctx, imm, ptr);
 
     return true;
 }
 
 static bool trans_MOV_sfr_i(DisasContext *ctx, arg_MOV_sfr_i *a)
 {
-    TCGv_i32 imm, mem;
-    imm = tcg_temp_new_i32();
-    mem = tcg_temp_new_i32();
+    const uint32_t addr = a->sfr; 
+    TCGv_i32 imm = tcg_constant_i32(a->imm);
+    TCGv ptr = tcg_constant_tl(0xFFF00 | addr);
 
-    tcg_gen_movi_i32(imm, a->imm);
-    tcg_gen_movi_i32(mem, a->sfr + 0xFFF00);
-    rl78_gen_sb(ctx, imm, mem);
+    rl78_gen_sb(ctx, imm, ptr);
 
     return true;
 }
@@ -247,14 +242,10 @@ static bool trans_MOV_sfr_i(DisasContext *ctx, arg_MOV_sfr_i *a)
 static bool trans_MOV_addr_i(DisasContext *ctx, arg_MOV_addr_i *a)
 {
     const uint32_t addr = rl78_word(a->addr);
-    TCGv_i32 imm, mem;
+    TCGv_i32 imm = tcg_constant_i32(a->imm);
+    TCGv ptr = tcg_constant_tl(0xF0000 | addr);
 
-    imm = tcg_temp_new_i32();
-    mem = tcg_temp_new_i32();
-
-    tcg_gen_movi_i32(imm, a->imm);
-    tcg_gen_movi_i32(mem, addr + 0xF0000);
-    rl78_gen_sb(ctx, imm, mem);
+    rl78_gen_sb(ctx, imm, ptr);
 
     return true;
 }
@@ -262,12 +253,9 @@ static bool trans_MOV_addr_i(DisasContext *ctx, arg_MOV_addr_i *a)
 static bool trans_MOV_addr_r(DisasContext *ctx, arg_MOV_addr_r *a)
 {
     const uint32_t addr = rl78_word(a->addr);
-    TCGv_i32 mem;
+    TCGv ptr = tcg_constant_tl(0xF0000 | addr);
 
-    mem = tcg_temp_new_i32();
-
-    tcg_gen_movi_i32(mem, addr + 0xF0000);
-    rl78_gen_sb(ctx, cpu_regs[1], mem);
+    rl78_gen_sb(ctx, cpu_regs[1], ptr);
 
     return true;
 }
@@ -348,12 +336,10 @@ static bool trans_MOV_A_PSW(DisasContext *ctx, arg_MOV_A_PSW *a)
 static bool trans_MOV_A_addr(DisasContext *ctx, arg_MOV_A_addr *a)
 {
     const uint32_t addr = rl78_word(a->addr);
-    TCGv_i32 mem;
+    TCGv ptr;
 
-    mem = tcg_temp_new_i32();
-
-    tcg_gen_movi_i32(mem, addr + 0xF0000);
-    rl78_gen_lb(ctx, cpu_regs[1], mem);
+    ptr = tcg_constant_tl(0xF0000 | addr);
+    rl78_gen_lb(ctx, cpu_regs[1], ptr);
 
     return true;
 }
@@ -393,7 +379,8 @@ static bool trans_BNZ(DisasContext *ctx, arg_BNZ *a)
 
 static bool trans_SKZ(DisasContext *ctx, arg_SKZ *a)
 {
-    tcg_gen_setcondi_i32(TCG_COND_NE, cpu_skip, cpu_psw_z, 0);
+    tcg_gen_setcondi_i32(TCG_COND_NE, cpu_skip_required, cpu_psw_z, 0);
+    tcg_gen_movi_i32(cpu_skip_enabled, 1);
     ctx->skip_flag = true;
 
     return true;
@@ -421,12 +408,14 @@ static void rl78_tr_translate_insn(DisasContextBase *dcbase, CPUState *cs)
 {
     DisasContext *ctx = container_of(dcbase, DisasContext, base);
     volatile uint64_t insn;
+    TCGLabel* skip_label = NULL;
 
     const bool use_skip = ctx->skip_flag;
     ctx->skip_flag = false;
     if(use_skip) {
-        cpu_skip_label = gen_new_label();
-        tcg_gen_brcondi_i32(TCG_COND_NE, cpu_skip, 0, cpu_skip_label);
+        skip_label = gen_new_label();
+        tcg_gen_movi_i32(cpu_skip_enabled, 0);
+        tcg_gen_brcondi_i32(TCG_COND_NE, cpu_skip_required, 0, skip_label);
     }
 
     ctx->pc = ctx->base.pc_next;
@@ -436,9 +425,8 @@ static void rl78_tr_translate_insn(DisasContextBase *dcbase, CPUState *cs)
         // TODO: gen_helper_raise_illegal_instruction(tcg_env);
     }
 
-    if(cpu_skip_label) {
-        gen_set_label(cpu_skip_label);
-        cpu_skip_label = NULL;
+    if(use_skip) {
+        gen_set_label(skip_label);
     }
 }
 
@@ -455,10 +443,10 @@ static void rl78_tr_tb_stop(DisasContextBase *dcbase, CPUState *cs)
         break;
     case DISAS_LOOKUP:
         tcg_gen_lookup_and_goto_ptr(); 
-        tcg_gen_exit_tb(dcbase->tb, TB_EXIT_IDX0);
+        tcg_gen_exit_tb(dcbase->tb, TB_EXIT_NOJUMP);
         break;
     case DISAS_TOO_MANY:
-        gen_goto_tb(ctx, TB_EXIT_IDX0, ctx->base.pc_next);
+        gen_goto_tb(ctx, TB_EXIT_NOJUMP, ctx->base.pc_next);
         break;
     default:
         g_assert_not_reached();
@@ -482,7 +470,7 @@ void rl78_translate_code(CPUState *cs, TranslationBlock *tb,
     dc.env = env;
     dc.pc = pc;
     dc.tb_flags = tb->flags;
-    dc.skip_flag = env->skip;
+    dc.skip_flag = env->skip_enabled;
 
     translator_loop(cs, tb, max_insns, pc, host_pc, &rl78_tr_ops, &dc.base);
 }
@@ -516,5 +504,6 @@ void rl78_translate_init(void)
     ALLOC_REGISTER(es, es, "ES");
     ALLOC_REGISTER(cs, cs, "CS");
 
-    ALLOC_REGISTER(skip, skip, "SKIP");
+    ALLOC_REGISTER(skip_enabled, skip_enabled, "SKIP(EN)");
+    ALLOC_REGISTER(skip_required, skip_required, "SKIP(REQ)");
 }

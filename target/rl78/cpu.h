@@ -66,7 +66,8 @@ typedef struct CPUArchState {
     uint8_t ack_isp;
 
     /* internal use */
-    uint32_t skip;
+    uint32_t skip_enabled;
+    uint32_t skip_required;
 } CPURL78State;
 
 /**

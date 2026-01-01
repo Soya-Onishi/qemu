@@ -180,6 +180,18 @@ static bool trans_MOV_addr_r(DisasContext *ctx, arg_MOV_addr_r *a)
     return true;
 }
 
+static bool trans_MOV_A_relDE(DisasContext *ctx, arg_MOV_A_relDE *a)
+{
+    print("MOV\tA, [DE]");
+    return true;
+}
+
+static bool trans_MOV_relDE_A(DisasContext *ctx, arg_MOV_relDE_A *a)
+{
+    print("MOV\t[DE], A");
+    return true;
+}
+
 
 static bool trans_MOV_PSW_A(DisasContext *ctx, arg_MOV_PSW_A *a)
 {
@@ -198,6 +210,14 @@ static bool trans_MOV_A_addr(DisasContext *ctx, arg_MOV_A_addr *a)
     print("MOV\tA, !0x%05x", rl78_word(a->addr) + 0xF0000);
     return true;
 }
+
+static bool trans_MOVW_rp_i(DisasContext *ctx, arg_MOVW_rp_i *a)
+{
+    const uint32_t imm = a->datal | (a->datah << 8);
+    print("MOVW\tRP%d, #%d", a->rp*2, imm);
+    return true;
+}
+
 static bool trans_CMP_A_i(DisasContext *ctx, arg_CMP_A_i *a)
 {
     print("CMP\tA, #%d", a->imm);

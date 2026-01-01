@@ -23,7 +23,7 @@ FIELD(PSW, Z,    6, 1)
 FIELD(PSW, IE,   7, 1)
 
 typedef enum RL78GPRegister {
-    RL78_GPREG_X,
+    RL78_GPREG_X = 0,
     RL78_GPREG_A,
     RL78_GPREG_C,
     RL78_GPREG_B,
@@ -31,7 +31,12 @@ typedef enum RL78GPRegister {
     RL78_GPREG_D,
     RL78_GPREG_L,
     RL78_GPREG_H,
-    GPREG_NUM
+    GPREG_NUM,
+
+    RL78_GPREG_AX = 0,
+    RL78_GPREG_BC = 2,
+    RL78_GPREG_DE = 4,
+    RL78_GPREG_HL = 5,
 } RL78GPRegister;
 
 #define GPREG_BANK_NUM (4)

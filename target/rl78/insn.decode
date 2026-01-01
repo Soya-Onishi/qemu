@@ -49,6 +49,12 @@ MOV_A_PSW 1000 1110 1111 1010
   MOV_sfr_i 1100 1110 sfr:8     imm:8
 }
 
+MOV_A_relDE 1000 1001
+MOV_relDE_A 1001 1001
+
+# MOVW instructions
+MOVW_rp_i 0011 0 rp:2 0 datal:8 datah:8
+
 CMP_A_i 0100 1100 .... .... @cmp_a_i
 
 BR_addr16 1110 1101 .... .... .... .... @br_addr16

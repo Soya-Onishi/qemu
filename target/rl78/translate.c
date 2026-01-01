@@ -452,9 +452,14 @@ static void rl78_tr_translate_insn(DisasContextBase *dcbase, CPUState *cs)
     const bool use_skip = ctx->skip_flag;
     ctx->skip_flag = false;
     if(use_skip) {
-        skip_label = gen_new_label();
+        TCGv_i32 required_tmp = tcg_temp_new_i32();
+
         tcg_gen_movi_i32(cpu_skip_enabled, 0);
-        tcg_gen_brcondi_i32(TCG_COND_NE, cpu_skip_required, 0, skip_label);
+        tcg_gen_mov_i32(required_tmp, cpu_skip_required);
+        tcg_gen_movi_i32(cpu_skip_required, 0);
+
+        skip_label = gen_new_label();
+        tcg_gen_brcondi_i32(TCG_COND_NE, required_tmp, 0, skip_label);
     }
 
     ctx->pc = ctx->base.pc_next;

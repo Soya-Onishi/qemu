@@ -79,6 +79,12 @@ static bool trans_MOV_ri(DisasContext *ctx, arg_MOV_ri *a)
     return true;
 }
 
+static bool trans_MOV_PSW_i(DisasContext *ctx, arg_MOV_PSW_i *a)
+{
+    print("MOV\tPSW, #%d", a->imm);
+    return true;
+}
+
 static bool trans_MOV_A_X(DisasContext *ctx, arg_MOV_A_X *a)
 {
     return print_MOV_A_rs(ctx, RL78_GPREG_X);

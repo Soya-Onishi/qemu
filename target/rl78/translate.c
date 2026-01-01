@@ -76,7 +76,8 @@ void rl78_cpu_dump_state(CPUState *cs, FILE *f, int flags)
     CPURL78State *env = cpu_env(cs);
     const uint8_t psw = rl78_cpu_pack_psw(env->psw);
 
-    qemu_fprintf(f, "pc=0x%06x psw=0x%02x\n", env->pc, psw);
+    qemu_fprintf(f, "pc=0x%06x\n", env->pc);
+    qemu_fprintf(f, "psw=0x%02x\n", psw);
     for(int i = 0; i < 8; i++) {
         // TODO: treat bank registers
         qemu_fprintf(f, "r%d=0x%02x\n", i, env->regs[0][i]);
@@ -129,6 +130,41 @@ static void rl78_gen_sw(DisasContext *ctx, TCGv_i32 src, TCGv_i32 mem)
 }
 */
 
+static void rl78_store_psw(DisasContext *ctx, TCGv_i32 src) 
+{
+    TCGv_i32 psw_cy, psw_isp, psw_rbs0, psw_rbs1, psw_ac, psw_z, psw_ie;
+    psw_cy = tcg_temp_new_i32();
+    psw_isp = tcg_temp_new_i32();
+    psw_rbs0 = tcg_temp_new_i32();
+    psw_rbs1 = tcg_temp_new_i32();
+    psw_ac = tcg_temp_new_i32();
+    psw_z = tcg_temp_new_i32();
+    psw_ie = tcg_temp_new_i32();
+
+    tcg_gen_andi_i32(psw_cy,   src, 0x01);
+    tcg_gen_andi_i32(psw_isp,  src, 0x06);
+    tcg_gen_andi_i32(psw_rbs0, src, 0x08);
+    tcg_gen_andi_i32(psw_rbs1, src, 0x20);
+    tcg_gen_andi_i32(psw_ac,   src, 0x10);
+    tcg_gen_andi_i32(psw_z,    src, 0x40);
+    tcg_gen_andi_i32(psw_ie,   src, 0x80);
+
+    tcg_gen_setcondi_i32(TCG_COND_NE, cpu_psw_cy, psw_cy, 0);
+
+    tcg_gen_shri_i32(psw_isp, psw_isp, 1); 
+    tcg_gen_mov_i32(cpu_psw_isp, psw_isp);
+
+    tcg_gen_shri_i32(psw_rbs0, psw_rbs0, 3);
+    tcg_gen_shri_i32(psw_rbs1, psw_rbs1, 4);
+    tcg_gen_or_i32(cpu_psw_rbs, psw_rbs0, psw_rbs1);
+
+    tcg_gen_setcondi_i32(TCG_COND_NE, cpu_psw_ac, psw_ac, 0);
+    tcg_gen_setcondi_i32(TCG_COND_NE, cpu_psw_z,  psw_z,  0);
+    tcg_gen_setcondi_i32(TCG_COND_NE, cpu_psw_ie, psw_ie, 0);
+
+    gen_exit_tb(ctx, ctx->base.pc_next);
+}
+
 static bool MOV_A_rs(RL78GPRegister rs) 
 {
     tcg_gen_mov_i32(cpu_regs[RL78_GPREG_A], cpu_regs[rs]);
@@ -144,6 +180,13 @@ static bool MOV_rd_A(RL78GPRegister rd)
 static bool trans_MOV_ri(DisasContext *ctx, arg_MOV_ri *a) 
 {
     tcg_gen_movi_i32(cpu_regs[a->rd], a->imm);
+    return true;
+}
+
+static bool trans_MOV_PSW_i(DisasContext *ctx, arg_MOV_PSW_i *a)
+{
+    TCGv_i32 src = tcg_constant_i32(a->imm);
+    rl78_store_psw(ctx, src);
     return true;
 }
 
@@ -279,21 +322,18 @@ static bool trans_MOV_PSW_A(DisasContext *ctx, arg_MOV_PSW_A *a)
     tcg_gen_andi_i32(psw_z, cpu_regs[1], 0x40);
     tcg_gen_andi_i32(psw_ie, cpu_regs[1], 0x80);
 
-    tcg_gen_shri_i32(psw_isp, psw_isp, 1);
+    tcg_gen_setcondi_i32(TCG_COND_NE, cpu_psw_cy, psw_cy, 0);
+
+    tcg_gen_shri_i32(psw_isp, psw_isp, 1); 
+    tcg_gen_mov_i32(cpu_psw_isp, psw_isp);
+
     tcg_gen_shri_i32(psw_rbs0, psw_rbs0, 3);
     tcg_gen_shri_i32(psw_rbs1, psw_rbs1, 4);
-    tcg_gen_shri_i32(psw_ac, psw_ac, 4);
-    tcg_gen_shri_i32(psw_z, psw_z, 6);
-    tcg_gen_shri_i32(psw_ie, psw_ie, 7);
+    tcg_gen_or_i32(cpu_psw_rbs, psw_rbs0, psw_rbs1);
 
-    tcg_gen_or_i32(psw_rbs0, psw_rbs0, psw_rbs1);
-
-    tcg_gen_mov_i32(cpu_psw_cy, psw_cy);
-    tcg_gen_mov_i32(cpu_psw_isp, psw_isp);
-    tcg_gen_mov_i32(cpu_psw_rbs, psw_rbs0);
-    tcg_gen_mov_i32(cpu_psw_ac, psw_ac);
-    tcg_gen_mov_i32(cpu_psw_z, psw_z);
-    tcg_gen_mov_i32(cpu_psw_ie, psw_ie);
+    tcg_gen_setcondi_i32(TCG_COND_NE, cpu_psw_ac, psw_ac, 0);
+    tcg_gen_setcondi_i32(TCG_COND_NE, cpu_psw_z,  psw_z,  0);
+    tcg_gen_setcondi_i32(TCG_COND_NE, cpu_psw_ie, psw_ie, 0);
 
     gen_exit_tb(ctx, ctx->base.pc_next);
 
@@ -318,7 +358,7 @@ static bool trans_MOV_A_PSW(DisasContext *ctx, arg_MOV_A_PSW *a)
     tcg_gen_shli_i32(psw_rbs0, psw_rbs0, 3);
     tcg_gen_shli_i32(psw_ac, cpu_psw_ac, 4);
     tcg_gen_andi_i32(psw_rbs1, cpu_psw_rbs, 2);
-    tcg_gen_shli_i32(psw_rbs1, psw_rbs0, 5);
+    tcg_gen_shli_i32(psw_rbs1, psw_rbs1, 4);
     tcg_gen_shli_i32(psw_z, cpu_psw_z, 6);
     tcg_gen_shli_i32(psw_ie, cpu_psw_ie, 7);
 
@@ -351,8 +391,7 @@ static bool trans_CMP_A_i(DisasContext *ctx, arg_CMP_A_i *a)
     tcg_gen_andi_i32(half_acc, cpu_regs[1], 0x0F);
 
     tcg_gen_setcondi_i32(TCG_COND_LTU, cpu_psw_cy, cpu_regs[1], a->imm);
-    tcg_gen_xori_i32(cpu_psw_z, cpu_regs[1], a->imm);
-    tcg_gen_setcondi_i32(TCG_COND_EQ, cpu_psw_z, cpu_psw_z, 0);
+    tcg_gen_setcondi_i32(TCG_COND_EQ, cpu_psw_z, cpu_regs[1], a->imm);
     tcg_gen_setcondi_i32(TCG_COND_LTU, cpu_psw_ac, half_acc, a->imm & 0x0F);
 
     return true;

@@ -78,6 +78,8 @@ void rl78_cpu_dump_state(CPUState *cs, FILE *f, int flags)
 
     qemu_fprintf(f, "pc=0x%06x\n", env->pc);
     qemu_fprintf(f, "psw=0x%02x\n", psw);
+    qemu_fprintf(f, "es=0x%02x\n", env->es);
+    qemu_fprintf(f, "cs=0x%02x\n", env->cs);
     for(int i = 0; i < 8; i++) {
         // TODO: treat bank registers
         qemu_fprintf(f, "r%d=0x%02x\n", i, env->regs[0][i]);
@@ -354,6 +356,44 @@ static bool trans_MOV_saddr_A(DisasContext *ctx, arg_MOV_saddr_A *a)
 
     rl78_gen_sb(ctx, cpu_regs[1], ptr);
 
+    return true;
+}
+
+static void rl78_store_es(TCGv_i32 es)
+{
+    tcg_gen_andi_i32(cpu_es, es, 0x0F);
+}
+
+static bool trans_MOV_ES_i(DisasContext *ctx, arg_MOV_ES_i *a)
+{
+    TCGv_i32 es = tcg_constant_i32(a->imm);
+    rl78_store_es(es);
+
+    return true;
+}
+
+static bool trans_MOV_ES_saddr(DisasContext *ctx, arg_MOV_ES_saddr *a)
+{
+    TCGv_i32 es = tcg_temp_new_i32();
+    TCGv ptr = rl78_gen_saddr(tcg_constant_tl(a->saddr));
+    rl78_gen_lb(ctx, es, ptr);
+    rl78_store_es(es);
+    
+    return true;
+}
+
+static bool trans_MOV_ES_A(DisasContext *ctx, arg_MOV_ES_A *a)
+{
+    TCGv_i32 es = tcg_temp_new_i32();
+    tcg_gen_mov_i32(es, cpu_regs[RL78_GPREG_A]);
+    rl78_store_es(es);
+
+    return true;
+}
+
+static bool trans_MOV_A_ES(DisasContext *ctx, arg_MOV_A_ES *a)
+{
+    tcg_gen_mov_i32(cpu_regs[RL78_GPREG_A], cpu_es);
     return true;
 }
 

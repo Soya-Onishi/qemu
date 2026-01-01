@@ -55,6 +55,11 @@ MOV_saddr_A 1001 1101 saddr:8
 # MOV_A_sfr 1000 1110 sfr:8
 # MOV_sfr_A 1001 1110 sfr:8
 
+MOV_ES_i        0100 0001 imm:8
+MOV_ES_saddr    0110 0001 1011 1000 saddr:8
+MOV_A_ES        1000 1110 1111 1101
+MOV_ES_A        1001 1110 1111 1101
+
 MOV_A_relDE 1000 1001
 MOV_relDE_A 1001 1001
 

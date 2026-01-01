@@ -53,6 +53,12 @@ static inline uint32_t rl78_word(uint32_t v)
     return ((v & 0x0000FF) << 8) | ((v & 0x00FF00) >> 8);
 }
 
+static inline uint32_t rl78_gen_saddr(int saddr)
+{
+    const uint32_t base = saddr < 0x20 ? 0xFFF00 : 0xFFE00;
+    return base + saddr;
+}
+
 #define print(...)                                             \
     do {                                                            \
         dump_bytes(ctx);                                            \
@@ -226,6 +232,30 @@ static bool trans_MOV_saddr_A(DisasContext *ctx, arg_MOV_saddr_A *a)
 
     print("MOV\t0x%05x, A", saddr);
 
+    return true;
+}
+
+static bool trans_MOV_ES_i(DisasContext *ctx, arg_MOV_ES_i *a)
+{
+    print("MOV\tES, #%d", a->imm);
+    return true;
+}
+
+static bool trans_MOV_ES_saddr(DisasContext *ctx, arg_MOV_ES_saddr *a)
+{
+    print("MOV\tES, !0x%05x", rl78_gen_saddr(a->saddr));
+    return true;
+}
+
+static bool trans_MOV_ES_A(DisasContext *ctx, arg_MOV_ES_A *a)
+{
+    print("MOV\tES, A");
+    return true;
+}
+
+static bool trans_MOV_A_ES(DisasContext *ctx, arg_MOV_A_ES *a)
+{
+    print("MOV\tA, ES");
     return true;
 }
 

@@ -52,6 +52,9 @@ MOV_A_PSW 1000 1110 1111 1010
 MOV_A_saddr 1000 1101 saddr:8
 MOV_saddr_A 1001 1101 saddr:8
 
+# MOV_A_sfr 1000 1110 sfr:8
+# MOV_sfr_A 1001 1110 sfr:8
+
 MOV_A_relDE 1000 1001
 MOV_relDE_A 1001 1001
 

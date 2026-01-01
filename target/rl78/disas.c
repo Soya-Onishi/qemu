@@ -211,6 +211,25 @@ static bool trans_MOV_A_addr(DisasContext *ctx, arg_MOV_A_addr *a)
     return true;
 }
 
+static bool trans_MOV_A_saddr(DisasContext *ctx, arg_MOV_A_saddr *a)
+{
+    const uint32_t saddr = a->saddr + 0xFFE20;
+
+    print("MOV\tA, 0x%05x", saddr);
+
+    return true;
+}
+
+static bool trans_MOV_saddr_A(DisasContext *ctx, arg_MOV_saddr_A *a)
+{
+    const uint32_t saddr = a->saddr + 0xFFE20;
+
+    print("MOV\t0x%05x, A", saddr);
+
+    return true;
+}
+
+
 static bool trans_MOVW_rp_i(DisasContext *ctx, arg_MOVW_rp_i *a)
 {
     const uint32_t imm = a->datal | (a->datah << 8);

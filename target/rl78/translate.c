@@ -150,6 +150,20 @@ static void rl78_store_rp(RL78GPRegister rp, TCGv_i32 value)
     tcg_gen_shri_i32(cpu_regs[rp+1], temp, 8);
 }
 
+static TCGv rl78_gen_saddr(TCGv saddr)
+{
+    TCGv ret = tcg_temp_new_i32();
+    TCGv base = tcg_temp_new_i32();
+
+    tcg_gen_movcond_i32(TCG_COND_LTU, base, 
+                        saddr, tcg_constant_i32(0x20),
+                        tcg_constant_i32(0xFFF00),
+                        tcg_constant_i32(0xFFE00));
+    tcg_gen_add_tl(ret, saddr, base);
+
+    return ret;
+}
+
 static void rl78_store_psw(DisasContext *ctx, TCGv_i32 src) 
 {
     TCGv_i32 psw_cy, psw_isp, psw_rbs0, psw_rbs1, psw_ac, psw_z, psw_ie;
@@ -317,6 +331,26 @@ static bool trans_MOV_addr_r(DisasContext *ctx, arg_MOV_addr_r *a)
 {
     const uint32_t addr = rl78_word(a->addr);
     TCGv ptr = tcg_constant_tl(0xF0000 | addr);
+
+    rl78_gen_sb(ctx, cpu_regs[1], ptr);
+
+    return true;
+}
+
+static bool trans_MOV_A_saddr(DisasContext *ctx, arg_MOV_A_saddr *a)
+{
+    TCGv saddr = tcg_constant_tl(a->saddr);
+    TCGv ptr = rl78_gen_saddr(saddr);
+
+    rl78_gen_lb(ctx, cpu_regs[1], ptr);
+
+    return true;
+}
+
+static bool trans_MOV_saddr_A(DisasContext *ctx, arg_MOV_saddr_A *a)
+{
+    TCGv saddr = tcg_constant_tl(a->saddr);
+    TCGv ptr = rl78_gen_saddr(saddr);
 
     rl78_gen_sb(ctx, cpu_regs[1], ptr);
 

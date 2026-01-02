@@ -46,6 +46,7 @@ MOV_PSW_A 1001 1110 1111 1010
 MOV_A_PSW 1000 1110 1111 1010
 {
   MOV_PSW_i 1100 1110 1111 1010 imm:8
+  MOV_CS_i  1100 1110 1111 1100 imm:8
   MOV_sfr_i 1100 1110 sfr:8     imm:8
 }
 
@@ -60,8 +61,14 @@ MOV_ES_saddr    0110 0001 1011 1000 saddr:8
 MOV_A_ES        1000 1110 1111 1101
 MOV_ES_A        1001 1110 1111 1101
 
-MOV_A_relDE 1000 1001
-MOV_relDE_A 1001 1001
+MOC_A_CS        1000 1110 1111 1100
+MOV_CS_A        1001 1110 1111 1100
+
+MOV_A_indDE         1000 1001
+MOV_indDE_A         1001 1001
+MOV_indDEoffset_i   1100 1010 offset:8 imm:8
+MOV_A_indDEoffset   1000 1010 offset:8
+MOV_indDEoffset_A   1001 1010 offset:8
 
 # MOVW instructions
 MOVW_rp_i 0011 0 rp:2 0 datal:8 datah:8

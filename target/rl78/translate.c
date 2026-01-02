@@ -397,7 +397,41 @@ static bool trans_MOV_A_ES(DisasContext *ctx, arg_MOV_A_ES *a)
     return true;
 }
 
-static bool trans_MOV_A_relDE(DisasContext *ctx, arg_MOV_A_relDE *a)
+static void rl78_store_cs(TCGv_i32 cs)
+{
+    tcg_gen_andi_i32(cpu_cs, cs, 0x0F);
+}
+
+static bool trans_MOV_CS_i(DisasContext *ctx, arg_MOV_CS_i *a)
+{
+    rl78_store_cs(tcg_constant_i32(a->imm));
+    return true;
+}
+
+static bool trans_MOC_A_CS(DisasContext *ctx, arg_MOC_A_CS *a)
+{
+    tcg_gen_mov_i32(cpu_regs[RL78_GPREG_A], cpu_cs);
+    return true;
+}
+
+static bool trans_MOV_CS_A(DisasContext *ctx, arg_MOV_CS_A *a)
+{
+    rl78_store_cs(cpu_regs[RL78_GPREG_A]);
+    return true;
+}
+
+static TCGv rl78_indrp_ptr(RL78GPRegister rp, uint32_t offset)
+{
+    TCGv_i32 de = rl78_load_rp(RL78_GPREG_DE);
+    TCGv ptr = tcg_temp_new_i32();
+
+    tcg_gen_addi_i32(ptr, de, offset);
+    tcg_gen_ori_i32(ptr, ptr, 0xF0000);
+
+    return ptr;
+}
+
+static bool trans_MOV_A_indDE(DisasContext *ctx, arg_MOV_A_indDE *a)
 {
     TCGv_i32 de = rl78_load_rp(RL78_GPREG_DE);
 
@@ -407,13 +441,38 @@ static bool trans_MOV_A_relDE(DisasContext *ctx, arg_MOV_A_relDE *a)
     return true;
 }
 
-static bool trans_MOV_relDE_A(DisasContext *ctx, arg_MOV_relDE_A *a) 
+static bool trans_MOV_indDE_A(DisasContext *ctx, arg_MOV_indDE_A *a) 
 {
     TCGv_i32 de = rl78_load_rp(RL78_GPREG_DE);
 
     tcg_gen_ori_i32(de, de, 0xF0000);
     rl78_gen_sb(ctx, cpu_regs[RL78_GPREG_A], de);
     
+    return true;
+}
+
+static bool trans_MOV_indDEoffset_i(DisasContext *ctx, arg_MOV_indDEoffset_i *a)
+{
+    TCGv_i32 imm = tcg_constant_i32(a->imm);
+    TCGv ptr = rl78_indrp_ptr(RL78_GPREG_DE, a->offset);
+
+    rl78_gen_sb(ctx, imm, ptr);
+
+    return true;
+}
+
+static bool trans_MOV_A_indDEoffset(DisasContext *ctx, arg_MOV_A_indDEoffset *a)
+{
+    TCGv ptr = rl78_indrp_ptr(RL78_GPREG_DE, a->offset);
+    rl78_gen_lb(ctx, cpu_regs[RL78_GPREG_A], ptr);
+
+    return true;
+}
+
+static bool trans_MOV_indDEoffset_A(DisasContext *ctx, arg_MOV_indDEoffset_A *a)
+{
+    TCGv ptr = rl78_indrp_ptr(RL78_GPREG_DE, a->offset);
+    rl78_gen_sb(ctx, cpu_regs[RL78_GPREG_A], ptr);
     return true;
 }
 

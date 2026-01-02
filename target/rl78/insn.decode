@@ -80,6 +80,16 @@ MOV_indHL_B_A       0110 0001 1101 1001
 MOV_A_indHL_C       0110 0001 1110 1001
 MOV_indHL_C_A       0110 0001 1111 1001
 
+MOV_indBbase_i      0001 1001 adrl:8 adrh:8 imm:8
+MOV_A_indBbase      0000 1001 adrl:8 adrh:8
+MOV_indBbase_A      0001 1000 adrl:8 adrh:8
+MOV_indCbase_i      0011 1000 adrl:8 adrh:8 imm:8
+MOV_A_indCbase      0010 1001 adrl:8 adrh:8
+MOV_indCbase_A      0010 1000 adrl:8 adrh:8
+MOV_indBCbase_i     0011 1001 adrl:8 adrh:8 imm:8
+MOV_A_indBCbase     0100 1001 adrl:8 adrh:8
+MOV_indBCbase_A     0100 1000 adrl:8 adrh:8
+
 # MOVW instructions
 MOVW_rp_i 0011 0 rp:2 0 datal:8 datah:8
 

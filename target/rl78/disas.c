@@ -270,6 +270,62 @@ static bool trans_MOV_indHL_C_A(DisasContext *ctx, arg_MOV_indHL_C_A *a)
     return true;
 }
 
+#define rl78_base(arg)  ((uint32_t)(arg->adrl) | (arg->adrh << 8))
+
+static bool trans_MOV_indBbase_i(DisasContext *ctx, arg_MOV_indBbase_i *a)
+{
+    print("MOV\t%d[B], #%d", rl78_base(a), a->imm);
+    return true;
+}
+
+static bool trans_MOV_A_indBbase(DisasContext *ctx, arg_MOV_A_indBbase *a)
+{
+    print("MOV\tA, %d[B]", rl78_base(a));
+    return true;
+}
+
+static bool trans_MOV_indBbase_A(DisasContext *ctx, arg_MOV_indBbase_A *a)
+{
+    print("MOV\t%d[B], A", rl78_base(a));
+    return true;
+}
+
+static bool trans_MOV_indCbase_i(DisasContext *ctx, arg_MOV_indCbase_i *a)
+{
+    print("MOV\t%d[C], #%d", rl78_base(a), a->imm);
+    return true;
+}
+
+static bool trans_MOV_A_indCbase(DisasContext *ctx, arg_MOV_A_indCbase *a)
+{
+    print("MOV\tA, %d[C]", rl78_base(a));
+    return true;
+}
+
+static bool trans_MOV_indCbase_A(DisasContext *ctx, arg_MOV_indCbase_A *a)
+{
+    print("MOV\t%d[C], A", rl78_base(a));
+    return true;
+}
+
+static bool trans_MOV_indBCbase_i(DisasContext *ctx, arg_MOV_indBCbase_i *a)
+{
+    print("MOV\t%d[BC], #%d", rl78_base(a), a->imm);
+    return true;
+}
+
+static bool trans_MOV_A_indBCbase(DisasContext *ctx, arg_MOV_A_indBCbase *a)
+{
+    print("MOV\tA, %d[BC]", rl78_base(a));
+    return true;
+}
+
+static bool trans_MOV_indBCbase_A(DisasContext *ctx, arg_MOV_indBCbase_A *a)
+{
+    print("MOV\t%d[BC], A", rl78_base(a));
+    return true;
+}
+
 static bool trans_MOV_PSW_A(DisasContext *ctx, arg_MOV_PSW_A *a)
 {
     print("MOV\tPSW, A");

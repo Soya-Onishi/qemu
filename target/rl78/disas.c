@@ -216,6 +216,60 @@ static bool trans_MOV_indDEoffset_A(DisasContext *ctx, arg_MOV_indDEoffset_A *a)
     return true;
 }
 
+static bool trans_MOV_A_indHL(DisasContext *ctx, arg_MOV_A_indHL *a)
+{
+    print("MOV\tA, [HL]");
+    return true;
+}
+
+static bool trans_MOV_indHL_A(DisasContext *ctx, arg_MOV_indHL_A *a)
+{
+    print("MOV\t[HL], A");
+    return true;
+}
+
+static bool trans_MOV_indHLoffset_i(DisasContext *ctx, arg_MOV_indHLoffset_i *a)
+{
+    print("MOV\t[HL+%d], #%d", a->offset, a->imm);
+    return true;
+}
+
+static bool trans_MOV_A_indHLoffset(DisasContext *ctx, arg_MOV_A_indHLoffset *a)
+{
+    print("MOV\tA, [HL+%d]", a->offset);
+    return true;
+}
+
+static bool trans_MOV_indHLoffset_A(DisasContext *ctx, arg_MOV_indHLoffset_A *a)
+{
+    print("MOV\t[HL+%d], A", a->offset);
+    return true;
+}
+
+static bool trans_MOV_A_indHL_B(DisasContext *ctx, arg_MOV_A_indHL_B *a)
+{
+    print("MOV\tA, [HL+B]");
+    return true;
+}
+
+static bool trans_MOV_indHL_B_A(DisasContext *ctx, arg_MOV_indHL_B_A *a)
+{
+    print("MOV\t[HL+B], A");
+    return true;
+}
+
+static bool trans_MOV_A_indHL_C(DisasContext *ctx, arg_MOV_A_indHL_C *a)
+{
+    print("MOV\tA, [HL+C]");
+    return true;
+}
+
+static bool trans_MOV_indHL_C_A(DisasContext *ctx, arg_MOV_indHL_C_A *a)
+{
+    print("MOV\t[HL+C], A");
+    return true;
+}
+
 static bool trans_MOV_PSW_A(DisasContext *ctx, arg_MOV_PSW_A *a)
 {
     print("MOV\tPSW, A");

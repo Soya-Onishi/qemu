@@ -420,12 +420,11 @@ static bool trans_MOV_CS_A(DisasContext *ctx, arg_MOV_CS_A *a)
     return true;
 }
 
-static TCGv rl78_indrp_ptr(RL78GPRegister rp, uint32_t offset)
+static TCGv rl78_indrp_ptr(RL78GPRegister rp, TCGv_i32 offset)
 {
-    TCGv_i32 de = rl78_load_rp(RL78_GPREG_DE);
-    TCGv ptr = tcg_temp_new_i32();
+    TCGv ptr = rl78_load_rp(rp);
 
-    tcg_gen_addi_i32(ptr, de, offset);
+    tcg_gen_add_i32(ptr, ptr, offset);
     tcg_gen_ori_i32(ptr, ptr, 0xF0000);
 
     return ptr;
@@ -454,7 +453,7 @@ static bool trans_MOV_indDE_A(DisasContext *ctx, arg_MOV_indDE_A *a)
 static bool trans_MOV_indDEoffset_i(DisasContext *ctx, arg_MOV_indDEoffset_i *a)
 {
     TCGv_i32 imm = tcg_constant_i32(a->imm);
-    TCGv ptr = rl78_indrp_ptr(RL78_GPREG_DE, a->offset);
+    TCGv ptr = rl78_indrp_ptr(RL78_GPREG_DE, tcg_constant_i32(a->offset));
 
     rl78_gen_sb(ctx, imm, ptr);
 
@@ -463,7 +462,7 @@ static bool trans_MOV_indDEoffset_i(DisasContext *ctx, arg_MOV_indDEoffset_i *a)
 
 static bool trans_MOV_A_indDEoffset(DisasContext *ctx, arg_MOV_A_indDEoffset *a)
 {
-    TCGv ptr = rl78_indrp_ptr(RL78_GPREG_DE, a->offset);
+    TCGv ptr = rl78_indrp_ptr(RL78_GPREG_DE, tcg_constant_i32(a->offset));
     rl78_gen_lb(ctx, cpu_regs[RL78_GPREG_A], ptr);
 
     return true;
@@ -471,7 +470,70 @@ static bool trans_MOV_A_indDEoffset(DisasContext *ctx, arg_MOV_A_indDEoffset *a)
 
 static bool trans_MOV_indDEoffset_A(DisasContext *ctx, arg_MOV_indDEoffset_A *a)
 {
-    TCGv ptr = rl78_indrp_ptr(RL78_GPREG_DE, a->offset);
+    TCGv ptr = rl78_indrp_ptr(RL78_GPREG_DE, tcg_constant_i32(a->offset));
+    rl78_gen_sb(ctx, cpu_regs[RL78_GPREG_A], ptr);
+    return true;
+}
+
+static bool trans_MOV_A_indHL(DisasContext *ctx, arg_MOV_A_indHL *a)
+{
+    TCGv ptr = rl78_indrp_ptr(RL78_GPREG_HL, tcg_constant_i32(0));
+    rl78_gen_lb(ctx, cpu_regs[RL78_GPREG_A], ptr);
+    return true;
+}
+
+static bool trans_MOV_indHL_A(DisasContext *ctx, arg_MOV_indHL_A *a)
+{
+    TCGv ptr = rl78_indrp_ptr(RL78_GPREG_HL, tcg_constant_i32(0));
+    rl78_gen_sb(ctx, cpu_regs[RL78_GPREG_A], ptr);
+    return true;
+}
+
+static bool trans_MOV_indHLoffset_i(DisasContext *ctx, arg_MOV_indHLoffset_i *a)
+{
+    TCGv ptr = rl78_indrp_ptr(RL78_GPREG_HL, tcg_constant_i32(a->offset));
+    rl78_gen_sb(ctx, tcg_constant_i32(a->imm), ptr);
+    return true;
+}
+
+static bool trans_MOV_A_indHLoffset(DisasContext *ctx, arg_MOV_A_indHLoffset *a)
+{
+    TCGv ptr = rl78_indrp_ptr(RL78_GPREG_HL, tcg_constant_i32(a->offset));
+    rl78_gen_lb(ctx, cpu_regs[RL78_GPREG_A], ptr);
+    return true;
+}
+
+static bool trans_MOV_indHLoffset_A(DisasContext *ctx, arg_MOV_indHLoffset_A *a)
+{
+    TCGv ptr = rl78_indrp_ptr(RL78_GPREG_HL, tcg_constant_i32(a->offset));
+    rl78_gen_sb(ctx, cpu_regs[RL78_GPREG_A], ptr);
+    return true;
+}
+
+static bool trans_MOV_A_indHL_B(DisasContext *ctx, arg_MOV_A_indHL_B *a)
+{
+    TCGv ptr = rl78_indrp_ptr(RL78_GPREG_HL, cpu_regs[RL78_GPREG_B]);
+    rl78_gen_lb(ctx, cpu_regs[RL78_GPREG_A], ptr);
+    return true;
+}
+
+static bool trans_MOV_indHL_B_A(DisasContext *ctx, arg_MOV_indHL_B_A *a)
+{
+    TCGv ptr = rl78_indrp_ptr(RL78_GPREG_HL, cpu_regs[RL78_GPREG_B]);
+    rl78_gen_sb(ctx, cpu_regs[RL78_GPREG_A], ptr);
+    return true;
+}
+
+static bool trans_MOV_A_indHL_C(DisasContext *ctx, arg_MOV_A_indHL_C *a)
+{
+    TCGv ptr = rl78_indrp_ptr(RL78_GPREG_HL, cpu_regs[RL78_GPREG_C]);
+    rl78_gen_lb(ctx, cpu_regs[RL78_GPREG_A], ptr);
+    return true;
+}
+
+static bool trans_MOV_indHL_C_A(DisasContext *ctx, arg_MOV_indHL_C_A *a)
+{
+    TCGv ptr = rl78_indrp_ptr(RL78_GPREG_HL, cpu_regs[RL78_GPREG_C]);
     rl78_gen_sb(ctx, cpu_regs[RL78_GPREG_A], ptr);
     return true;
 }

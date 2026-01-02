@@ -36,7 +36,7 @@ typedef enum RL78GPRegister {
     RL78_GPREG_AX = 0,
     RL78_GPREG_BC = 2,
     RL78_GPREG_DE = 4,
-    RL78_GPREG_HL = 5,
+    RL78_GPREG_HL = 6,
 } RL78GPRegister;
 
 #define GPREG_BANK_NUM (4)

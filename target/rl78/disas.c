@@ -436,9 +436,97 @@ static bool trans_MOVW_SP_i(DisasContext *ctx, arg_MOVW_SP_i *a)
     return true;
 }
 
+static bool trans_MOVW_AX_addr(DisasContext *ctx, arg_MOVW_AX_addr *a)
+{
+    const uint32_t addr =  (a->adrl |(a->adrh << 8)) | 0xF0000;
+    print("MOVW\tAX, !0x%05x", addr);
+    return true;
+}
+
+static bool trans_MOVW_addr_AX(DisasContext *ctx, arg_MOVW_addr_AX *a)
+{
+    const uint32_t addr =  (a->adrl |(a->adrh << 8)) | 0xF0000;
+    print("MOVW\t!0x%05x, AX", addr);
+    return true;
+}
+
+static bool trans_MOVW_AX_BC(DisasContext *ctx, arg_MOVW_AX_BC *a)
+{
+    print("MOVW\tAX, BC");
+    return true;
+}
+
+static bool trans_MOVW_AX_DE(DisasContext *ctx, arg_MOVW_AX_DE *a)
+{
+    print("MOVW\tAX, DE");
+    return true;
+}
+
+static bool trans_MOVW_AX_HL(DisasContext *ctx, arg_MOVW_AX_HL *a)
+{
+    print("MOVW\tAX, HL");
+    return true;
+}
+
+
+static bool trans_MOVW_BC_AX(DisasContext *ctx, arg_MOVW_BC_AX *a)
+{
+    print("MOVW\tBC, AX");
+    return true;
+}
+
+static bool trans_MOVW_DE_AX(DisasContext *ctx, arg_MOVW_DE_AX *a)
+{
+    print("MOVW\tDE, AX");
+    return true;
+}
+
+static bool trans_MOVW_HL_AX(DisasContext *ctx, arg_MOVW_HL_AX *a)
+{
+    print("MOVW\tHL, AX");
+    return true;
+}
+
+static bool trans_MOVW_SP_AX(DisasContext *ctx, arg_MOVW_SP_AX *a)
+{
+    print("MOVW\tSP, AX");
+    return true;
+}
+
+static bool trans_MOVW_AX_SP(DisasContext *ctx, arg_MOVW_AX_SP *a)
+{
+    print("MOVW\tAX, SP");
+    return true;
+}
+
+static bool trans_MOVW_BC_SP(DisasContext *ctx, arg_MOVW_BC_SP *a)
+{
+    print("MOVW\tBC, SP");
+    return true;
+}
+
+static bool trans_MOVW_DE_SP(DisasContext *ctx, arg_MOVW_DE_SP *a)
+{
+    print("MOVW\tDE, SP");
+    return true;
+}
+
+static bool trans_MOVW_HL_SP(DisasContext *ctx, arg_MOVW_HL_SP *a)
+{
+    print("MOVW\tHL, SP");
+    return true;
+}
+
 static bool trans_CMP_A_i(DisasContext *ctx, arg_CMP_A_i *a)
 {
     print("CMP\tA, #%d", a->imm);
+    return true;
+}
+
+static bool trans_CMPW_AX_i(DisasContext *ctx, arg_CMPW_AX_i *a)
+{
+    const uint32_t imm = a->datal | (a->datah << 8);
+    print("CMPW\tAX, #%d", imm);
     return true;
 }
 

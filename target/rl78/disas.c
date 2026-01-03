@@ -326,6 +326,24 @@ static bool trans_MOV_indBCbase_A(DisasContext *ctx, arg_MOV_indBCbase_A *a)
     return true;
 }
 
+static bool trans_MOV_indSPoffset_i(DisasContext *ctx, arg_MOV_indSPoffset_i *a)
+{
+    print("MOV\t[SP+%d], #%d", a->offset, a->imm);
+    return true;
+}
+
+static bool trans_MOV_A_indSPoffset(DisasContext *ctx, arg_MOV_A_indSPoffset *a)
+{
+    print("MOV\tA, [SP+%d]", a->offset);
+    return true;
+}
+
+static bool trans_MOV_indSPoffset_A(DisasContext *ctx, arg_MOV_indSPoffset_A *a)
+{
+    print("MOV\tA, [SP+%d], A", a->offset);
+    return true;
+}
+
 static bool trans_MOV_PSW_A(DisasContext *ctx, arg_MOV_PSW_A *a)
 {
     print("MOV\tPSW, A");
@@ -408,6 +426,13 @@ static bool trans_MOVW_rp_i(DisasContext *ctx, arg_MOVW_rp_i *a)
 {
     const uint32_t imm = a->datal | (a->datah << 8);
     print("MOVW\tRP%d, #%d", a->rp*2, imm);
+    return true;
+}
+
+static bool trans_MOVW_SP_i(DisasContext *ctx, arg_MOVW_SP_i *a)
+{
+    const uint32_t imm = a->datal | (a->datah << 8);
+    print("MOVW\tSP, #%d", imm);
     return true;
 }
 

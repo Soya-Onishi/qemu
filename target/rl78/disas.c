@@ -444,6 +444,90 @@ static bool trans_MOV_CS_A(DisasContext *ctx, arg_MOV_CS_A *a)
     return true;
 }
 
+static bool trans_XCH_A_X(DisasContext *ctx, arg_XCH_A_X *a)
+{
+    print("XCH\tA, X");
+    return true;
+}
+
+static bool trans_XCH_A_C(DisasContext *ctx, arg_XCH_A_C *a)
+{
+    print("XCH\tA, C");
+    return true;
+}
+
+static bool trans_XCH_A_B(DisasContext *ctx, arg_XCH_A_B *a)
+{
+    print("XCH\tA, B");
+    return true;
+}
+
+static bool trans_XCH_A_E(DisasContext *ctx, arg_XCH_A_E *a)
+{
+    print("XCH\tA, E");
+    return true;
+}
+
+static bool trans_XCH_A_D(DisasContext *ctx, arg_XCH_A_D *a)
+{
+    print("XCH\tA, D");
+    return true;
+}
+
+static bool trans_XCH_A_L(DisasContext *ctx, arg_XCH_A_L *a)
+{
+    print("XCH\tA, L");
+    return true;
+}
+
+static bool trans_XCH_A_H(DisasContext *ctx, arg_XCH_A_H *a)
+{
+    print("XCH\tA, H");
+    return true;
+}
+
+static bool trans_XCH_A_addr(DisasContext *ctx, arg_XCH_A_addr *a)
+{
+    const uint32_t addr = a->adrl | (a->adrh << 8) | 0xF0000;
+    print("XCH\tA, !0x%05x", addr);
+    return true;
+}
+
+static bool trans_XCH_indDE(DisasContext *ctx, arg_XCH_indDE *a)
+{
+    print("XCH\tA, [DE]");
+    return true;
+}
+
+static bool trans_XCH_indDEoffset(DisasContext *ctx, arg_XCH_indDEoffset *a)
+{
+    print("XCH\tA, [DE+%d]", a->offset);
+    return true;
+}
+
+static bool trans_XCH_indHL(DisasContext *ctx, arg_XCH_indHL *a)
+{
+    print("XCH\tA, [HL]");
+    return true;
+}
+
+static bool trans_XCH_indHLoffset(DisasContext *ctx, arg_XCH_indHLoffset *a)
+{
+    print("XCH\tA, [HL+%d]", a->offset);
+    return true;
+}
+
+static bool trans_XCH_indHL_B(DisasContext *ctx, arg_XCH_indHL_B *a)
+{
+    print("XCH\tA, [HL+B]");
+    return true;
+}
+static bool trans_XCH_indHL_C(DisasContext *ctx, arg_XCH_indHL_C *a)
+{
+    print("XCH\tA, [HL+C]");
+    return true;
+}
+
 static bool trans_MOVW_rp_i(DisasContext *ctx, arg_MOVW_rp_i *a)
 {
     const uint32_t imm = a->datal | (a->datah << 8);

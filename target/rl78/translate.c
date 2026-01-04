@@ -21,6 +21,7 @@ typedef struct DisasContext {
     uint32_t    tb_flags;
 
     bool skip_flag;
+    bool use_es;
 } DisasContext;
 
 enum {
@@ -57,8 +58,15 @@ static uint64_t decode_load_bytes(DisasContext *ctx, uint64_t insn,
     const int cnt = n - i;
     for(int idx = 0; idx < cnt; idx++) {
         const uint64_t shamt = 64 - (i + idx + 1) * 8;
-        const uint64_t b = translator_ldub(ctx->env, &ctx->base, 
-                                           ctx->base.pc_next + idx);
+        uint64_t b = translator_ldub(ctx->env, &ctx->base, 
+                                      ctx->base.pc_next + idx);
+
+        if(b == 0x11 && i == 0 && idx == 0) {
+            ctx->use_es = true;
+            ctx->base.pc_next += 1;
+            idx--;
+            continue;
+        }
 
         insn |= b << shamt;
     }

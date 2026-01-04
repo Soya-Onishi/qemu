@@ -1301,6 +1301,30 @@ static bool trans_XCHW_AX_HL(DisasContext *ctx, arg_XCHW_AX_HL *a)
     return rl78_XCHW_rp_rp(RL78_GPREG_HL);
 }
 
+static bool trans_ONEW_AX(DisasContext *ctx, arg_ONEW_AX *a)
+{
+    rl78_store_rp(RL78_GPREG_AX, tcg_constant_i32(1));
+    return true;
+}
+
+static bool trans_ONEW_BC(DisasContext *ctx, arg_ONEW_BC *a)
+{
+    rl78_store_rp(RL78_GPREG_BC, tcg_constant_i32(1));
+    return true;
+}
+
+static bool trans_CLRW_AX(DisasContext *ctx, arg_CLRW_AX *a)
+{
+    rl78_store_rp(RL78_GPREG_AX, tcg_constant_i32(0));
+    return true;
+}
+
+static bool trans_CLRW_BC(DisasContext *ctx, arg_CLRW_BC *a)
+{
+    rl78_store_rp(RL78_GPREG_BC, tcg_constant_i32(0));
+    return true;
+}
+
 static bool trans_CMPW_AX_i(DisasContext *ctx, arg_CMPW_AX_i *a)
 {
     TCGv_i32 ax = rl78_load_rp(RL78_GPREG_AX);

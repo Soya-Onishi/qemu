@@ -794,6 +794,30 @@ static bool trans_XCHW_AX_HL(DisasContext *ctx, arg_XCHW_AX_HL *a)
     return true;
 }
 
+static bool trans_ONEW_AX(DisasContext *ctx, arg_ONEW_AX *a)
+{
+    print("ONEW\tAX");
+    return true;
+}
+
+static bool trans_ONEW_BC(DisasContext *ctx, arg_ONEW_BC *a)
+{
+    print("ONEW\tBC");
+    return true;
+}
+
+static bool trans_CLRW_AX(DisasContext *ctx, arg_CLRW_AX *a)
+{
+    print("CLRW\tAX");
+    return true;
+}
+
+static bool trans_CLRW_BC(DisasContext *ctx, arg_CLRW_BC *a)
+{
+    print("CLRW\tBC");
+    return true;
+}
+
 static bool trans_CMP_A_i(DisasContext *ctx, arg_CMP_A_i *a)
 {
     print("CMP\tA, #%d", a->imm);

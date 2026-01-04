@@ -190,6 +190,10 @@ MOVW_indCbase_AX  0110 1000 adrl:8 adrh:8
 MOVW_AX_indBCbase 0111 1001 adrl:8 adrh:8
 MOVW_indBCbase_AX 0111 1000 adrl:8 adrh:8
 
+XCHW_AX_BC  0011 0011
+XCHW_AX_DE  0011 0101
+XCHW_AX_HL  0011 0111
+
 CMP_A_i 0100 1100 .... .... @cmp_a_i
 
 CMPW_AX_i 0100 0100 datal:8 datah:8

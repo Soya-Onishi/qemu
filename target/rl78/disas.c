@@ -776,6 +776,24 @@ static bool trans_MOVW_HL_SP(DisasContext *ctx, arg_MOVW_HL_SP *a)
     return true;
 }
 
+static bool trans_XCHW_AX_BC(DisasContext *ctx, arg_XCHW_AX_BC *a)
+{
+    print("XCHW\tAX, BC");
+    return true;
+}
+
+static bool trans_XCHW_AX_DE(DisasContext *ctx, arg_XCHW_AX_DE *a)
+{
+    print("XCHW\tAX, DE");
+    return true;
+}
+
+static bool trans_XCHW_AX_HL(DisasContext *ctx, arg_XCHW_AX_HL *a)
+{
+    print("XCHW\tAX, HL");
+    return true;
+}
+
 static bool trans_CMP_A_i(DisasContext *ctx, arg_CMP_A_i *a)
 {
     print("CMP\tA, #%d", a->imm);

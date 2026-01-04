@@ -572,6 +572,13 @@ static bool trans_MOVW_SP_i(DisasContext *ctx, arg_MOVW_SP_i *a)
     return true;
 }
 
+static bool trans_MOVW_addr_AX(DisasContext *ctx, arg_MOVW_addr_AX *a)
+{
+    const uint32_t addr =  (a->adrl |(a->adrh << 8)) | 0xF0000;
+    print("MOVW\t!0x%05x, AX", addr);
+    return true;
+}
+
 static bool trans_MOVW_AX_addr(DisasContext *ctx, arg_MOVW_AX_addr *a)
 {
     const uint32_t addr =  (a->adrl |(a->adrh << 8)) | 0xF0000;
@@ -579,10 +586,126 @@ static bool trans_MOVW_AX_addr(DisasContext *ctx, arg_MOVW_AX_addr *a)
     return true;
 }
 
-static bool trans_MOVW_addr_AX(DisasContext *ctx, arg_MOVW_addr_AX *a)
+static bool trans_MOVW_BC_addr(DisasContext *ctx, arg_MOVW_BC_addr *a)
 {
-    const uint32_t addr =  (a->adrl |(a->adrh << 8)) | 0xF0000;
-    print("MOVW\t!0x%05x, AX", addr);
+    const uint32_t addr = a->adrl | (a->adrh << 8) | 0xF0000;
+    print("MOVW\tBC, !0x%05x", addr);
+    return true;
+}
+
+static bool trans_MOVW_DE_addr(DisasContext *ctx, arg_MOVW_DE_addr *a)
+{
+    const uint32_t addr = a->adrl | (a->adrh << 8) | 0xF0000;
+    print("MOVW\tDE, !0x%05x", addr);
+    return true;
+}
+
+static bool trans_MOVW_HL_addr(DisasContext *ctx, arg_MOVW_HL_addr *a)
+{
+    const uint32_t addr = a->adrl | (a->adrh << 8) | 0xF0000;
+    print("MOVW\tHL, !0x%05x", addr);
+    return true;
+}
+
+static bool trans_MOVW_AX_indDE(DisasContext *ctx, arg_MOVW_AX_indDE *a)
+{
+    print("MOVW\tAX, [DE]");
+    return true;
+}
+
+static bool trans_MOVW_indDE_AX(DisasContext *ctx, arg_MOVW_indDE_AX *a)
+{
+    print("MOVW\t[DE], AX");
+    return true;
+}
+
+static bool trans_MOVW_AX_indDEoffset(DisasContext *ctx, arg_MOVW_AX_indDEoffset *a)
+{
+    print("MOVW\tAX, [DE+%d]", a->offset);
+    return true;
+}
+
+static bool trans_MOVW_indDEoffset_AX(DisasContext *ctx, arg_MOVW_indDEoffset_AX *a)
+{
+    print("MOVW\t[DE+%d], AX", a->offset);
+    return true;
+}
+
+static bool trans_MOVW_AX_indHL(DisasContext *ctx, arg_MOVW_AX_indHL *a)
+{
+    print("MOVW\tAX, [HL]");
+    return true;
+}
+
+static bool trans_MOVW_indHL_AX(DisasContext *ctx, arg_MOVW_indHL_AX *a)
+{
+    print("MOVW\t[HL], AX");
+    return true;
+}
+
+static bool trans_MOVW_AX_indHLoffset(DisasContext *ctx, arg_MOVW_AX_indHLoffset *a)
+{
+    print("MOVW\tAX, [HL+%d]", a->offset);
+    return true;
+}
+
+static bool trans_MOVW_indHLoffset_AX(DisasContext *ctx, arg_MOVW_indHLoffset_AX *a)
+{
+    print("MOVW\t[HL+%d], AX", a->offset);
+    return true;
+}
+
+static bool trans_MOVW_AX_indSPoffset(DisasContext *ctx, arg_MOVW_AX_indSPoffset *a)
+{
+    print("MOVW\tAX, [SP+%d]", a->offset);
+    return true;
+}
+
+static bool trans_MOVW_indSPoffset_AX(DisasContext *ctx, arg_MOVW_indSPoffset_AX *a)
+{
+    print("MOVW\t[SP+%d], AX", a->offset);
+    return true;
+}
+
+static bool trans_MOVW_AX_indBbase(DisasContext *ctx, arg_MOVW_AX_indBbase *a)
+{
+    const uint32_t base = a->adrl | (a->adrh << 8) | 0xF0000;
+    print("MOVW\tAX, 0x%05x[B]", base);
+    return true;
+}
+
+static bool trans_MOVW_indBbase_AX(DisasContext *ctx, arg_MOVW_indBbase_AX *a)
+{
+    const uint32_t base = a->adrl | (a->adrh << 8) | 0xF0000;
+    print("MOVW\t0x%05x[B], AX", base);
+    return true;
+}
+
+static bool trans_MOVW_AX_indCbase(DisasContext *ctx, arg_MOVW_AX_indCbase *a)
+{
+    const uint32_t base = a->adrl | (a->adrh << 8) | 0xF0000;
+    print("MOVW\tAX, 0x%05x[C]", base);
+    return true;
+}
+
+static bool trans_MOVW_indCbase_AX(DisasContext *ctx, arg_MOVW_indCbase_AX *a)
+{
+    const uint32_t base = a->adrl | (a->adrh << 8) | 0xF0000;
+    print("MOVW\t0x%05x[C], AX", base);
+    return true;
+}
+
+static bool trans_MOVW_AX_indBCbase(DisasContext *ctx, arg_MOVW_AX_indBCbase *a)
+{
+    const uint32_t base = a->adrl | (a->adrh << 8) | 0xF0000;
+    print("MOVW\tAX, 0x%05x[BC]", base);
+    return true;
+}
+
+static bool trans_MOVW_indBCbase_AX(DisasContext *ctx, arg_MOVW_indBCbase_AX *a)
+{
+    const uint32_t base = a->adrl | (a->adrh << 8) | 0xF0000;
+    print("MOVW\t0x%05x[BC], AX", base);
     return true;
 }
 

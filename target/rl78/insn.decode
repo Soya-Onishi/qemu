@@ -134,8 +134,16 @@ MOVS_indHLoffset_X  0110 0001 1100 1110 offset:8
 MOVW_rp_i 0011 0 rp:2 0 datal:8 datah:8
 MOVW_SP_i 1100 1 011  1 111     1000    datal:8 datah:8
 
-MOVW_AX_addr  1010 1111 adrl:8 adrh:8
-MOVW_addr_AX  1011 1111 adrl:8 adrh:8
+# MOVW_saddr_i  1100 1001 saddr:8 imml:8 immh:8
+# MOVW_saddr_AX 1011 1101 saddr:8
+# MOVW_AX_saddr 1010 1101 saddr:8
+# MOVW_BC_saddr 1101 1010 saddr:8
+# MOVW_DE_saddr 1110 1010 saddr:8
+# MOVW_HL_saddr 1111 1010 saddr:8
+
+# MOVW_sfr_i    1100 1011 sfr:8   imml:8 immh:8
+# MOVW_AX_sfr   1010 1110 sfr:8
+# MOVW_sfr_AX   1011 1110 sfr:8
 
 MOVW_AX_BC  0001 0011
 MOVW_AX_DE  0001 0101
@@ -145,9 +153,42 @@ MOVW_DE_AX  0001 0100
 MOVW_HL_AX  0001 0110
 MOVW_SP_AX  1011 1110 1111 1000
 MOVW_AX_SP  1010 1110 1111 1000
-MOVW_BC_SP  1101 1011 1111 1000 1111 1111
-MOVW_DE_SP  1110 1011 1111 1000 1111 1111
-MOVW_HL_SP  1111 1011 1111 1000 1111 1111
+
+MOVW_addr_AX  1011 1111 adrl:8 adrh:8
+MOVW_AX_addr  1010 1111 adrl:8 adrh:8
+
+{
+  MOVW_BC_SP  1101 1011 1111 1000 1111 1111
+  MOVW_BC_addr  1101 1011 adrl:8 adrh:8
+}
+{
+  MOVW_DE_SP  1110 1011 1111 1000 1111 1111
+  MOVW_DE_addr  1110 1011 adrl:8 adrh:8
+}
+{
+  MOVW_HL_SP  1111 1011 1111 1000 1111 1111
+  MOVW_HL_addr  1111 1011 adrl:8 adrh:8
+}
+
+MOVW_AX_indDE 1010 1001
+MOVW_indDE_AX 1011 1001
+MOVW_AX_indDEoffset 1010 1010 offset:8
+MOVW_indDEoffset_AX 1011 1010 offset:8
+
+MOVW_AX_indHL 1010 1011
+MOVW_indHL_AX 1011 1011
+MOVW_AX_indHLoffset 1010 1100 offset:8
+MOVW_indHLoffset_AX 1011 1100 offset:8
+
+MOVW_AX_indSPoffset 1010 1000 offset:8
+MOVW_indSPoffset_AX 1011 1000 offset:8
+
+MOVW_AX_indBbase  0101 1001 adrl:8 adrh:8
+MOVW_indBbase_AX  0101 1000 adrl:8 adrh:8
+MOVW_AX_indCbase  0110 1001 adrl:8 adrh:8
+MOVW_indCbase_AX  0110 1000 adrl:8 adrh:8
+MOVW_AX_indBCbase 0111 1001 adrl:8 adrh:8
+MOVW_indBCbase_AX 0111 1000 adrl:8 adrh:8
 
 CMP_A_i 0100 1100 .... .... @cmp_a_i
 

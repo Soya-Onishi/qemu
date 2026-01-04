@@ -356,9 +356,31 @@ static bool trans_MOV_A_PSW(DisasContext *ctx, arg_MOV_A_PSW *a)
     return true;
 }
 
+static bool trans_MOV_X_addr(DisasContext *ctx, arg_MOV_X_addr *a)
+{
+    const uint32_t addr = a->adrl | (a->adrh << 8);
+    print("MOV\tX, !0x%05x", addr | 0xF0000);
+    return true;
+}
+
 static bool trans_MOV_A_addr(DisasContext *ctx, arg_MOV_A_addr *a)
 {
-    print("MOV\tA, !0x%05x", rl78_word(a->addr) + 0xF0000);
+    const uint32_t addr = a->adrl | (a->adrh << 8);
+    print("MOV\tA, !0x%05x", addr | 0xF0000);
+    return true;
+}
+
+static bool trans_MOV_B_addr(DisasContext *ctx, arg_MOV_B_addr *a)
+{
+    const uint32_t addr = a->adrl | (a->adrh << 8);
+    print("MOV\tB, !0x%05x", addr | 0xF0000);
+    return true;
+}
+
+static bool trans_MOV_C_addr(DisasContext *ctx, arg_MOV_C_addr *a)
+{
+    const uint32_t addr = a->adrl | (a->adrh << 8);
+    print("MOV\tC, !0x%05x", addr | 0xF0000);
     return true;
 }
 

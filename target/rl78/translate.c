@@ -48,7 +48,7 @@ static TCGv_i32 cpu_cs;
 static TCGv_i32 cpu_skip_enabled;
 static TCGv_i32 cpu_skip_required;
 
-#define rl78_addr(arg) (tcg_constant_i32((arg)->adrl | ((arg)->adrh << 8)))
+
 #define rl78_immw(arg) (tcg_constant_i32((arg)->datal | ((arg)->datah << 8)))
 
 static uint64_t decode_load_bytes(DisasContext *ctx, uint64_t insn, 
@@ -108,6 +108,15 @@ static void gen_exit_tb(DisasContext *dc, const vaddr pc_next) {
     tcg_gen_movi_i32(cpu_pc, pc_next);
     tcg_gen_exit_tb(NULL, TB_EXIT_IDX0);
     dc->base.is_jmp = DISAS_EXIT;
+}
+
+static TCGv rl78_gen_addr(const uint32_t adrl, const uint32_t adrh, TCGv_i32 es)
+{
+    const uint32_t addr16 = (adrl | (adrh << 8)) & (0xFFFF);
+    TCGv_i32 addr = tcg_temp_new_i32();
+    tcg_gen_shli_i32(addr, es, 16);
+    tcg_gen_ori_i32(addr, addr, addr16);
+    return addr;
 }
 
 /* generic load wrapper */
@@ -540,7 +549,7 @@ static bool trans_MOV_indHL_C_A(DisasContext *ctx, arg_MOV_indHL_C_A *a)
 
 static bool trans_MOV_indBbase_i(DisasContext *ctx, arg_MOV_indBbase_i *a)
 {
-    TCGv_i32 base = rl78_addr(a);
+    TCGv_i32 base = rl78_gen_addr(a->adrl, a->adrh, tcg_constant_i32(0x0F));
     TCGv ptr = rl78_indirect_ptr(base, cpu_regs[RL78_GPREG_B]);
 
     rl78_gen_sb(ctx, tcg_constant_i32(a->imm), ptr);
@@ -550,7 +559,7 @@ static bool trans_MOV_indBbase_i(DisasContext *ctx, arg_MOV_indBbase_i *a)
 
 static bool trans_MOV_A_indBbase(DisasContext *ctx, arg_MOV_A_indBbase *a)
 {
-    TCGv_i32 base = rl78_addr(a);
+    TCGv_i32 base = rl78_gen_addr(a->adrl, a->adrh, tcg_constant_i32(0x0F));
     TCGv ptr = rl78_indirect_ptr(base, cpu_regs[RL78_GPREG_B]);
 
     rl78_gen_lb(ctx, cpu_regs[RL78_GPREG_A], ptr);
@@ -560,7 +569,7 @@ static bool trans_MOV_A_indBbase(DisasContext *ctx, arg_MOV_A_indBbase *a)
 
 static bool trans_MOV_indBbase_A(DisasContext *ctx, arg_MOV_indBbase_A *a)
 {
-    TCGv_i32 base = rl78_addr(a);
+    TCGv_i32 base = rl78_gen_addr(a->adrl, a->adrh, tcg_constant_i32(0x0F));
     TCGv ptr = rl78_indirect_ptr(base, cpu_regs[RL78_GPREG_B]);
 
     rl78_gen_sb(ctx, cpu_regs[RL78_GPREG_A], ptr);
@@ -570,7 +579,7 @@ static bool trans_MOV_indBbase_A(DisasContext *ctx, arg_MOV_indBbase_A *a)
 
 static bool trans_MOV_indCbase_i(DisasContext *ctx, arg_MOV_indCbase_i *a)
 {
-    TCGv_i32 base = rl78_addr(a);
+    TCGv_i32 base = rl78_gen_addr(a->adrl, a->adrh, tcg_constant_i32(0x0F));
     TCGv ptr = rl78_indirect_ptr(base, cpu_regs[RL78_GPREG_C]);
 
     rl78_gen_sb(ctx, tcg_constant_i32(a->imm), ptr);
@@ -580,7 +589,7 @@ static bool trans_MOV_indCbase_i(DisasContext *ctx, arg_MOV_indCbase_i *a)
 
 static bool trans_MOV_A_indCbase(DisasContext *ctx, arg_MOV_A_indCbase *a)
 {
-    TCGv_i32 base = rl78_addr(a);
+    TCGv_i32 base = rl78_gen_addr(a->adrl, a->adrh, tcg_constant_i32(0x0F));
     TCGv ptr = rl78_indirect_ptr(base, cpu_regs[RL78_GPREG_C]);
 
     rl78_gen_lb(ctx, cpu_regs[RL78_GPREG_A], ptr);
@@ -590,7 +599,7 @@ static bool trans_MOV_A_indCbase(DisasContext *ctx, arg_MOV_A_indCbase *a)
 
 static bool trans_MOV_indCbase_A(DisasContext *ctx, arg_MOV_indCbase_A *a)
 {
-    TCGv_i32 base = rl78_addr(a);
+    TCGv_i32 base = rl78_gen_addr(a->adrl, a->adrh, tcg_constant_i32(0x0F));
     TCGv ptr = rl78_indirect_ptr(base, cpu_regs[RL78_GPREG_C]);
 
     rl78_gen_sb(ctx, cpu_regs[RL78_GPREG_A], ptr);
@@ -600,7 +609,7 @@ static bool trans_MOV_indCbase_A(DisasContext *ctx, arg_MOV_indCbase_A *a)
 
 static bool trans_MOV_indBCbase_i(DisasContext *ctx, arg_MOV_indBCbase_i *a)
 {
-    TCGv_i32 base = rl78_addr(a);
+    TCGv_i32 base = rl78_gen_addr(a->adrl, a->adrh, tcg_constant_i32(0x0F));
     TCGv_i32 bc = rl78_load_rp(RL78_GPREG_BC);
     TCGv ptr = rl78_indirect_ptr(base, bc);
 
@@ -611,7 +620,7 @@ static bool trans_MOV_indBCbase_i(DisasContext *ctx, arg_MOV_indBCbase_i *a)
 
 static bool trans_MOV_A_indBCbase(DisasContext *ctx, arg_MOV_A_indBCbase *a)
 {
-    TCGv_i32 base = rl78_addr(a);
+    TCGv_i32 base = rl78_gen_addr(a->adrl, a->adrh, tcg_constant_i32(0x0F));
     TCGv_i32 bc = rl78_load_rp(RL78_GPREG_BC);
     TCGv ptr = rl78_indirect_ptr(base, bc);
 
@@ -622,7 +631,7 @@ static bool trans_MOV_A_indBCbase(DisasContext *ctx, arg_MOV_A_indBCbase *a)
 
 static bool trans_MOV_indBCbase_A(DisasContext *ctx, arg_MOV_indBCbase_A *a)
 {
-    TCGv_i32 base = rl78_addr(a);
+    TCGv_i32 base = rl78_gen_addr(a->adrl, a->adrh, tcg_constant_i32(0x0F));
     TCGv_i32 bc = rl78_load_rp(RL78_GPREG_BC);
     TCGv ptr = rl78_indirect_ptr(base, bc);
 
@@ -728,14 +737,31 @@ static bool trans_MOV_A_PSW(DisasContext *ctx, arg_MOV_A_PSW *a)
     return true;
 }
 
+static bool trans_MOV_X_addr(DisasContext *ctx, arg_MOV_X_addr *a)
+{
+    TCGv ptr = rl78_gen_addr(a->adrl, a->adrh, tcg_constant_i32(0x0F));
+    rl78_gen_lb(ctx, cpu_regs[RL78_GPREG_X], ptr);
+    return true;
+}
+
 static bool trans_MOV_A_addr(DisasContext *ctx, arg_MOV_A_addr *a)
 {
-    const uint32_t addr = rl78_word(a->addr);
-    TCGv ptr;
+    TCGv ptr = rl78_gen_addr(a->adrl, a->adrh, tcg_constant_i32(0x0F));
+    rl78_gen_lb(ctx, cpu_regs[RL78_GPREG_A], ptr);
+    return true;
+}
 
-    ptr = tcg_constant_tl(0xF0000 | addr);
-    rl78_gen_lb(ctx, cpu_regs[1], ptr);
+static bool trans_MOV_B_addr(DisasContext *ctx, arg_MOV_B_addr *a)
+{
+    TCGv ptr = rl78_gen_addr(a->adrl, a->adrh, tcg_constant_i32(0x0F));
+    rl78_gen_lb(ctx, cpu_regs[RL78_GPREG_B], ptr);
+    return true;
+}
 
+static bool trans_MOV_C_addr(DisasContext *ctx, arg_MOV_C_addr *a)
+{
+    TCGv ptr = rl78_gen_addr(a->adrl, a->adrh, tcg_constant_i32(0x0F));
+    rl78_gen_lb(ctx, cpu_regs[RL78_GPREG_C], ptr);
     return true;
 }
 
@@ -773,11 +799,8 @@ static bool trans_CMP_A_i(DisasContext *ctx, arg_CMP_A_i *a)
 
 static bool trans_MOVW_AX_addr(DisasContext *ctx, arg_MOVW_AX_addr *a)
 {
-    TCGv_i32 base_ptr = rl78_addr(a);
-    TCGv_i32 ptr = tcg_temp_new_i32();
+    TCGv_i32 ptr = rl78_gen_addr(a->adrl, a->adrh, tcg_constant_i32(0x0F));
     TCGv_i32 data = tcg_temp_new_i32();
-
-    tcg_gen_ori_i32(ptr, base_ptr, 0x0F0000);
 
     rl78_gen_lw(ctx, data, ptr);
     rl78_store_rp(RL78_GPREG_AX, data);
@@ -787,11 +810,9 @@ static bool trans_MOVW_AX_addr(DisasContext *ctx, arg_MOVW_AX_addr *a)
 
 static bool trans_MOVW_addr_AX(DisasContext *ctx, arg_MOVW_addr_AX *a)
 {
-    TCGv_i32 base_ptr = rl78_addr(a);
-    TCGv_i32 ptr = tcg_temp_new_i32();
+    TCGv_i32 ptr = rl78_gen_addr(a->adrl, a->adrh, tcg_constant_i32(0x0F));
     TCGv_i32 data = rl78_load_rp(RL78_GPREG_AX);
 
-    tcg_gen_ori_i32(ptr, base_ptr, 0x0F0000);
     rl78_gen_sw(ctx, data, ptr);
     
     return true;

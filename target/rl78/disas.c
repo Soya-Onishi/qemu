@@ -552,6 +552,12 @@ static bool trans_CLRB_addr(DisasContext *ctx, arg_CLRB_addr *a)
     return true;
 }
 
+static bool trans_MOVS_indHLoffset_X(DisasContext *ctx, arg_MOVS_indHLoffset_X *a)
+{
+    print("MOVS\t[HL+%d], X", a->offset);
+    return true;
+}
+
 static bool trans_MOVW_rp_i(DisasContext *ctx, arg_MOVW_rp_i *a)
 {
     const uint32_t imm = a->datal | (a->datah << 8);

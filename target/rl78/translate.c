@@ -954,6 +954,23 @@ static bool trans_CLRB_addr(DisasContext *ctx, arg_CLRB_addr *a)
     return true;
 }
 
+static bool trans_MOVS_indHLoffset_X(DisasContext *ctx, arg_MOVS_indHLoffset_X *a)
+{
+    TCGv_i32 base = rl78_load_rp(RL78_GPREG_HL);
+    TCGv_i32 offset = tcg_constant_i32(a->offset);
+    TCGv ptr = rl78_indirect_ptr(base, offset);
+    TCGv_i32 is_a_zero = tcg_temp_new_i32();
+    TCGv_i32 is_x_zero = tcg_temp_new_i32();
+
+    rl78_gen_sb(ctx, cpu_regs[RL78_GPREG_X], ptr);
+    tcg_gen_setcondi_i32(TCG_COND_EQ, is_a_zero, cpu_regs[RL78_GPREG_A], 0);
+    tcg_gen_setcondi_i32(TCG_COND_EQ, is_x_zero, cpu_regs[RL78_GPREG_X], 0);
+    tcg_gen_mov_i32(cpu_psw_z, is_x_zero);
+    tcg_gen_or_i32(cpu_psw_cy, is_a_zero, is_x_zero);
+
+    return true;
+}
+
 static bool trans_MOVW_rp_i(DisasContext *ctx, arg_MOVW_rp_i *a)
 {
     const uint32_t imm = a->datal | (a->datah << 8);

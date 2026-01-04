@@ -118,6 +118,15 @@ XCH_indHLoffset 0110 0001 1010 1101 offset:8
 XCH_indHL_B     0110 0001 1011 1001
 XCH_indHL_C     0110 0001 1010 1001
 
+# ONEB/CLRB instruction
+ONEB_r          1110 00 r:2
+# ONEB_saddr    1110 01 00   saddr:8
+ONEB_addr       1110 01 01   adrl:8  adrh:8
+
+CLRB_r          1111 00 r:2
+# CLRB_saddr    1111 01 00   saddr:8
+CLRB_addr       1111 01 01   adrl:8  adrh:8
+
 # MOVW instructions
 MOVW_rp_i 0011 0 rp:2 0 datal:8 datah:8
 MOVW_SP_i 1100 1 011  1 111     1000    datal:8 datah:8

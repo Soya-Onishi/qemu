@@ -920,6 +920,40 @@ static bool trans_XCH_indHL_C(DisasContext *ctx, arg_XCH_indHL_C *a)
     return true;
 }
 
+static bool trans_ONEB_r(DisasContext *ctx, arg_ONEB_r *a)
+{
+    const RL78GPRegister r = a->r; 
+
+    tcg_gen_movi_i32(cpu_regs[r], 0x01);
+
+    return true;
+}
+
+static bool trans_ONEB_addr(DisasContext *ctx, arg_ONEB_addr *a)
+{
+    TCGv_i32 addr = rl78_gen_addr(a->adrl, a->adrh, tcg_constant_i32(0x0F));
+    rl78_gen_sb(ctx, tcg_constant_i32(0x01), addr);
+
+    return true;
+}
+
+static bool trans_CLRB_r(DisasContext *ctx, arg_CLRB_r *a)
+{
+    const RL78GPRegister r = a->r; 
+
+    tcg_gen_movi_i32(cpu_regs[r], 0x00);
+
+    return true;
+}
+
+static bool trans_CLRB_addr(DisasContext *ctx, arg_CLRB_addr *a)
+{
+    TCGv_i32 addr = rl78_gen_addr(a->adrl, a->adrh, tcg_constant_i32(0x0F));
+    rl78_gen_sb(ctx, tcg_constant_i32(0x00), addr);
+
+    return true;
+}
+
 static bool trans_MOVW_rp_i(DisasContext *ctx, arg_MOVW_rp_i *a)
 {
     const uint32_t imm = a->datal | (a->datah << 8);

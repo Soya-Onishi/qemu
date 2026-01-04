@@ -528,6 +528,30 @@ static bool trans_XCH_indHL_C(DisasContext *ctx, arg_XCH_indHL_C *a)
     return true;
 }
 
+static bool trans_ONEB_r(DisasContext *ctx, arg_ONEB_r *a)
+{
+    print("ONEB\t%s", rl78_cpu_gp_regnames[a->r]);
+    return true;
+}
+
+static bool trans_ONEB_addr(DisasContext *ctx, arg_ONEB_addr *a)
+{
+    print("ONEB\t!0x%05x", rl78_word(a->adrl | (a->adrh << 8)));
+    return true;
+}
+
+static bool trans_CLRB_r(DisasContext *ctx, arg_CLRB_r *a)
+{
+    print("CLRB\t%s", rl78_cpu_gp_regnames[a->r]);
+    return true;
+}
+
+static bool trans_CLRB_addr(DisasContext *ctx, arg_CLRB_addr *a)
+{
+    print("CLRB\t!0x%05x", rl78_word(a->adrl | (a->adrh << 8)));
+    return true;
+}
+
 static bool trans_MOVW_rp_i(DisasContext *ctx, arg_MOVW_rp_i *a)
 {
     const uint32_t imm = a->datal | (a->datah << 8);

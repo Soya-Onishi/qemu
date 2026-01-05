@@ -831,6 +831,132 @@ static bool trans_CMPW_AX_i(DisasContext *ctx, arg_CMPW_AX_i *a)
     return true;
 }
 
+static bool trans_ADD_A_i(DisasContext *ctx, arg_ADD_A_i *a)
+{
+    print("ADD\tA, #%d", a->imm);
+    return true;
+}
+
+static bool trans_ADD_A_X(DisasContext *ctx, arg_ADD_A_X *a)
+{
+    print("ADD\tA, X");
+    return true;
+}
+static bool trans_ADD_A_C(DisasContext *ctx, arg_ADD_A_C *a)
+{
+    print("ADD\tA, C");
+    return true;
+}
+
+static bool trans_ADD_A_B(DisasContext *ctx, arg_ADD_A_B *a)
+{
+    print("ADD\tA, B");
+    return true;
+}
+
+static bool trans_ADD_A_E(DisasContext *ctx, arg_ADD_A_E *a)
+{
+    print("ADD\tA, E");
+    return true;
+}
+
+static bool trans_ADD_A_D(DisasContext *ctx, arg_ADD_A_D *a)
+{
+    print("ADD\tA, D");
+    return true;
+}
+
+static bool trans_ADD_A_L(DisasContext *ctx, arg_ADD_A_L *a)
+{
+    print("ADD\tA, L");
+    return true;
+}
+
+static bool trans_ADD_A_H(DisasContext *ctx, arg_ADD_A_H *a)
+{
+    print("ADD\tA, H");
+    return true;
+}
+
+static bool trans_ADD_X_A(DisasContext *ctx, arg_ADD_X_A *a)
+{
+    print("ADD\tX, A");
+    return true;
+}
+
+static bool trans_ADD_A_A(DisasContext *ctx, arg_ADD_A_A *a)
+{
+    print("ADD\tA, A");
+    return true;
+}
+
+static bool trans_ADD_C_A(DisasContext *ctx, arg_ADD_C_A *a)
+{
+    print("ADD\tC, A");
+    return true;
+}
+
+static bool trans_ADD_B_A(DisasContext *ctx, arg_ADD_B_A *a)
+{
+    print("ADD\tB, A");
+    return true;
+}
+
+static bool trans_ADD_E_A(DisasContext *ctx, arg_ADD_E_A *a)
+{
+    print("ADD\tE, A");
+    return true;
+}
+
+static bool trans_ADD_D_A(DisasContext *ctx, arg_ADD_D_A *a)
+{
+    print("ADD\tD, A");
+    return true;
+}
+
+static bool trans_ADD_L_A(DisasContext *ctx, arg_ADD_L_A *a)
+{
+    print("ADD\tL, A");
+    return true;
+}
+
+static bool trans_ADD_H_A(DisasContext *ctx, arg_ADD_H_A *a)
+{
+    print("ADD\tH, A");
+    return true;
+}
+
+static bool trans_ADD_A_addr(DisasContext *ctx, arg_ADD_A_addr *a)
+{
+    const uint32_t addr = a->adrl | (a->adrh << 8) | 0xF0000;
+    print("ADD\tA, !0x%05x", addr);
+    return true;
+}
+
+static bool trans_ADD_A_indHL(DisasContext *ctx, arg_ADD_A_indHL *a)
+{
+    print("ADD\tA, [HL]");
+    return true;
+}
+
+static bool trans_ADD_A_indHLoffset(DisasContext *ctx, arg_ADD_A_indHLoffset *a)
+{
+    print("ADD\tA, [HL+%d]", a->offset);
+    return true;
+}
+
+static bool trans_ADD_A_indHL_B(DisasContext *ctx, arg_ADD_A_indHL_B *a)
+{
+    print("ADD\tA, [HL+B]");
+    return true;
+}
+
+static bool trans_ADD_A_indHL_C(DisasContext *ctx, arg_ADD_A_indHL_C *a)
+{
+    print("ADD\tA, [HL+C]");
+    return true;
+}
+
 static bool trans_BR_addr16(DisasContext *ctx, arg_BR_addr16 *a)
 {
     print("BR\t!0x%04x", rl78_word(a->addr));

@@ -1337,6 +1337,159 @@ static bool trans_CMPW_AX_i(DisasContext *ctx, arg_CMPW_AX_i *a)
     return true;
 }
 
+static bool rl78_gen_add(TCGv_i32 ret, TCGv_i32 op)
+{
+    TCGv_i32 ret_temp;
+    TCGv_i32 op0_half, op1_half, ret_half;
+
+    ret_temp = tcg_temp_new_i32();
+    op0_half = tcg_temp_new_i32();
+    op1_half = tcg_temp_new_i32();
+    ret_half = tcg_temp_new_i32();
+
+    tcg_gen_add_i32(ret_temp, ret, op);
+
+    tcg_gen_andi_i32(op0_half, ret, 0x0F);
+    tcg_gen_andi_i32(op1_half, op, 0x0F);
+    tcg_gen_add_i32(ret_half, op0_half, op1_half);
+
+    tcg_gen_andi_i32(ret, ret_temp, 0xFF);
+    tcg_gen_setcondi_i32(TCG_COND_GEU, cpu_psw_cy, ret_temp, 0x100);
+    tcg_gen_setcondi_i32(TCG_COND_GEU, cpu_psw_ac, ret_half, 0x10);
+    tcg_gen_setcondi_i32(TCG_COND_EQ, cpu_psw_z, ret, 0);
+
+    return true;
+}
+
+static bool trans_ADD_A_i(DisasContext *ctx, arg_ADD_A_i *a)
+{
+    return rl78_gen_add(cpu_regs[RL78_GPREG_A], tcg_constant_i32(a->imm));
+}
+
+static bool trans_ADD_A_X(DisasContext *ctx, arg_ADD_A_X *a)
+{
+    return rl78_gen_add(cpu_regs[RL78_GPREG_A], cpu_regs[RL78_GPREG_X]);
+}
+
+static bool trans_ADD_A_C(DisasContext *ctx, arg_ADD_A_C *a)
+{
+    return rl78_gen_add(cpu_regs[RL78_GPREG_A], cpu_regs[RL78_GPREG_C]);
+}
+
+static bool trans_ADD_A_B(DisasContext *ctx, arg_ADD_A_B *a)
+{
+    return rl78_gen_add(cpu_regs[RL78_GPREG_A], cpu_regs[RL78_GPREG_B]);
+}
+
+static bool trans_ADD_A_E(DisasContext *ctx, arg_ADD_A_E *a)
+{
+    return rl78_gen_add(cpu_regs[RL78_GPREG_A], cpu_regs[RL78_GPREG_E]);
+}
+
+static bool trans_ADD_A_D(DisasContext *ctx, arg_ADD_A_D *a)
+{
+    return rl78_gen_add(cpu_regs[RL78_GPREG_A], cpu_regs[RL78_GPREG_D]);
+}
+
+static bool trans_ADD_A_L(DisasContext *ctx, arg_ADD_A_L *a)
+{
+    return rl78_gen_add(cpu_regs[RL78_GPREG_A], cpu_regs[RL78_GPREG_L]);
+}
+
+static bool trans_ADD_A_H(DisasContext *ctx, arg_ADD_A_H *a)
+{
+    return rl78_gen_add(cpu_regs[RL78_GPREG_A], cpu_regs[RL78_GPREG_H]);
+}
+
+static bool trans_ADD_X_A(DisasContext *ctx, arg_ADD_X_A *a)
+{
+    return rl78_gen_add(cpu_regs[RL78_GPREG_X], cpu_regs[RL78_GPREG_A]);
+}
+
+static bool trans_ADD_A_A(DisasContext *ctx, arg_ADD_A_A *a)
+{
+    return rl78_gen_add(cpu_regs[RL78_GPREG_A], cpu_regs[RL78_GPREG_A]);
+}
+
+static bool trans_ADD_C_A(DisasContext *ctx, arg_ADD_C_A *a)
+{
+    return rl78_gen_add(cpu_regs[RL78_GPREG_C], cpu_regs[RL78_GPREG_A]);
+}
+
+static bool trans_ADD_B_A(DisasContext *ctx, arg_ADD_B_A *a)
+{
+    return rl78_gen_add(cpu_regs[RL78_GPREG_B], cpu_regs[RL78_GPREG_A]);
+}
+
+static bool trans_ADD_E_A(DisasContext *ctx, arg_ADD_E_A *a)
+{
+    return rl78_gen_add(cpu_regs[RL78_GPREG_E], cpu_regs[RL78_GPREG_A]);
+}
+
+static bool trans_ADD_D_A(DisasContext *ctx, arg_ADD_D_A *a)
+{
+    return rl78_gen_add(cpu_regs[RL78_GPREG_D], cpu_regs[RL78_GPREG_A]);
+}
+
+static bool trans_ADD_L_A(DisasContext *ctx, arg_ADD_L_A *a)
+{
+    return rl78_gen_add(cpu_regs[RL78_GPREG_L], cpu_regs[RL78_GPREG_A]);
+}
+
+static bool trans_ADD_H_A(DisasContext *ctx, arg_ADD_H_A *a)
+{
+    return rl78_gen_add(cpu_regs[RL78_GPREG_H], cpu_regs[RL78_GPREG_A]);
+}
+
+static bool trans_ADD_A_addr(DisasContext *ctx, arg_ADD_A_addr *a)
+{
+    TCGv_i32 ptr = rl78_gen_addr(a->adrl, a->adrh, tcg_constant_i32(0x0F));
+    TCGv_i32 value = tcg_temp_new_i32();
+
+    rl78_gen_lb(ctx, value, ptr);
+    return rl78_gen_add(cpu_regs[RL78_GPREG_A], value);
+}
+
+static bool trans_ADD_A_indHL(DisasContext *ctx, arg_ADD_A_indHL *a)
+{
+    TCGv_i32 base = rl78_load_rp(RL78_GPREG_HL);
+    TCGv_i32 ptr = rl78_indirect_ptr(base, tcg_constant_i32(0x00));
+    TCGv_i32 value = tcg_temp_new_i32();
+
+    rl78_gen_lb(ctx, value, ptr);
+    return rl78_gen_add(cpu_regs[RL78_GPREG_A], value);
+}
+
+static bool trans_ADD_A_indHLoffset(DisasContext *ctx, arg_ADD_A_indHLoffset *a)
+{
+    TCGv_i32 base = rl78_load_rp(RL78_GPREG_HL);
+    TCGv_i32 ptr = rl78_indirect_ptr(base, tcg_constant_i32(a->offset));
+    TCGv_i32 value = tcg_temp_new_i32();
+
+    rl78_gen_lb(ctx, value, ptr);
+    return rl78_gen_add(cpu_regs[RL78_GPREG_A], value);
+}
+
+static bool trans_ADD_A_indHL_B(DisasContext *ctx, arg_ADD_A_indHL_B *a)
+{
+    TCGv_i32 base = rl78_load_rp(RL78_GPREG_HL);
+    TCGv_i32 ptr = rl78_indirect_ptr(base, cpu_regs[RL78_GPREG_B]);
+    TCGv_i32 value = tcg_temp_new_i32();
+
+    rl78_gen_lb(ctx, value, ptr);
+    return rl78_gen_add(cpu_regs[RL78_GPREG_A], value);
+}
+
+static bool trans_ADD_A_indHL_C(DisasContext *ctx, arg_ADD_A_indHL_C *a)
+{
+    TCGv_i32 base = rl78_load_rp(RL78_GPREG_HL);
+    TCGv_i32 ptr = rl78_indirect_ptr(base, cpu_regs[RL78_GPREG_C]);
+    TCGv_i32 value = tcg_temp_new_i32();
+
+    rl78_gen_lb(ctx, value, ptr);
+    return rl78_gen_add(cpu_regs[RL78_GPREG_A], value);
+}
+
 static bool trans_BR_addr16(DisasContext *ctx, arg_BR_addr16 *a)
 {
     const uint32_t addr = rl78_word(a->addr);

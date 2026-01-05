@@ -199,6 +199,30 @@ ONEW_BC     1110 0111
 CLRW_AX     1111 0110
 CLRW_BC     1111 0111
 
+ADD_A_i           0000 1100 imm:8
+# ADD_saddr_i     0000 1010 saddr:8 imm:8
+ADD_A_X           0110 0001 0000 1000
+ADD_A_C           0110 0001 0000 1010 
+ADD_A_B           0110 0001 0000 1011
+ADD_A_E           0110 0001 0000 1100
+ADD_A_D           0110 0001 0000 1101
+ADD_A_L           0110 0001 0000 1110
+ADD_A_H           0110 0001 0000 1111
+ADD_X_A           0110 0001 0000 0000
+ADD_A_A           0110 0001 0000 0001
+ADD_C_A           0110 0001 0000 0010
+ADD_B_A           0110 0001 0000 0011
+ADD_E_A           0110 0001 0000 0100
+ADD_D_A           0110 0001 0000 0101
+ADD_L_A           0110 0001 0000 0110
+ADD_H_A           0110 0001 0000 0111
+# ADD_A_saddr     0000 1011 saddr:8
+ADD_A_addr        0000 1111 adrl:8 adrh:8
+ADD_A_indHL       0000 1101
+ADD_A_indHLoffset 0000 1110 offset:8
+ADD_A_indHL_B     0110 0001 1000 0000
+ADD_A_indHL_C     0110 0001 1000 0010
+
 CMP_A_i 0100 1100 .... .... @cmp_a_i
 
 CMPW_AX_i 0100 0100 datal:8 datah:8

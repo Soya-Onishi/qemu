@@ -818,12 +818,6 @@ static bool trans_CLRW_BC(DisasContext *ctx, arg_CLRW_BC *a)
     return true;
 }
 
-static bool trans_CMP_A_i(DisasContext *ctx, arg_CMP_A_i *a)
-{
-    print("CMP\tA, #%d", a->imm);
-    return true;
-}
-
 static bool trans_CMPW_AX_i(DisasContext *ctx, arg_CMPW_AX_i *a)
 {
     const uint32_t imm = a->datal | (a->datah << 8);
@@ -831,127 +825,131 @@ static bool trans_CMPW_AX_i(DisasContext *ctx, arg_CMPW_AX_i *a)
     return true;
 }
 
-static bool trans_ADD_A_i(DisasContext *ctx, arg_ADD_A_i *a)
+static const char* arith_op_name[] = {
+    "ADD", "ADC", "SUB", "SBB", 
+    "CMP", "AND", "OR", "XOR",
+};
+
+static bool trans_Arith_A_i(DisasContext *ctx, arg_Arith_A_i *a)
 {
-    print("ADD\tA, #%d", a->imm);
+    print("%s\tA, #%d", arith_op_name[a->op], a->imm);
+    return true;
+}
+static bool trans_Arith_A_X(DisasContext *ctx, arg_Arith_A_X *a)
+{
+    print("%s\tA, X", arith_op_name[a->op]);
     return true;
 }
 
-static bool trans_ADD_A_X(DisasContext *ctx, arg_ADD_A_X *a)
+static bool trans_Arith_A_C(DisasContext *ctx, arg_Arith_A_C *a)
 {
-    print("ADD\tA, X");
-    return true;
-}
-static bool trans_ADD_A_C(DisasContext *ctx, arg_ADD_A_C *a)
-{
-    print("ADD\tA, C");
+    print("%s\tA, C", arith_op_name[a->op]);
     return true;
 }
 
-static bool trans_ADD_A_B(DisasContext *ctx, arg_ADD_A_B *a)
+static bool trans_Arith_A_B(DisasContext *ctx, arg_Arith_A_B *a)
 {
-    print("ADD\tA, B");
+    print("%s\tA, B", arith_op_name[a->op]);
     return true;
 }
 
-static bool trans_ADD_A_E(DisasContext *ctx, arg_ADD_A_E *a)
+static bool trans_Arith_A_E(DisasContext *ctx, arg_Arith_A_E *a)
 {
-    print("ADD\tA, E");
+    print("%s\tA, E", arith_op_name[a->op]);
     return true;
 }
 
-static bool trans_ADD_A_D(DisasContext *ctx, arg_ADD_A_D *a)
+static bool trans_Arith_A_D(DisasContext *ctx, arg_Arith_A_D *a)
 {
-    print("ADD\tA, D");
+    print("%s\tA, D", arith_op_name[a->op]);
     return true;
 }
 
-static bool trans_ADD_A_L(DisasContext *ctx, arg_ADD_A_L *a)
+static bool trans_Arith_A_L(DisasContext *ctx, arg_Arith_A_L *a)
 {
-    print("ADD\tA, L");
+    print("%s\tA, L", arith_op_name[a->op]);
     return true;
 }
 
-static bool trans_ADD_A_H(DisasContext *ctx, arg_ADD_A_H *a)
+static bool trans_Arith_A_H(DisasContext *ctx, arg_Arith_A_H *a)
 {
-    print("ADD\tA, H");
+    print("%s\tA, H", arith_op_name[a->op]);
     return true;
 }
 
-static bool trans_ADD_X_A(DisasContext *ctx, arg_ADD_X_A *a)
+static bool trans_Arith_X_A(DisasContext *ctx, arg_Arith_X_A *a)
 {
-    print("ADD\tX, A");
+    print("%s\tX, A", arith_op_name[a->op]);
     return true;
 }
 
-static bool trans_ADD_A_A(DisasContext *ctx, arg_ADD_A_A *a)
+static bool trans_Arith_A_A(DisasContext *ctx, arg_Arith_A_A *a)
 {
-    print("ADD\tA, A");
+    print("%s\tA, A", arith_op_name[a->op]);
     return true;
 }
 
-static bool trans_ADD_C_A(DisasContext *ctx, arg_ADD_C_A *a)
+static bool trans_Arith_C_A(DisasContext *ctx, arg_Arith_C_A *a)
 {
-    print("ADD\tC, A");
+    print("%s\tC, A", arith_op_name[a->op]);
     return true;
 }
 
-static bool trans_ADD_B_A(DisasContext *ctx, arg_ADD_B_A *a)
+static bool trans_Arith_B_A(DisasContext *ctx, arg_Arith_B_A *a)
 {
-    print("ADD\tB, A");
+    print("%s\tB, A", arith_op_name[a->op]);
+    return true;
+}
+static bool trans_Arith_E_A(DisasContext *ctx, arg_Arith_E_A *a)
+{
+    print("%s\tE, A", arith_op_name[a->op]);
     return true;
 }
 
-static bool trans_ADD_E_A(DisasContext *ctx, arg_ADD_E_A *a)
+static bool trans_Arith_D_A(DisasContext *ctx, arg_Arith_D_A *a)
 {
-    print("ADD\tE, A");
+    print("%s\tD, A", arith_op_name[a->op]);
     return true;
 }
 
-static bool trans_ADD_D_A(DisasContext *ctx, arg_ADD_D_A *a)
+static bool trans_Arith_L_A(DisasContext *ctx, arg_Arith_L_A *a)
 {
-    print("ADD\tD, A");
+    print("%s\tL, A", arith_op_name[a->op]);
     return true;
 }
 
-static bool trans_ADD_L_A(DisasContext *ctx, arg_ADD_L_A *a)
+static bool trans_Arith_H_A(DisasContext *ctx, arg_Arith_H_A *a)
 {
-    print("ADD\tL, A");
+    print("%s\tH, A", arith_op_name[a->op]);
     return true;
 }
 
-static bool trans_ADD_H_A(DisasContext *ctx, arg_ADD_H_A *a)
-{
-    print("ADD\tH, A");
-    return true;
-}
-
-static bool trans_ADD_A_addr(DisasContext *ctx, arg_ADD_A_addr *a)
+static bool trans_Arith_A_addr(DisasContext *ctx, arg_Arith_A_addr *a)
 {
     const uint32_t addr = a->adrl | (a->adrh << 8) | 0xF0000;
-    print("ADD\tA, !0x%05x", addr);
+    print("%s\tA, !0x%05x", arith_op_name[a->op], addr);
     return true;
 }
 
-static bool trans_ADD_A_indHL(DisasContext *ctx, arg_ADD_A_indHL *a)
+static bool trans_Arith_A_indHL(DisasContext *ctx, arg_Arith_A_indHL *a)
 {
     print("ADD\tA, [HL]");
     return true;
 }
 
-static bool trans_ADD_A_indHLoffset(DisasContext *ctx, arg_ADD_A_indHLoffset *a)
+static bool trans_Arith_A_indHLoffset(DisasContext *ctx, arg_Arith_A_indHLoffset *a)
 {
     print("ADD\tA, [HL+%d]", a->offset);
     return true;
 }
 
-static bool trans_ADD_A_indHL_B(DisasContext *ctx, arg_ADD_A_indHL_B *a)
+static bool trans_Arith_A_indHL_B(DisasContext *ctx, arg_Arith_A_indHL_B *a)
 {
     print("ADD\tA, [HL+B]");
     return true;
 }
 
-static bool trans_ADD_A_indHL_C(DisasContext *ctx, arg_ADD_A_indHL_C *a)
+static bool trans_Arith_A_indHL_C(DisasContext *ctx, arg_Arith_A_indHL_C *a)
 {
     print("ADD\tA, [HL+C]");
     return true;

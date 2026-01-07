@@ -1224,18 +1224,6 @@ static bool trans_MOVW_indBCbase_AX(DisasContext *ctx, arg_MOVW_indBCbase_AX *a)
     return true;
 }
 
-static bool trans_CMP_A_i(DisasContext *ctx, arg_CMP_A_i *a)
-{
-    TCGv_i32 half_acc = tcg_temp_new_i32();
-
-    tcg_gen_andi_i32(half_acc, cpu_regs[1], 0x0F);
-
-    tcg_gen_setcondi_i32(TCG_COND_LTU, cpu_psw_cy, cpu_regs[1], a->imm);
-    tcg_gen_setcondi_i32(TCG_COND_EQ, cpu_psw_z, cpu_regs[1], a->imm);
-    tcg_gen_setcondi_i32(TCG_COND_LTU, cpu_psw_ac, half_acc, a->imm & 0x0F);
-
-    return true;
-}
 
 static bool rl78_MOVW_rp_rp(RL78GPRegister dst, RL78GPRegister src)
 {
@@ -1361,133 +1349,212 @@ static bool rl78_gen_add(TCGv_i32 ret, TCGv_i32 op)
     return true;
 }
 
-static bool trans_ADD_A_i(DisasContext *ctx, arg_ADD_A_i *a)
+static bool rl78_gen_addc(TCGv_i32 ret, TCGv_i32 op)
 {
-    return rl78_gen_add(cpu_regs[RL78_GPREG_A], tcg_constant_i32(a->imm));
+    TCGv_i32 ret_temp;
+    TCGv_i32 op0_half, op1_half, ret_half;
+
+    ret_temp = tcg_temp_new_i32();
+    op0_half = tcg_temp_new_i32();
+    op1_half = tcg_temp_new_i32();
+    ret_half = tcg_temp_new_i32();
+
+    tcg_gen_add_i32(ret_temp, ret, op);
+    tcg_gen_add_i32(ret_temp, ret_temp, cpu_psw_cy);
+
+    tcg_gen_andi_i32(op0_half, ret, 0x0F);
+    tcg_gen_andi_i32(op1_half, op, 0x0F);
+    tcg_gen_add_i32(ret_half, op0_half, op1_half);
+    tcg_gen_add_i32(ret_half, ret_half, cpu_psw_cy);
+
+    tcg_gen_andi_i32(ret, ret_temp, 0xFF);
+    tcg_gen_setcondi_i32(TCG_COND_GEU, cpu_psw_cy, ret_temp, 0x100);
+    tcg_gen_setcondi_i32(TCG_COND_GEU, cpu_psw_ac, ret_half, 0x10);
+    tcg_gen_setcondi_i32(TCG_COND_EQ, cpu_psw_z, ret, 0);
+
+    return true;
 }
 
-static bool trans_ADD_A_X(DisasContext *ctx, arg_ADD_A_X *a)
+static bool rl78_gen_sub(TCGv_i32 ret, TCGv_i32 op)
 {
-    return rl78_gen_add(cpu_regs[RL78_GPREG_A], cpu_regs[RL78_GPREG_X]);
+    TCGv_i32 ret_temp;
+    TCGv_i32 op0_half, op1_half, ret_half;
+
+    ret_temp = tcg_temp_new_i32();
+    op0_half = tcg_temp_new_i32();
+    op1_half = tcg_temp_new_i32();
+    ret_half = tcg_temp_new_i32();
+
+    tcg_gen_sub_i32(ret_temp, ret, op);
+    tcg_gen_andi_i32(ret_temp, ret_temp, 0xFF);
+
+    tcg_gen_andi_i32(op0_half, ret, 0x0F);
+    tcg_gen_andi_i32(op1_half, op, 0x0F);
+    tcg_gen_sub_i32(ret_half, op0_half, op1_half);
+
+    tcg_gen_setcond_i32(TCG_COND_LTU, cpu_psw_cy, ret, op);
+    tcg_gen_setcond_i32(TCG_COND_LTU, cpu_psw_ac, op0_half, op1_half);
+    tcg_gen_setcondi_i32(TCG_COND_EQ, cpu_psw_z, ret_temp, 0);
+    tcg_gen_mov_i32(ret, ret_temp);
+
+    return true;
 }
 
-static bool trans_ADD_A_C(DisasContext *ctx, arg_ADD_A_C *a)
+static bool rl78_gen_subc(TCGv_i32 ret, TCGv_i32 op)
 {
-    return rl78_gen_add(cpu_regs[RL78_GPREG_A], cpu_regs[RL78_GPREG_C]);
+    TCGv_i32 subc_op, ret_temp;
+    TCGv_i32 op0_half, op1_half;
+
+    subc_op = tcg_temp_new_i32();
+    ret_temp = tcg_temp_new_i32();
+    op0_half = tcg_temp_new_i32();
+    op1_half = tcg_temp_new_i32();
+
+    tcg_gen_add_i32(subc_op, op, cpu_psw_cy);
+    tcg_gen_sub_i32(ret_temp, ret, subc_op);
+    tcg_gen_andi_i32(ret_temp, ret_temp, 0xFF);
+
+    tcg_gen_andi_i32(op0_half, ret, 0x0F);
+    tcg_gen_andi_i32(op1_half, op, 0x0F);
+    tcg_gen_add_i32(op1_half, op1_half, cpu_psw_cy);
+
+    tcg_gen_setcond_i32(TCG_COND_LTU, cpu_psw_cy, ret, subc_op);
+    tcg_gen_setcond_i32(TCG_COND_LTU, cpu_psw_ac, op0_half, op1_half);
+    tcg_gen_setcondi_i32(TCG_COND_EQ, cpu_psw_z, ret_temp, 0);
+
+    tcg_gen_mov_i32(ret, ret_temp);
+
+    return true;
 }
 
-static bool trans_ADD_A_B(DisasContext *ctx, arg_ADD_A_B *a)
+static bool rl78_gen_and(TCGv_i32 ret, TCGv_i32 op)
 {
-    return rl78_gen_add(cpu_regs[RL78_GPREG_A], cpu_regs[RL78_GPREG_B]);
+    tcg_gen_and_i32(ret, ret, op);
+    tcg_gen_setcondi_i32(TCG_COND_EQ, cpu_psw_z, ret, 0);
+    return true;
 }
 
-static bool trans_ADD_A_E(DisasContext *ctx, arg_ADD_A_E *a)
+static bool rl78_gen_or(TCGv_i32 ret, TCGv_i32 op)
 {
-    return rl78_gen_add(cpu_regs[RL78_GPREG_A], cpu_regs[RL78_GPREG_E]);
+    tcg_gen_or_i32(ret, ret, op);
+    tcg_gen_setcondi_i32(TCG_COND_EQ, cpu_psw_z, ret, 0);
+    return true;
 }
 
-static bool trans_ADD_A_D(DisasContext *ctx, arg_ADD_A_D *a)
+static bool rl78_gen_xor(TCGv_i32 ret, TCGv_i32 op)
 {
-    return rl78_gen_add(cpu_regs[RL78_GPREG_A], cpu_regs[RL78_GPREG_D]);
+    tcg_gen_xor_i32(ret, ret, op);
+    tcg_gen_setcondi_i32(TCG_COND_EQ, cpu_psw_z, ret, 0);
+    return true;
 }
 
-static bool trans_ADD_A_L(DisasContext *ctx, arg_ADD_A_L *a)
+static bool rl78_gen_cmp(TCGv_i32 ret, TCGv_i32 op)
 {
-    return rl78_gen_add(cpu_regs[RL78_GPREG_A], cpu_regs[RL78_GPREG_L]);
+    TCGv_i32 ret_temp;
+    TCGv_i32 op0_half, op1_half;
+
+    ret_temp = tcg_temp_new_i32();
+    op0_half = tcg_temp_new_i32();
+    op1_half = tcg_temp_new_i32();
+
+    tcg_gen_sub_i32(ret_temp, ret, op);
+
+    tcg_gen_andi_i32(op0_half, ret, 0x0F);
+    tcg_gen_andi_i32(op1_half, op, 0x0F);
+
+    tcg_gen_setcondi_i32(TCG_COND_EQ, cpu_psw_z, ret_temp, 0);
+    tcg_gen_setcond_i32(TCG_COND_LTU, cpu_psw_cy, ret, op);
+    tcg_gen_setcond_i32(TCG_COND_LTU, cpu_psw_ac, op0_half, op1_half);
+
+    return true;
 }
 
-static bool trans_ADD_A_H(DisasContext *ctx, arg_ADD_A_H *a)
+static bool (*rl78_arith_op(int op))(TCGv_i32, TCGv_i32)
 {
-    return rl78_gen_add(cpu_regs[RL78_GPREG_A], cpu_regs[RL78_GPREG_H]);
+    switch(op) {
+        case 0: return rl78_gen_add;
+        case 1: return rl78_gen_addc;
+        case 2: return rl78_gen_sub;
+        case 3: return rl78_gen_subc;
+        case 4: return rl78_gen_cmp;
+        case 5: return rl78_gen_and;
+        case 6: return rl78_gen_or;
+        case 7: return rl78_gen_xor;
+    }
+
+    return NULL;
 }
 
-static bool trans_ADD_X_A(DisasContext *ctx, arg_ADD_X_A *a)
+static bool trans_Arith_A_i(DisasContext *ctx, arg_Arith_A_i *a)
 {
-    return rl78_gen_add(cpu_regs[RL78_GPREG_X], cpu_regs[RL78_GPREG_A]);
+    return rl78_arith_op(a->op)(cpu_regs[RL78_GPREG_A], tcg_constant_i32(a->imm));
 }
 
-static bool trans_ADD_A_A(DisasContext *ctx, arg_ADD_A_A *a)
-{
-    return rl78_gen_add(cpu_regs[RL78_GPREG_A], cpu_regs[RL78_GPREG_A]);
-}
+#define ARITH_R_R(r0, r1) \
+static bool trans_Arith_##r0##_##r1(DisasContext *ctx, arg_Arith_##r0##_##r1 *a) \
+{ \
+    return rl78_arith_op(a->op)(cpu_regs[RL78_GPREG_##r0], cpu_regs[RL78_GPREG_##r1]); \
+} \
 
-static bool trans_ADD_C_A(DisasContext *ctx, arg_ADD_C_A *a)
-{
-    return rl78_gen_add(cpu_regs[RL78_GPREG_C], cpu_regs[RL78_GPREG_A]);
-}
+ARITH_R_R(A, X)
+ARITH_R_R(A, C)
+ARITH_R_R(A, B)
+ARITH_R_R(A, E)
+ARITH_R_R(A, D)
+ARITH_R_R(A, L)
+ARITH_R_R(A, H)
 
-static bool trans_ADD_B_A(DisasContext *ctx, arg_ADD_B_A *a)
-{
-    return rl78_gen_add(cpu_regs[RL78_GPREG_B], cpu_regs[RL78_GPREG_A]);
-}
+ARITH_R_R(X, A)
+ARITH_R_R(A, A)
+ARITH_R_R(C, A)
+ARITH_R_R(B, A)
+ARITH_R_R(E, A)
+ARITH_R_R(D, A)
+ARITH_R_R(L, A)
+ARITH_R_R(H, A)
 
-static bool trans_ADD_E_A(DisasContext *ctx, arg_ADD_E_A *a)
-{
-    return rl78_gen_add(cpu_regs[RL78_GPREG_E], cpu_regs[RL78_GPREG_A]);
-}
-
-static bool trans_ADD_D_A(DisasContext *ctx, arg_ADD_D_A *a)
-{
-    return rl78_gen_add(cpu_regs[RL78_GPREG_D], cpu_regs[RL78_GPREG_A]);
-}
-
-static bool trans_ADD_L_A(DisasContext *ctx, arg_ADD_L_A *a)
-{
-    return rl78_gen_add(cpu_regs[RL78_GPREG_L], cpu_regs[RL78_GPREG_A]);
-}
-
-static bool trans_ADD_H_A(DisasContext *ctx, arg_ADD_H_A *a)
-{
-    return rl78_gen_add(cpu_regs[RL78_GPREG_H], cpu_regs[RL78_GPREG_A]);
-}
-
-static bool trans_ADD_A_addr(DisasContext *ctx, arg_ADD_A_addr *a)
+static bool trans_Arith_A_addr(DisasContext *ctx, arg_Arith_A_addr *a)
 {
     TCGv_i32 ptr = rl78_gen_addr(a->adrl, a->adrh, tcg_constant_i32(0x0F));
     TCGv_i32 value = tcg_temp_new_i32();
-
     rl78_gen_lb(ctx, value, ptr);
-    return rl78_gen_add(cpu_regs[RL78_GPREG_A], value);
+    return rl78_arith_op(a->op)(cpu_regs[RL78_GPREG_A], value);
 }
 
-static bool trans_ADD_A_indHL(DisasContext *ctx, arg_ADD_A_indHL *a)
+static bool trans_Arith_A_indHL(DisasContext *ctx, arg_Arith_A_indHL *a)
 {
     TCGv_i32 base = rl78_load_rp(RL78_GPREG_HL);
-    TCGv_i32 ptr = rl78_indirect_ptr(base, tcg_constant_i32(0x00));
+    TCGv ptr = rl78_indirect_ptr(base, tcg_constant_i32(0x00));
     TCGv_i32 value = tcg_temp_new_i32();
-
     rl78_gen_lb(ctx, value, ptr);
-    return rl78_gen_add(cpu_regs[RL78_GPREG_A], value);
+    return rl78_arith_op(a->op)(cpu_regs[RL78_GPREG_A], value);
 }
 
-static bool trans_ADD_A_indHLoffset(DisasContext *ctx, arg_ADD_A_indHLoffset *a)
+static bool trans_Arith_A_indHLoffset(DisasContext *ctx, arg_Arith_A_indHLoffset *a)
 {
     TCGv_i32 base = rl78_load_rp(RL78_GPREG_HL);
     TCGv_i32 ptr = rl78_indirect_ptr(base, tcg_constant_i32(a->offset));
     TCGv_i32 value = tcg_temp_new_i32();
-
     rl78_gen_lb(ctx, value, ptr);
-    return rl78_gen_add(cpu_regs[RL78_GPREG_A], value);
+    return rl78_arith_op(a->op)(cpu_regs[RL78_GPREG_A], value);
 }
 
-static bool trans_ADD_A_indHL_B(DisasContext *ctx, arg_ADD_A_indHL_B *a)
+static bool trans_Arith_A_indHL_B(DisasContext *ctx, arg_Arith_A_indHL_B *a)
 {
     TCGv_i32 base = rl78_load_rp(RL78_GPREG_HL);
-    TCGv_i32 ptr = rl78_indirect_ptr(base, cpu_regs[RL78_GPREG_B]);
+    TCGv ptr = rl78_indirect_ptr(base, cpu_regs[RL78_GPREG_B]);
     TCGv_i32 value = tcg_temp_new_i32();
-
     rl78_gen_lb(ctx, value, ptr);
-    return rl78_gen_add(cpu_regs[RL78_GPREG_A], value);
+    return rl78_arith_op(a->op)(cpu_regs[RL78_GPREG_A], value);
 }
 
-static bool trans_ADD_A_indHL_C(DisasContext *ctx, arg_ADD_A_indHL_C *a)
+static bool trans_Arith_A_indHL_C(DisasContext *ctx, arg_Arith_A_indHL_C *a)
 {
     TCGv_i32 base = rl78_load_rp(RL78_GPREG_HL);
-    TCGv_i32 ptr = rl78_indirect_ptr(base, cpu_regs[RL78_GPREG_C]);
+    TCGv ptr = rl78_indirect_ptr(base, cpu_regs[RL78_GPREG_C]);
     TCGv_i32 value = tcg_temp_new_i32();
-
     rl78_gen_lb(ctx, value, ptr);
-    return rl78_gen_add(cpu_regs[RL78_GPREG_A], value);
+    return rl78_arith_op(a->op)(cpu_regs[RL78_GPREG_A], value);
 }
 
 static bool trans_BR_addr16(DisasContext *ctx, arg_BR_addr16 *a)

@@ -250,6 +250,12 @@ Arith_A_indHL_C     0 110  0001 1 op:3 0010
 
 # CMP_A_i 0100 1100 .... .... @cmp_a_i
 
+CMP0_r  1101 00 op:2
+# CMP0_saddr  1101 0100 saddr:8
+CMP0_addr 1101 0101 adrl:8 adrh:8
+
+CMPS_X_indHLoffset  0110 0001 1101 1110 offset:8
+
 CMPW_AX_i 0100 0100 datal:8 datah:8
 
 BR_addr16 1110 1101 .... .... .... .... @br_addr16

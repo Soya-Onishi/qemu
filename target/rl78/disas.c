@@ -955,6 +955,25 @@ static bool trans_Arith_A_indHL_C(DisasContext *ctx, arg_Arith_A_indHL_C *a)
     return true;
 }
 
+static bool trans_CMP0_r(DisasContext *ctx, arg_CMP0_r *a)
+{
+    const char* reg_name[] = { "X", "A", "C", "B" };
+    print("CMP0\t%s", reg_name[a->op]);
+    return true;
+}
+
+static bool trans_CMP0_addr(DisasContext *ctx, arg_CMP0_addr *a)
+{
+    print("CMP0\t!0x%05x", rl78_word(a->adrl | (a->adrh << 8) | 0xF0000));
+    return true;
+}
+
+static bool trans_CMPS_X_indHLoffset(DisasContext *ctx, arg_CMPS_X_indHLoffset *a)
+{
+    print("CMPS\tX, [HL+%d]", a->offset);
+    return true;
+}
+
 static bool trans_BR_addr16(DisasContext *ctx, arg_BR_addr16 *a)
 {
     print("BR\t!0x%04x", rl78_word(a->addr));

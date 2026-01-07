@@ -1557,6 +1557,29 @@ static bool trans_Arith_A_indHL_C(DisasContext *ctx, arg_Arith_A_indHL_C *a)
     return rl78_arith_op(a->op)(cpu_regs[RL78_GPREG_A], value);
 }
 
+static bool trans_CMP0_r(DisasContext *ctx, arg_CMP0_r *a)
+{
+    const int reg = a->op;
+    return rl78_gen_cmp(cpu_regs[reg], tcg_constant_i32(0));
+}
+
+static bool trans_CMP0_addr(DisasContext *ctx, arg_CMP0_addr *a)
+{
+    TCGv_i32 ptr = rl78_gen_addr(a->adrl, a->adrh, tcg_constant_i32(0x0F));
+    TCGv_i32 value = tcg_temp_new_i32();
+    rl78_gen_lb(ctx, value, ptr);
+    return rl78_gen_cmp(value, tcg_constant_i32(0));
+}
+
+static bool trans_CMPS_X_indHLoffset(DisasContext *ctx, arg_CMPS_X_indHLoffset *a)
+{
+    TCGv_i32 base = rl78_load_rp(RL78_GPREG_HL);
+    TCGv ptr = rl78_indirect_ptr(base, tcg_constant_i32(a->offset));
+    TCGv_i32 value = tcg_temp_new_i32();
+    rl78_gen_lb(ctx, value, ptr);
+    return rl78_gen_cmp(cpu_regs[RL78_GPREG_X], value);
+}
+
 static bool trans_BR_addr16(DisasContext *ctx, arg_BR_addr16 *a)
 {
     const uint32_t addr = rl78_word(a->addr);

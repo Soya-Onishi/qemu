@@ -818,13 +818,6 @@ static bool trans_CLRW_BC(DisasContext *ctx, arg_CLRW_BC *a)
     return true;
 }
 
-static bool trans_CMPW_AX_i(DisasContext *ctx, arg_CMPW_AX_i *a)
-{
-    const uint32_t imm = a->datal | (a->datah << 8);
-    print("CMPW\tAX, #%d", imm);
-    return true;
-}
-
 static const char* arith_op_name[] = {
     "ADD", "ADC", "SUB", "SBB", 
     "CMP", "AND", "OR", "XOR",
@@ -971,6 +964,104 @@ static bool trans_CMP0_addr(DisasContext *ctx, arg_CMP0_addr *a)
 static bool trans_CMPS_X_indHLoffset(DisasContext *ctx, arg_CMPS_X_indHLoffset *a)
 {
     print("CMPS\tX, [HL+%d]", a->offset);
+    return true;
+}
+
+static bool trans_ADDW_AX_i(DisasContext *ctx, arg_ADDW_AX_i *a)
+{
+    const uint32_t imm = a->datal | (a->datah << 8);
+    print("ADDW\tAX, #%d", imm);
+    return true;
+}
+
+static bool trans_ADDW_AX_rp(DisasContext *ctx, arg_ADDW_AX_rp *a)
+{
+    const char* rp_names[] = {
+        "AX", "BC", "DE", "HL"
+    };
+
+    print("ADDW\tAX, %s", rp_names[a->rp]);
+    return true;
+}
+
+static bool trans_ADDW_AX_addr(DisasContext *ctx, arg_ADDW_AX_addr *a)
+{
+    const uint32_t addr = a->adrl | (a->adrh << 8) | (0xF0000);
+    print("ADDW\tAX, !%05x", addr);
+    return true;
+}
+
+static bool trans_ADDW_AX_indHLoffset(DisasContext *ctx, arg_ADDW_AX_indHLoffset *a)
+{
+    print("ADDW\tAX, [HL+%d]", a->offset);
+    return true;
+}
+
+static bool trans_SUBW_AX_i(DisasContext *ctx, arg_SUBW_AX_i *a)
+{
+    const uint32_t imm = a->datal | (a->datah << 8);
+    print("SUBW\tAX, #%d", imm);
+    return true;
+}
+
+static bool trans_SUBW_AX_rp(DisasContext *ctx, arg_SUBW_AX_rp *a)
+{
+    const char* rp_names[] = {
+        "AX", "BC", "DE", "HL"
+    };
+
+    print("SUBW\tAX, %s", rp_names[a->rp]);
+    return true;
+}
+
+static bool trans_SUBW_AX_addr(DisasContext *ctx, arg_SUBW_AX_addr *a)
+{
+    const uint32_t addr = a->adrl | (a->adrh << 8) | (0xF0000);
+    print("SUBW\tAX, !%05x", addr);
+    return true;
+}
+
+static bool trans_SUBW_AX_indHLoffset(DisasContext *ctx, arg_SUBW_AX_indHLoffset *a)
+{
+    print("SUBW\tAX, [HL+%d]", a->offset);
+    return true;
+}
+
+static bool trans_CMPW_AX_i(DisasContext *ctx, arg_CMPW_AX_i *a)
+{
+    const uint32_t imm = a->datal | (a->datah << 8);
+    print("CMPW\tAX, #%d", imm);
+    return true;
+}
+
+static bool trans_CMPW_AX_BC(DisasContext *ctx, arg_CMPW_AX_BC *a)
+{
+    print("CMPW\tAX, BC");
+    return true;
+}
+
+static bool trans_CMPW_AX_DE(DisasContext *ctx, arg_CMPW_AX_DE *a)
+{
+    print("CMPW\tAX, DE");
+    return true;
+}
+
+static bool trans_CMPW_AX_HL(DisasContext *ctx, arg_CMPW_AX_HL *a)
+{
+    print("CMPW\tAX, HL");
+    return true;
+}
+
+static bool trans_CMPW_AX_addr(DisasContext *ctx, arg_CMPW_AX_addr *a)
+{
+    const uint32_t addr = a->adrl | (a->adrh << 8) | (0xF0000);
+    print("CMPW\tAX, !%05x", addr);
+    return true;
+}
+
+static bool trans_CMPW_AX_indHLoffset(DisasContext *ctx, arg_CMPW_AX_indHLoffset *a)
+{
+    print("SUBW\tAX, [HL+%d]", a->offset);
     return true;
 }
 

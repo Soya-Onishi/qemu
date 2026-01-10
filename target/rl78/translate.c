@@ -1723,6 +1723,130 @@ static bool trans_CMPW_AX_indHLoffset(DisasContext *ctx, arg_CMPW_AX_indHLoffset
     return rl78_gen_cmpw(op);
 }
 
+static bool trans_MULU(DisasContext *ctx, arg_MULU *_a)
+{
+    TCGv_i32 ax = tcg_temp_new_i32();
+    TCGv_i32 a = cpu_regs[RL78_GPREG_A];
+    TCGv_i32 x = cpu_regs[RL78_GPREG_X];
+
+    tcg_gen_mul_i32(ax, a, x);
+    rl78_store_rp(RL78_GPREG_AX, ax);
+    return true;
+}
+
+static bool trans_MULHU(DisasContext *ctx, arg_MULHU *a)
+{
+    TCGv_i32 ax = rl78_load_rp(RL78_GPREG_AX);
+    TCGv_i32 bc = rl78_load_rp(RL78_GPREG_BC);
+    TCGv_i32 ret = tcg_temp_new_i32();
+    TCGv_i32 ret_ax = tcg_temp_new_i32();
+    TCGv_i32 ret_bc = tcg_temp_new_i32();
+
+    tcg_gen_mul_i32(ret, ax, bc);
+
+    tcg_gen_extract_i32(ret_ax, ret, 0, 16);
+    tcg_gen_extract_i32(ret_bc, ret, 16, 16);
+
+    rl78_store_rp(RL78_GPREG_AX, ret_ax);
+    rl78_store_rp(RL78_GPREG_BC, ret_bc);
+
+    return true;
+}
+static bool trans_MULH(DisasContext *ctx, arg_MULH *a)
+{
+    TCGv_i32 ax = rl78_load_rp(RL78_GPREG_AX);
+    TCGv_i32 bc = rl78_load_rp(RL78_GPREG_BC);
+    TCGv_i32 ax_s = tcg_temp_new_i32();
+    TCGv_i32 bc_s = tcg_temp_new_i32();
+    TCGv_i32 ret = tcg_temp_new_i32();
+    TCGv_i32 ret_ax = tcg_temp_new_i32();
+    TCGv_i32 ret_bc = tcg_temp_new_i32();
+    
+    tcg_gen_ext16s_i32(ax_s, ax);
+    tcg_gen_ext16s_i32(bc_s, bc);
+    tcg_gen_mul_i32(ret, ax_s, bc_s);
+    tcg_gen_extract_i32(ret_ax, ret, 0, 16);
+    tcg_gen_extract_i32(ret_bc, ret, 16, 16);
+
+    rl78_store_rp(RL78_GPREG_AX, ret_ax);
+    rl78_store_rp(RL78_GPREG_BC, ret_bc);
+
+    return true;
+}
+
+static bool trans_DIVHU(DisasContext *ctx, arg_DIVHU *a)
+{
+    TCGv_i32 ax = rl78_load_rp(RL78_GPREG_AX);
+    TCGv_i32 de = rl78_load_rp(RL78_GPREG_DE);
+    TCGv_i32 ret_ax = tcg_temp_new_i32();
+    TCGv_i32 ret_de = tcg_temp_new_i32();
+    TCGLabel* nodiv = gen_new_label();
+    TCGLabel* enddiv = gen_new_label();
+
+    tcg_gen_brcondi_i32(TCG_COND_EQ, de, 0x0000, nodiv);
+    
+    tcg_gen_divu_i32(ret_ax, ax, de);
+    tcg_gen_remu_i32(ret_de, ax, de);
+    tcg_gen_br(enddiv);
+
+    gen_set_label(nodiv);
+    tcg_gen_movi_i32(ret_ax, 0xFFFF);
+    tcg_gen_mov_i32(ret_de, ax);
+
+    gen_set_label(enddiv);
+    rl78_store_rp(RL78_GPREG_AX, ret_ax);
+    rl78_store_rp(RL78_GPREG_DE, ret_de);
+
+    return true;
+}
+
+static bool trans_DIVWU(DisasContext *ctx, arg_DIVWU *a)
+{
+    TCGv_i32 ax = rl78_load_rp(RL78_GPREG_AX);
+    TCGv_i32 bc = rl78_load_rp(RL78_GPREG_BC);
+    TCGv_i32 de = rl78_load_rp(RL78_GPREG_DE);
+    TCGv_i32 hl = rl78_load_rp(RL78_GPREG_HL);
+    TCGv_i32 bcax = tcg_temp_new_i32();
+    TCGv_i32 hlde = tcg_temp_new_i32();
+    TCGv_i32 ret_div = tcg_temp_new_i32();
+    TCGv_i32 ret_rem = tcg_temp_new_i32();
+    TCGv_i32 ret_ax = tcg_temp_new_i32();
+    TCGv_i32 ret_bc = tcg_temp_new_i32();
+    TCGv_i32 ret_de = tcg_temp_new_i32();
+    TCGv_i32 ret_hl = tcg_temp_new_i32();
+    TCGLabel* nodiv = gen_new_label();
+    TCGLabel* enddiv = gen_new_label();
+
+    // 初期化しないとTCGのコードジェネレーション部分でアサートに引っかかる
+    tcg_gen_movi_i32(bcax, 0);
+    tcg_gen_movi_i32(hlde, 0);
+    tcg_gen_deposit_i32(bcax, bcax, ax, 0, 16);
+    tcg_gen_deposit_i32(bcax, bcax, bc, 16, 16);
+    tcg_gen_deposit_i32(hlde, hlde, de, 0, 16);
+    tcg_gen_deposit_i32(hlde, hlde, hl, 16, 16);
+
+    tcg_gen_brcondi_i32(TCG_COND_EQ, hlde, 0, nodiv);
+    tcg_gen_divu_i32(ret_div, bcax, hlde);
+    tcg_gen_remu_i32(ret_rem, bcax, hlde);
+    tcg_gen_br(enddiv);
+
+    gen_set_label(nodiv);
+    tcg_gen_movi_i32(ret_div, 0xFFFFFFFF);
+    tcg_gen_mov_i32(ret_rem, bcax);
+
+    gen_set_label(enddiv);
+    tcg_gen_extract_i32(ret_ax, ret_div, 0, 16);
+    tcg_gen_extract_i32(ret_bc, ret_div, 16, 16);
+    tcg_gen_extract_i32(ret_de, ret_rem, 0, 16);
+    tcg_gen_extract_i32(ret_hl, ret_rem, 16, 16);
+    rl78_store_rp(RL78_GPREG_AX, ret_ax);
+    rl78_store_rp(RL78_GPREG_BC, ret_bc);
+    rl78_store_rp(RL78_GPREG_DE, ret_de);
+    rl78_store_rp(RL78_GPREG_HL, ret_hl);
+
+    return true;
+}
+
 static bool trans_BR_addr16(DisasContext *ctx, arg_BR_addr16 *a)
 {
     const uint32_t addr = rl78_word(a->addr);
@@ -1748,6 +1872,11 @@ static bool trans_SKZ(DisasContext *ctx, arg_SKZ *a)
     tcg_gen_movi_i32(cpu_skip_enabled, 1);
     ctx->skip_flag = true;
 
+    return true;
+}
+
+static bool trans_NOP(DisasContext *ctx, arg_NOP *a)
+{
     return true;
 }
 

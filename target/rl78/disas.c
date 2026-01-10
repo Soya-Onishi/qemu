@@ -1065,6 +1065,36 @@ static bool trans_CMPW_AX_indHLoffset(DisasContext *ctx, arg_CMPW_AX_indHLoffset
     return true;
 }
 
+static bool trans_MULHU(DisasContext *ctx, arg_MULHU *a)
+{
+    print("MULHU");
+    return true;
+}
+
+static bool trans_MULH(DisasContext *ctx, arg_MULH *a)
+{
+    print("MULH");
+    return true;
+}
+
+static bool trans_DIVHU(DisasContext *ctx, arg_DIVHU *a)
+{
+    print("DIVHU");
+    return true;
+}
+
+static bool trans_DIVWU(DisasContext *ctx, arg_DIVWU *a)
+{
+    print("DIVWU");
+    return true;
+}
+
+static bool trans_MULU(DisasContext *ctx, arg_MULU *a)
+{
+    print("MULU\tX");
+    return true;
+}
+
 static bool trans_BR_addr16(DisasContext *ctx, arg_BR_addr16 *a)
 {
     print("BR\t!0x%04x", rl78_word(a->addr));
@@ -1083,7 +1113,11 @@ static bool trans_SKZ(DisasContext *ctx, arg_SKZ *a)
     return true;
 }
 
-
+static bool trans_NOP(DisasContext *ctx, arg_NOP *a)
+{
+    print("NOP");
+    return true;
+}
 
 int print_insn_rl78(bfd_vma addr, disassemble_info *dis)
 {

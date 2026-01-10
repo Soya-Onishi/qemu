@@ -1847,6 +1847,181 @@ static bool trans_DIVWU(DisasContext *ctx, arg_DIVWU *a)
     return true;
 }
 
+static void rl78_gen_inc(TCGv_i32 op)
+{
+    TCGv_i32 half_op = tcg_temp_new_i32();
+    TCGv_i32 ret = tcg_temp_new_i32();
+
+    tcg_gen_extract_i32(half_op, op, 0, 4);
+
+    tcg_gen_addi_i32(ret, op, 1);
+    tcg_gen_addi_i32(half_op, half_op, 1);
+    tcg_gen_extract_i32(op, ret, 0, 8);
+
+    tcg_gen_setcondi_i32(TCG_COND_EQ, cpu_psw_z, op, 0);
+    tcg_gen_setcondi_i32(TCG_COND_GEU, cpu_psw_ac, half_op, 0x10);
+}
+
+static bool trans_INC_r(DisasContext *ctx, arg_INC_r *a)
+{
+    TCGv_i32 r = cpu_regs[a->r];
+    rl78_gen_inc(r);
+
+    return true;
+}
+
+static bool trans_INC_addr(DisasContext *ctx, arg_INC_addr *a)
+{
+    TCGv_i32 ptr = rl78_gen_addr(a->adrl, a->adrh, tcg_constant_i32(0x0F));
+    TCGv_i32 mem = tcg_temp_new_i32();
+    
+    rl78_gen_lb(ctx, mem, ptr);
+    rl78_gen_inc(mem);
+    rl78_gen_sb(ctx, mem, ptr);
+
+    return true;
+}
+
+static bool trans_INC_indHLoffset(DisasContext *ctx, arg_INC_indHLoffset *a)
+{
+    TCGv_i32 base = rl78_load_rp(RL78_GPREG_HL);
+    TCGv_i32 ptr = rl78_indirect_ptr(base, tcg_constant_i32(a->offset));
+    TCGv_i32 mem = tcg_temp_new_i32();
+
+    rl78_gen_lb(ctx, mem, ptr);
+    rl78_gen_inc(mem);
+    rl78_gen_sb(ctx, mem, ptr);
+
+    return true;
+}
+
+static void rl78_gen_dec(TCGv_i32 op)
+{
+    TCGv_i32 half_op = tcg_temp_new_i32();
+    TCGv_i32 ret = tcg_temp_new_i32();
+
+    tcg_gen_extract_i32(half_op, op, 0, 4);
+
+    tcg_gen_subi_i32(ret, op, 1);
+    tcg_gen_extract_i32(op, ret, 0, 8);
+
+    tcg_gen_setcondi_i32(TCG_COND_EQ, cpu_psw_z, op, 0);
+    tcg_gen_setcondi_i32(TCG_COND_LTU, cpu_psw_ac, half_op, 1);
+}
+
+static bool trans_DEC_r(DisasContext *ctx, arg_DEC_r *a)
+{
+    TCGv_i32 r = cpu_regs[a->r];
+    rl78_gen_dec(r);
+
+    return true;
+}
+
+static bool trans_DEC_addr(DisasContext *ctx, arg_DEC_addr *a)
+{
+    TCGv_i32 ptr = rl78_gen_addr(a->adrl, a->adrh, tcg_constant_i32(0x0F));
+    TCGv_i32 mem = tcg_temp_new_i32();
+    
+    rl78_gen_lb(ctx, mem, ptr);
+    rl78_gen_dec(mem);
+    rl78_gen_sb(ctx, mem, ptr);
+
+    return true;
+}
+
+static bool trans_DEC_indHLoffset(DisasContext *ctx, arg_DEC_indHLoffset *a)
+{
+    TCGv_i32 base = rl78_load_rp(RL78_GPREG_HL);
+    TCGv_i32 ptr = rl78_indirect_ptr(base, tcg_constant_i32(a->offset));
+    TCGv_i32 mem = tcg_temp_new_i32();
+
+    rl78_gen_lb(ctx, mem, ptr);
+    rl78_gen_dec(mem);
+    rl78_gen_sb(ctx, mem, ptr);
+
+    return true;
+}
+
+static void rl78_gen_incw(TCGv_i32 op)
+{
+    tcg_gen_addi_i32(op, op, 1);
+    tcg_gen_extract_i32(op, op, 0, 16);
+}
+
+static bool trans_INCW_rp(DisasContext *ctx, arg_INCW_rp *a)
+{
+    TCGv_i32 rp = rl78_load_rp(a->rp * 2);
+    rl78_gen_incw(rp);
+    rl78_store_rp(a->rp*2, rp);
+
+    return true;
+}
+
+static bool trans_INCW_addr(DisasContext *ctx, arg_INCW_addr *a)
+{
+    TCGv_i32 ptr = rl78_gen_addr(a->adrl, a->adrh, tcg_constant_i32(0x0F));
+    TCGv_i32 mem = tcg_temp_new_i32();
+    
+    rl78_gen_lw(ctx, mem, ptr);
+    rl78_gen_incw(mem);
+    rl78_gen_sw(ctx, mem, ptr);
+
+    return true;
+}
+
+static bool trans_INCW_indHLoffset(DisasContext *ctx, arg_INCW_indHLoffset *a)
+{
+    TCGv_i32 base = rl78_load_rp(RL78_GPREG_HL);
+    TCGv_i32 ptr = rl78_indirect_ptr(base, tcg_constant_i32(a->offset));
+    TCGv_i32 mem = tcg_temp_new_i32();
+
+    rl78_gen_lw(ctx, mem, ptr);
+    rl78_gen_incw(mem);
+    rl78_gen_sw(ctx, mem, ptr);
+
+    return true;
+}
+
+static void rl78_gen_decw(TCGv_i32 op)
+{
+    tcg_gen_subi_i32(op, op, 1);
+    tcg_gen_extract_i32(op, op, 0, 16);
+}
+
+static bool trans_DECW_rp(DisasContext *ctx, arg_DECW_rp *a)
+{
+    TCGv_i32 rp = rl78_load_rp(a->rp * 2);
+    rl78_gen_decw(rp);
+    rl78_store_rp(a->rp*2, rp);
+
+    return true;
+}
+
+static bool trans_DECW_addr(DisasContext *ctx, arg_DECW_addr *a)
+{
+    TCGv_i32 ptr = rl78_gen_addr(a->adrl, a->adrh, tcg_constant_i32(0x0F));
+    TCGv_i32 mem = tcg_temp_new_i32();
+    
+    rl78_gen_lw(ctx, mem, ptr);
+    rl78_gen_decw(mem);
+    rl78_gen_sw(ctx, mem, ptr);
+
+    return true;
+}
+
+static bool trans_DECW_indHLoffset(DisasContext *ctx, arg_DECW_indHLoffset *a)
+{
+    TCGv_i32 base = rl78_load_rp(RL78_GPREG_HL);
+    TCGv_i32 ptr = rl78_indirect_ptr(base, tcg_constant_i32(a->offset));
+    TCGv_i32 mem = tcg_temp_new_i32();
+
+    rl78_gen_lw(ctx, mem, ptr);
+    rl78_gen_decw(mem);
+    rl78_gen_sw(ctx, mem, ptr);
+
+    return true;
+}
+
 static bool trans_BR_addr16(DisasContext *ctx, arg_BR_addr16 *a)
 {
     const uint32_t addr = rl78_word(a->addr);

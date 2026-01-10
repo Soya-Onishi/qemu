@@ -1095,6 +1095,90 @@ static bool trans_MULU(DisasContext *ctx, arg_MULU *a)
     return true;
 }
 
+static bool trans_INC_r(DisasContext *ctx, arg_INC_r *a)
+{
+    print("INC\t%s", rl78_cpu_gp_regnames[a->r]);
+    return true;
+}
+
+static bool trans_INC_addr(DisasContext *ctx, arg_INC_addr *a)
+{
+    const uint32_t addr = a->adrl | (a->adrh << 8) | 0xF0000;
+    print("INC\t!%05x", addr);
+    return true;
+}
+
+static bool trans_INC_indHLoffset(DisasContext *ctx, arg_INC_indHLoffset *a)
+{
+    print("INC\t[HL+%d]", a->offset);
+    return true;
+}
+
+static bool trans_DEC_r(DisasContext *ctx, arg_DEC_r *a)
+{
+    print("DEC\t%s", rl78_cpu_gp_regnames[a->r]);
+    return true;
+}
+
+static bool trans_DEC_addr(DisasContext *ctx, arg_DEC_addr *a)
+{
+    const uint32_t addr = a->adrl | (a->adrh << 8) | 0xF0000;
+    print("DEC\t!%05x", addr);
+    return true;
+}
+
+static bool trans_DEC_indHLoffset(DisasContext *ctx, arg_DEC_indHLoffset *a)
+{
+    print("DEC\t[HL+%d]", a->offset);
+    return true;
+}
+
+static bool trans_INCW_rp(DisasContext *ctx, arg_INCW_rp *a)
+{
+    const char* rpnames[] = {
+        "AX", "BC", "DE", "HL"
+    };
+
+    print("INCW\t%s", rpnames[a->rp]);
+    return true;
+}
+
+static bool trans_INCW_addr(DisasContext *ctx, arg_INCW_addr *a)
+{
+    const uint32_t addr = a->adrl | (a->adrh << 8) | 0xF0000;
+    print("INCW\t!%05x", addr);
+    return true;
+}
+
+static bool trans_INCW_indHLoffset(DisasContext *ctx, arg_INCW_indHLoffset *a)
+{
+    print("INCW\t[HL+%d]", a->offset);
+    return true;
+}
+
+static bool trans_DECW_rp(DisasContext *ctx, arg_DECW_rp *a)
+{
+    const char* rpnames[] = {
+        "AX", "BC", "DE", "HL"
+    };
+
+    print("DECW\t%s", rpnames[a->rp]);
+    return true;
+}
+
+static bool trans_DECW_addr(DisasContext *ctx, arg_DECW_addr *a)
+{
+    const uint32_t addr = a->adrl | (a->adrh << 8) | 0xF0000;
+    print("DECW\t!%05x", addr);
+    return true;
+}
+
+static bool trans_DECW_indHLoffset(DisasContext *ctx, arg_DECW_indHLoffset *a)
+{
+    print("DECW\t[HL+%d]", a->offset);
+    return true;
+}
+
 static bool trans_BR_addr16(DisasContext *ctx, arg_BR_addr16 *a)
 {
     print("BR\t!0x%04x", rl78_word(a->addr));

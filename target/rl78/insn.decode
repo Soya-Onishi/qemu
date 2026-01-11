@@ -322,6 +322,22 @@ ROLC              0110 0001 1101 1100
 ROLWC_AX          0110 0001 1110 1110
 ROLWC_BC          0110 0001 1111 1110
 
+MOV1_CY_saddrbit      0111 0001 0 bit:3 0100 saddr:8
+MOV1_CY_Abit          0111 0001 1 bit:3 1100
+MOV1_CY_indHLbit      0111 0001 1 bit:3 0100
+{
+  MOV1_CY_PSWbit      0111 0001 0 bit:3 1100 1111 1010
+  MOV1_CY_sfrbit      0111 0001 0 bit:3 1100 sfr:8
+}
+
+MOV1_saddrbit_CY      0111 0001 0 bit:3 0001 saddr:8
+MOV1_Abit_CY          0111 0001 1 bit:3 1001
+MOV1_indHLbit_CY      0111 0001 1 bit:3 0001
+{
+  MOV1_PSWbit_CY      0111 0001 0 bit:3 1001 1111 1010
+  MOV1_sfrbit_CY      0111 0001 0 bit:3 1001 sfr:8
+}
+
 BR_addr16 1110 1101 .... .... .... .... @br_addr16
 
 BNZ 1101 1111 .... .... @br_rel_addr

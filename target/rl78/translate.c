@@ -173,6 +173,26 @@ static void rl78_store_rp(RL78GPRegister rp, TCGv_i32 value)
     tcg_gen_shri_i32(cpu_regs[rp+1], temp, 8);
 }
 
+static TCGv_i32 rl78_load_psw(void)
+{
+    TCGv_i32 psw = tcg_temp_new_i32();
+    TCGv_i32 rbs0 = tcg_temp_new_i32(); 
+    TCGv_i32 rbs1 = tcg_temp_new_i32();
+
+    tcg_gen_extract_i32(rbs0, cpu_psw_rbs, 0, 1);
+    tcg_gen_extract_i32(rbs1, cpu_psw_rbs, 1, 1);
+
+    tcg_gen_mov_i32(psw, cpu_psw_cy);
+    tcg_gen_deposit_i32(psw, psw, cpu_psw_isp, 1, 2);
+    tcg_gen_deposit_i32(psw, psw, rbs0, 3, 1);
+    tcg_gen_deposit_i32(psw, psw, cpu_psw_ac, 4, 1);
+    tcg_gen_deposit_i32(psw, psw, rbs1, 5, 1);
+    tcg_gen_deposit_i32(psw, psw, cpu_psw_z, 6, 1);
+    tcg_gen_deposit_i32(psw, psw, cpu_psw_ie, 7, 1);
+
+    return psw;
+}
+
 static TCGv rl78_gen_saddr(TCGv saddr)
 {
     TCGv ret = tcg_temp_new_i32();
@@ -185,6 +205,15 @@ static TCGv rl78_gen_saddr(TCGv saddr)
     tcg_gen_add_tl(ret, saddr, base);
 
     return ret;
+}
+
+static TCGv rl78_gen_sfr(const uint sfr)
+{
+    TCGv ptr = tcg_temp_new();
+    tcg_gen_movi_i32(ptr, sfr);
+    tcg_gen_ori_i32(ptr, ptr, 0xFFF00);
+
+    return ptr;
 }
 
 static void rl78_store_psw(DisasContext *ctx, TCGv_i32 src) 
@@ -2226,6 +2255,121 @@ static bool trans_ROLWC_AX(DisasContext *ctx, arg_ROLWC_AX *a)
 static bool trans_ROLWC_BC(DisasContext *ctx, arg_ROLWC_BC *a)
 {
     return trans_ROLWC_rp(RL78_GPREG_BC);
+}
+
+static bool trans_MOV1_CY_op(TCGv_i32 op, const uint index)
+{
+    TCGv_i32 bit = tcg_temp_new_i32();
+    tcg_gen_extract_i32(bit, op, index, 1);
+    tcg_gen_mov_i32(cpu_psw_cy, bit);
+
+    return true;
+}
+
+static bool trans_MOV1_CY_saddrbit(DisasContext *ctx, arg_MOV1_CY_saddrbit *a)
+{
+    TCGv_i32 ptr = rl78_gen_saddr(tcg_constant_i32(a->saddr));
+    TCGv_i32 mem = tcg_temp_new_i32();
+    
+    rl78_gen_lb(ctx, mem, ptr);
+
+    return trans_MOV1_CY_op(mem, a->bit);
+}
+
+static bool trans_MOV1_CY_Abit(DisasContext *ctx, arg_MOV1_CY_Abit *a)
+{
+    return trans_MOV1_CY_op(cpu_regs[RL78_GPREG_A], a->bit);
+}
+
+static bool trans_MOV1_CY_indHLbit(DisasContext *ctx, arg_MOV1_CY_indHLbit *a)
+{
+    TCGv_i32 base = rl78_load_rp(RL78_GPREG_AX);
+    TCGv_i32 ptr = rl78_indirect_ptr(base, tcg_constant_i32(0));
+    TCGv_i32 mem = tcg_temp_new_i32();
+    
+    rl78_gen_lb(ctx, mem, ptr);
+
+    return trans_MOV1_CY_op(mem, a->bit);
+}
+
+static bool trans_MOV1_CY_PSWbit(DisasContext *ctx, arg_MOV1_CY_PSWbit *a)
+{
+    return trans_MOV1_CY_op(rl78_load_psw(), a->bit);
+}
+
+static bool trans_MOV1_CY_sfrbit(DisasContext *ctx, arg_MOV1_CY_sfrbit *a)
+{
+    TCGv ptr = rl78_gen_sfr(a->sfr);
+    TCGv mem = tcg_temp_new();
+    
+    rl78_gen_lb(ctx, mem, ptr);
+
+    return trans_MOV1_CY_op(mem, a->bit);
+}
+
+static TCGv trans_MOV1_op_CY(TCGv op, const uint bit)
+{
+    TCGv temp = tcg_temp_new();
+    const uint mask = ~(1 << bit);
+
+    tcg_gen_andi_tl(temp, op, mask);
+    tcg_gen_deposit_tl(temp, temp, cpu_psw_cy, bit, 1);
+
+    return temp; 
+}
+
+static bool trans_MOV1_saddrbit_CY(DisasContext *ctx, arg_MOV1_saddrbit_CY *a)
+{
+    TCGv ptr = rl78_gen_saddr(tcg_constant_tl(a->saddr));
+    TCGv mem = tcg_temp_new_i32();
+
+    rl78_gen_lb(ctx, mem, ptr);
+    TCGv new_mem = trans_MOV1_op_CY(mem, a->bit);
+    rl78_gen_sb(ctx, new_mem, ptr);
+
+    return true;
+}
+
+static bool trans_MOV1_Abit_CY(DisasContext *ctx, arg_MOV1_Abit_CY *a)
+{
+    TCGv op = trans_MOV1_op_CY(cpu_regs[RL78_GPREG_A], a->bit);
+    tcg_gen_mov_tl(cpu_regs[RL78_GPREG_A], op);
+
+    return true;
+}
+
+static bool trans_MOV1_indHLbit_CY(DisasContext *ctx, arg_MOV1_indHLbit_CY *a)
+{
+    TCGv base = rl78_load_rp(RL78_GPREG_HL);
+    TCGv ptr = rl78_indirect_ptr(base, tcg_constant_tl(0));
+    TCGv mem = tcg_temp_new();
+    
+    rl78_gen_lb(ctx, mem, ptr);
+    TCGv new_mem = trans_MOV1_op_CY(mem, a->bit);
+    rl78_gen_sb(ctx, new_mem, ptr);
+
+    return true;
+}
+
+static bool trans_MOV1_PSWbit_CY(DisasContext *ctx, arg_MOV1_PSWbit_CY *a)
+{
+    TCGv psw = rl78_load_psw();
+    TCGv new_psw = trans_MOV1_op_CY(psw, a->bit);
+    rl78_store_psw(ctx, new_psw);
+
+    return true;
+}
+
+static bool trans_MOV1_sfrbit_CY(DisasContext *ctx, arg_MOV1_sfrbit_CY *a)
+{
+    TCGv ptr = rl78_gen_sfr(a->sfr);
+    TCGv mem = tcg_temp_new();
+
+    rl78_gen_lb(ctx, mem, ptr);
+    TCGv new_mem = trans_MOV1_op_CY(mem, a->bit);
+    rl78_gen_sb(ctx, new_mem, ptr);
+
+    return true;
 }
 
 static bool trans_BR_addr16(DisasContext *ctx, arg_BR_addr16 *a)

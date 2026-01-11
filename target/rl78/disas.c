@@ -1269,6 +1269,68 @@ static bool trans_ROLWC_BC(DisasContext *ctx, arg_ROLWC_BC *a)
     return true;
 }
 
+static bool trans_MOV1_CY_saddrbit(DisasContext *ctx, arg_MOV1_CY_saddrbit *a)
+{
+    const uint saddr = rl78_gen_saddr(a->saddr);
+    print("MOV1\tCY, %05x.%d", saddr, a->bit);
+    return true;
+}
+
+static bool trans_MOV1_CY_Abit(DisasContext *ctx, arg_MOV1_CY_Abit *a)
+{
+    print("MOV1\tCY, A.%d", a->bit);
+    return true;
+}
+
+static bool trans_MOV1_CY_indHLbit(DisasContext *ctx, arg_MOV1_CY_indHLbit *a)
+{
+    print("MOV1\tCY, [HL].%d", a->bit);
+    return true;  
+}
+
+static bool trans_MOV1_CY_PSWbit(DisasContext *ctx, arg_MOV1_CY_PSWbit *a)
+{
+    print("MOV1\tCY, PSW.%d", a->bit);
+    return true;
+}
+
+static bool trans_MOV1_CY_sfrbit(DisasContext *ctx, arg_MOV1_CY_sfrbit *a)
+{
+    print("MOV1\tCY, 0x%02x.%d", a->sfr, a->bit);
+    return true;
+}
+
+static bool trans_MOV1_saddrbit_CY(DisasContext *ctx, arg_MOV1_saddrbit_CY *a)
+{
+    const uint saddr = rl78_gen_saddr(a->saddr);
+    print("MOV1\t%05x.%d, CY", saddr, a->bit);
+    return true;
+}
+
+static bool trans_MOV1_Abit_CY(DisasContext *ctx, arg_MOV1_Abit_CY *a)
+{
+    print("MOV1\tA.%d, CY", a->bit);
+    return true;
+}
+
+static bool trans_MOV1_indHLbit_CY(DisasContext *ctx, arg_MOV1_indHLbit_CY *a)
+{
+    print("MOV1\t[HL].%d, CY", a->bit);
+    return true;
+}
+
+static bool trans_MOV1_PSWbit_CY(DisasContext *ctx, arg_MOV1_PSWbit_CY *a)
+{
+    print("MOV1\tPSW.%d, CY", a->bit);
+    return true;
+}
+
+static bool trans_MOV1_sfrbit_CY(DisasContext *ctx, arg_MOV1_sfrbit_CY *a)
+{
+    print("MOV1\t0x%02x.%d, CY", a->sfr, a->bit);
+    return true;
+}
+
 static bool trans_BR_addr16(DisasContext *ctx, arg_BR_addr16 *a)
 {
     print("BR\t!0x%04x", rl78_word(a->addr));

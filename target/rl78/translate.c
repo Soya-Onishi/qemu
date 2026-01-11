@@ -2283,7 +2283,7 @@ static bool trans_MOV1_CY_Abit(DisasContext *ctx, arg_MOV1_CY_Abit *a)
 
 static bool trans_MOV1_CY_indHLbit(DisasContext *ctx, arg_MOV1_CY_indHLbit *a)
 {
-    TCGv_i32 base = rl78_load_rp(RL78_GPREG_AX);
+    TCGv_i32 base = rl78_load_rp(RL78_GPREG_HL);
     TCGv_i32 ptr = rl78_indirect_ptr(base, tcg_constant_i32(0));
     TCGv_i32 mem = tcg_temp_new_i32();
     

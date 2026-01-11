@@ -338,6 +338,52 @@ MOV1_indHLbit_CY      0111 0001 1 bit:3 0001
   MOV1_sfrbit_CY      0111 0001 0 bit:3 1001 sfr:8
 }
 
+AND1_CY_saddr         0111 0001 0 bit:3 0101 saddr:8
+AND1_CY_A             0111 0001 1 bit:3 1101
+AND1_CY_indHL         0111 0001 1 bit:3 0101
+{
+  AND1_CY_PSW           0111 0001 0 bit:3 1101 1111 1010
+  AND1_CY_sfr           0111 0001 0 bit:3 1101 sfr:8
+}
+
+OR1_CY_saddr          0111 0001 0 bit:3 0110 saddr:8
+OR1_CY_A              0111 0001 1 bit:3 1110
+OR1_CY_indHL          0111 0001 1 bit:3 0110
+{
+  OR1_CY_PSW            0111 0001 0 bit:3 1110 1111 1010
+  OR1_CY_sfr            0111 0001 0 bit:3 1110 sfr:8
+}
+
+XOR1_CY_saddr         0111 0001 0 bit:3 0111 saddr:8
+XOR1_CY_A             0111 0001 1 bit:3 1111
+XOR1_CY_indHL         0111 0001 1 bit:3 0111
+{
+  XOR1_CY_PSW           0111 0001 0 bit:3 1111 1111 1010
+  XOR1_CY_sfr           0111 0001 0 bit:3 1111 sfr:8
+}
+
+SET1_CY               0111 0001 1 000   0000
+SET1_saddr            0111 0001 0 bit:3 0010 saddr:8
+SET1_A                0111 0001 1 bit:3 1010
+SET1_indHL            0111 0001 1 bit:3 0010
+{
+  SET1_PSW              0111 0001 0 bit:3 1010 1111 1010
+  SET1_sfr              0111 0001 0 bit:3 1010 sfr:8
+}
+SET1_addr             0111 0001 0 bit:3 0000 adrl:8 adrh:8
+
+CLR1_CY               0111 0001 1 000   1000
+CLR1_saddr            0111 0001 0 bit:3 0011 saddr:8
+CLR1_A                0111 0001 1 bit:3 1011
+CLR1_indHL            0111 0001 1 bit:3 0011
+{
+  CLR1_PSW              0111 0001 0 bit:3 1011 1111 1010
+  CLR1_sfr              0111 0001 0 bit:3 1011 sfr:8
+}
+CLR1_addr             0111 0001 0 bit:3 1000 adrl:8 adrh:8
+
+NOT1_CY               0111 0001 1 100   0000
+
 BR_addr16 1110 1101 .... .... .... .... @br_addr16
 
 BNZ 1101 1111 .... .... @br_rel_addr

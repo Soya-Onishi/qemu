@@ -1331,6 +1331,193 @@ static bool trans_MOV1_sfrbit_CY(DisasContext *ctx, arg_MOV1_sfrbit_CY *a)
     return true;
 }
 
+static bool trans_AND1_CY_saddr(DisasContext *ctx, arg_AND1_CY_saddr *a)
+{
+    const uint saddr = rl78_gen_saddr(a->saddr);
+    print("AND1\tCY, %05x.%d", saddr, a->bit);
+    return true;
+}
+
+static bool trans_AND1_CY_A(DisasContext *ctx, arg_AND1_CY_A *a)
+{
+    print("AND1\tCY, A.%d", a->bit);
+    return true;
+}
+
+static bool trans_AND1_CY_indHL(DisasContext *ctx, arg_AND1_CY_indHL *a)
+{
+    print("AND1\tCY, [HL].%d", a->bit);
+    return true;
+}
+
+static bool trans_AND1_CY_PSW(DisasContext *ctx, arg_AND1_CY_PSW *a)
+{
+    print("AND1\tCY, PSW.%d", a->bit);
+    return true;
+}
+
+static bool trans_AND1_CY_sfr(DisasContext *ctx, arg_AND1_CY_sfr *a)
+{
+    print("AND1\tCY, 0x%02x.%d", a->sfr, a->bit);
+    return true;
+}
+
+static bool trans_OR1_CY_saddr(DisasContext *ctx, arg_OR1_CY_saddr *a)
+{
+    const uint saddr = rl78_gen_saddr(a->saddr);
+    print("OR1\tCY, %05x.%d", saddr, a->bit);
+    return true;
+}
+
+static bool trans_OR1_CY_A(DisasContext *ctx, arg_OR1_CY_A *a)
+{
+    print("OR1\tCY, A.%d", a->bit);
+    return true;
+}
+
+static bool trans_OR1_CY_indHL(DisasContext *ctx, arg_OR1_CY_indHL *a)
+{
+    print("OR1\tCY, [HL].%d", a->bit);
+    return true;
+}
+
+static bool trans_OR1_CY_PSW(DisasContext *ctx, arg_OR1_CY_PSW *a)
+{
+    print("OR1\tCY, PSW.%d", a->bit);
+    return true;
+}
+
+static bool trans_OR1_CY_sfr(DisasContext *ctx, arg_OR1_CY_sfr *a)
+{
+    print("OR1\tCY, 0x%02x.%d", a->sfr, a->bit);
+    return true;
+}
+
+static bool trans_XOR1_CY_saddr(DisasContext *ctx, arg_XOR1_CY_saddr *a)
+{
+    const uint saddr = rl78_gen_saddr(a->saddr);
+    print("XOR1\tCY, %05x.%d", saddr, a->bit);
+    return true;
+}
+
+static bool trans_XOR1_CY_A(DisasContext *ctx, arg_XOR1_CY_A *a)
+{
+    print("XOR1\tCY, A.%d", a->bit);
+    return true;
+}
+
+static bool trans_XOR1_CY_indHL(DisasContext *ctx, arg_XOR1_CY_indHL *a)
+{
+    print("XOR1\tCY, [HL].%d", a->bit);
+    return true;
+}
+
+static bool trans_XOR1_CY_PSW(DisasContext *ctx, arg_XOR1_CY_PSW *a)
+{
+    print("XOR1\tCY, PSW.%d", a->bit);
+    return true;
+}
+
+static bool trans_XOR1_CY_sfr(DisasContext *ctx, arg_XOR1_CY_sfr *a)
+{
+    print("XOR1\tCY, 0x%02x.%d", a->sfr, a->bit);
+    return true;
+}
+
+static bool trans_SET1_CY(DisasContext *ctx, arg_SET1_CY *a)
+{
+    print("SET1\tCY");
+    return true;
+}
+
+static bool trans_SET1_saddr(DisasContext *ctx, arg_SET1_saddr *a)
+{
+    const uint saddr = rl78_gen_saddr(a->saddr);
+    print("SET1\t%05x.%d", saddr, a->bit);
+    return true;
+}
+
+static bool trans_SET1_A(DisasContext *ctx, arg_SET1_A *a)
+{
+    print("SET1\tA.%d", a->bit);
+    return true;
+}
+
+static bool trans_SET1_indHL(DisasContext *ctx, arg_SET1_indHL *a)
+{
+    print("SET1\t[HL].%d", a->bit);
+    return true;
+}
+
+static bool trans_SET1_PSW(DisasContext *ctx, arg_SET1_PSW *a)
+{
+    print("SET1\tPSW.%d", a->bit);
+    return true;
+}
+
+static bool trans_SET1_sfr(DisasContext *ctx, arg_SET1_sfr *a)
+{
+    print("SET1\t0x%02x.%d", a->sfr, a->bit);
+    return true;
+}
+
+static bool trans_SET1_addr(DisasContext *ctx, arg_SET1_addr *a)
+{
+    const uint addr = a->adrl | (a->adrh << 8) | 0xF0000;
+    print("SET1\t!0x%04x.%d", addr, a->bit);
+    return true;
+}
+
+static bool trans_CLR1_CY(DisasContext *ctx, arg_CLR1_CY *a)
+{
+    print("CLR1\tCY");
+    return true;
+}
+
+static bool trans_CLR1_saddr(DisasContext *ctx, arg_CLR1_saddr *a)
+{
+    const uint saddr = rl78_gen_saddr(a->saddr);
+    print("CLR1\t%05x.%d", saddr, a->bit);
+    return true;
+}
+
+static bool trans_CLR1_A(DisasContext *ctx, arg_CLR1_A *a)
+{
+    print("CLR1\tA.%d", a->bit);
+    return true;
+}
+
+static bool trans_CLR1_indHL(DisasContext *ctx, arg_CLR1_indHL *a)
+{
+    print("CLR1\t[HL].%d", a->bit);
+    return true;
+}
+
+static bool trans_CLR1_sfr(DisasContext *ctx, arg_CLR1_sfr *a)
+{
+    print("CLR1\t0x%02x.%d", a->sfr, a->bit);
+    return true;
+}
+
+static bool trans_CLR1_PSW(DisasContext *ctx, arg_CLR1_PSW *a)
+{
+    print("CLR1\tPSW.%d", a->bit);
+    return true;
+}
+
+static bool trans_CLR1_addr(DisasContext *ctx, arg_CLR1_addr *a)
+{
+    const uint addr = a->adrl | (a->adrh << 8) | 0xF0000;
+    print("CLR1\t!0x%04x.%d", addr, a->bit);
+    return true;
+}
+
+static bool trans_NOT1_CY(DisasContext *ctx, arg_NOT1_CY *a)
+{
+    print("NOT1\tCY");
+    return true;
+}
+
 static bool trans_BR_addr16(DisasContext *ctx, arg_BR_addr16 *a)
 {
     print("BR\t!0x%04x", rl78_word(a->addr));

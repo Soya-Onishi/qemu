@@ -1179,6 +1179,96 @@ static bool trans_DECW_indHLoffset(DisasContext *ctx, arg_DECW_indHLoffset *a)
     return true;
 }
 
+static bool trans_SAR_A_shamt(DisasContext *ctx, arg_SAR_A_shamt *a)
+{
+    print("SAR\tA, %d", a->shamt);
+    return true;
+}
+
+static bool trans_SHR_A_shamt(DisasContext *ctx, arg_SHR_A_shamt *a)
+{
+    print("SHR\tA, %d", a->shamt);
+    return true;
+}
+
+static bool trans_SHL_A_shamt(DisasContext *ctx, arg_SHL_A_shamt *a)
+{
+    print("SHL\tA, %d", a->shamt);
+    return true;
+}
+
+static bool trans_SHL_B_shamt(DisasContext *ctx, arg_SHL_B_shamt *a)
+{
+    print("SHL\tB, %d", a->shamt);
+    return true;
+}
+
+static bool trans_SHL_C_shamt(DisasContext *ctx, arg_SHL_C_shamt *a)
+{
+    print("SHL\tC, %d", a->shamt);
+    return true;
+}
+
+static bool trans_SARW_AX_shamt(DisasContext *ctx, arg_SARW_AX_shamt *a)
+{
+    print("SARW\tAX, %d", a->shamt);
+    return true;
+}
+
+static bool trans_SHRW_AX_shamt(DisasContext *ctx, arg_SHRW_AX_shamt *a)
+{
+    print("SHR\tAX, %d", a->shamt);
+    return true;
+}
+
+static bool trans_SHLW_AX_shamt(DisasContext *ctx, arg_SHLW_AX_shamt *a)
+{
+    print("SHLW\tAX, %d", a->shamt);
+    return true;
+}
+
+static bool trans_SHLW_BC_shamt(DisasContext *ctx, arg_SHLW_BC_shamt *a)
+{
+    print("SHLW\tBC, %d", a->shamt);
+    return true;
+}
+
+static bool trans_ROR(DisasContext *ctx, arg_ROR *a)
+{
+    print("ROR\tA, 1");
+    return true;
+}
+
+static bool trans_ROL(DisasContext *ctx, arg_ROL *a)
+{
+    print("ROL\tA, 1");
+    return true;
+}
+
+static bool trans_RORC(DisasContext *ctx, arg_RORC *a)
+{
+    print("RORC\tA, 1");
+    return true;
+}
+
+static bool trans_ROLC(DisasContext *ctx, arg_ROLC *a)
+{
+    print("ROLC\tA, 1");
+    return true;
+}
+
+static bool trans_ROLWC_AX(DisasContext *ctx, arg_ROLWC_AX *a)
+{
+    print("ROLWC\tAX, 1");
+    return true;
+}
+
+static bool trans_ROLWC_BC(DisasContext *ctx, arg_ROLWC_BC *a)
+{
+    print("ROLWC\tBC, 1");
+    return true;
+}
+
 static bool trans_BR_addr16(DisasContext *ctx, arg_BR_addr16 *a)
 {
     print("BR\t!0x%04x", rl78_word(a->addr));

@@ -304,6 +304,24 @@ DECW_rp           1011 0 rp:2 1
 DECW_addr         1011 0 01   0 adrl:8 adrh:8
 DECW_indHLoffset  0110 0 00   1 1000 1001 offset:8
 
+SAR_A_shamt       0011 0001 0 shamt:3 1011
+SHR_A_shamt       0011 0001 0 shamt:3 1010
+SHL_A_shamt       0011 0001 0 shamt:3 1001
+SHL_B_shamt       0011 0001 0 shamt:3 1000
+SHL_C_shamt       0011 0001 0 shamt:3 0111
+
+SARW_AX_shamt     0011 0001 shamt:4   1111
+SHRW_AX_shamt     0011 0001 shamt:4   1110
+SHLW_AX_shamt     0011 0001 shamt:4   1101
+SHLW_BC_shamt     0011 0001 shamt:4   1100
+
+ROR               0110 0001 1101 1011
+ROL               0110 0001 1110 1011
+RORC              0110 0001 1111 1011
+ROLC              0110 0001 1101 1100
+ROLWC_AX          0110 0001 1110 1110
+ROLWC_BC          0110 0001 1111 1110
+
 BR_addr16 1110 1101 .... .... .... .... @br_addr16
 
 BNZ 1101 1111 .... .... @br_rel_addr

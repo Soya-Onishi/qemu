@@ -997,6 +997,12 @@ static bool trans_ADDW_AX_indHLoffset(DisasContext *ctx, arg_ADDW_AX_indHLoffset
     return true;
 }
 
+static bool trans_ADDW_SP_i(DisasContext *ctx, arg_ADDW_SP_i *a)
+{
+    print("ADDW\tSP, #%d", a->imm);
+    return true;
+}
+
 static bool trans_SUBW_AX_i(DisasContext *ctx, arg_SUBW_AX_i *a)
 {
     const uint32_t imm = a->datal | (a->datah << 8);
@@ -1024,6 +1030,12 @@ static bool trans_SUBW_AX_addr(DisasContext *ctx, arg_SUBW_AX_addr *a)
 static bool trans_SUBW_AX_indHLoffset(DisasContext *ctx, arg_SUBW_AX_indHLoffset *a)
 {
     print("SUBW\tAX, [HL+%d]", a->offset);
+    return true;
+}
+
+static bool trans_SUBW_SP_i(DisasContext *ctx, arg_SUBW_SP_i *a)
+{
+    print("SUBW\tSP, #%d", a->imm);
     return true;
 }
 
@@ -1061,7 +1073,7 @@ static bool trans_CMPW_AX_addr(DisasContext *ctx, arg_CMPW_AX_addr *a)
 
 static bool trans_CMPW_AX_indHLoffset(DisasContext *ctx, arg_CMPW_AX_indHLoffset *a)
 {
-    print("SUBW\tAX, [HL+%d]", a->offset);
+    print("CMPW\tAX, [HL+%d]", a->offset);
     return true;
 }
 

@@ -1658,6 +1658,14 @@ static bool trans_ADDW_AX_indHLoffset(DisasContext *ctx, arg_ADDW_AX_indHLoffset
     return rl78_gen_addw(op);
 }
 
+static bool trans_ADDW_SP_i(DisasContext *ctx, arg_ADDW_SP_i *a)
+{
+    tcg_gen_add_i32(cpu_sp, cpu_sp, tcg_constant_tl(a->imm));
+    tcg_gen_andi_i32(cpu_sp, cpu_sp, 0xFFFE);
+
+    return true;
+}
+
 static bool rl78_gen_subw(TCGv_i32 op)
 {
     TCGv_i32 ax = rl78_load_rp(RL78_GPREG_AX);
@@ -1703,6 +1711,14 @@ static bool trans_SUBW_AX_indHLoffset(DisasContext *ctx, arg_SUBW_AX_indHLoffset
     rl78_gen_lw(ctx, op, ptr);
     
     return rl78_gen_subw(op);
+}
+
+static bool trans_SUBW_SP_i(DisasContext *ctx, arg_SUBW_SP_i *a)
+{
+    tcg_gen_sub_i32(cpu_sp, cpu_sp, tcg_constant_tl(a->imm));
+    tcg_gen_andi_i32(cpu_sp, cpu_sp, 0xFFFE);
+
+    return true;
 }
 
 static bool rl78_gen_cmpw(TCGv_i32 op)

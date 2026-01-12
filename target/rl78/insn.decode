@@ -267,12 +267,14 @@ ADDW_AX_rp          0000 0 rp:2 1
 # ADDW_AX_saddr     0000 0 11   0 saddr:8
 ADDW_AX_addr        0000 0 01   0 adrl:8 adrh:8
 ADDW_AX_indHLoffset 0110 0 00   1 0000 1001 offset:8
+ADDW_SP_i           0001 0 00   0 imm:8
 
 SUBW_AX_i           0010 0 10   0 datal:8 datah:8
 SUBW_AX_rp          0010 0 rp:2 1
 # SUBW_AX_saddr     0010 0 11   0 saddr:8
 SUBW_AX_addr        0010 0 01   0 adrl:8 adrh:8
 SUBW_AX_indHLoffset 0110 0 00   1 0010 1001 offset:8
+SUBW_SP_i           0010 0 00   0 imm:8
 
 CMPW_AX_i           0100 0100 datal:8 datah:8
 CMPW_AX_BC          0100 0011

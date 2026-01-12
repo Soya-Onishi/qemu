@@ -388,10 +388,12 @@ CALL_rp               0110 0001 11 rp:2 1010
 CALL_addr20rel        1111 1110 adrl:8 adrh:8
 CALL_addr16           1111 1101 adrl:8 adrh:8
 CALL_addr20abs        1111 1100 adrl:8 adrh:8 adrs:8
-
 CALLT                 0110 0001 1 idxl:3 01 idxh:2
+BRK                   0110 0001 1100 1100 
 
 RET                   1101 0111
+RETI                  0110 0001 1111 1100 
+RETB                  0110 0001 1110 1100
 
 BR_addr16 1110 1101 .... .... .... .... @br_addr16
 

@@ -1558,9 +1558,27 @@ static bool trans_CALLT(DisasContext *ctx, arg_CALLT *a)
     return true;
 }
 
+static bool trans_BRK(DisasContext *ctx, arg_BRK *a)
+{
+    print("BRK");
+    return true;
+}
+
 static bool trans_RET(DisasContext *ctx, arg_RET *a)
 {
     print("RET");
+    return true;
+}
+
+static bool trans_RETI(DisasContext *ctx, arg_RETI *a)
+{
+    print("RETI");
+    return true;
+}
+
+static bool trans_RETB(DisasContext *ctx, arg_RETB *a)
+{
+    print("RETB");
     return true;
 }
 

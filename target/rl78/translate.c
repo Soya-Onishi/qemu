@@ -258,8 +258,6 @@ static void rl78_store_psw(DisasContext *ctx, TCGv_i32 src)
     tcg_gen_setcondi_i32(TCG_COND_NE, cpu_psw_ac, psw_ac, 0);
     tcg_gen_setcondi_i32(TCG_COND_NE, cpu_psw_z,  psw_z,  0);
     tcg_gen_setcondi_i32(TCG_COND_NE, cpu_psw_ie, psw_ie, 0);
-
-    gen_exit_tb(ctx, ctx->base.pc_next);
 }
 
 static bool MOV_A_rs(RL78GPRegister rs) 
@@ -284,6 +282,8 @@ static bool trans_MOV_PSW_i(DisasContext *ctx, arg_MOV_PSW_i *a)
 {
     TCGv_i32 src = tcg_constant_i32(a->imm);
     rl78_store_psw(ctx, src);
+    gen_exit_tb(ctx, ctx->base.pc_next);
+
     return true;
 }
 
@@ -2367,6 +2367,7 @@ static bool trans_MOV1_PSWbit_CY(DisasContext *ctx, arg_MOV1_PSWbit_CY *a)
     TCGv psw = rl78_load_psw();
     TCGv new_psw = trans_MOV1_op_CY(psw, a->bit);
     rl78_store_psw(ctx, new_psw);
+    gen_exit_tb(ctx, ctx->base.pc_next);
 
     return true;
 }
@@ -2583,6 +2584,7 @@ static bool trans_SET1_PSW(DisasContext *ctx, arg_SET1_PSW *a)
     TCGv psw = rl78_load_psw(); 
     rl78_gen_set(psw, a->bit);
     rl78_store_psw(ctx, psw);
+    gen_exit_tb(ctx, ctx->base.pc_next);
 
     return true;
 }
@@ -2670,6 +2672,7 @@ static bool trans_CLR1_PSW(DisasContext *ctx, arg_CLR1_PSW *a)
     TCGv psw = rl78_load_psw(); 
     rl78_gen_clr(psw, a->bit);
     rl78_store_psw(ctx, psw);
+    gen_exit_tb(ctx, ctx->base.pc_next);
 
     return true;
 }
@@ -2776,6 +2779,61 @@ static bool trans_CALLT(DisasContext *ctx, arg_CALLT *a)
     return true;
 }
 
+static bool trans_BRK(DisasContext *ctx, arg_BRK *a)
+{
+    TCGv psw = rl78_load_psw(); 
+    TCGv psw_loc = tcg_temp_new();
+
+    tcg_gen_subi_tl(psw_loc, cpu_sp, 1);
+    TCGv psw_loc_ptr = rl78_gen_addr20(psw_loc, tcg_constant_tl(0x0F));
+    rl78_gen_sb(ctx, psw, psw_loc_ptr);
+
+    TCGv table_pc = tcg_temp_new();
+    rl78_gen_lw(ctx, table_pc, tcg_constant_tl(0x0007E));
+    TCGv target_pc = rl78_gen_addr20(table_pc, tcg_constant_tl(0x00));
+
+    rl78_gen_prepare_call(ctx);
+    tcg_gen_movi_tl(cpu_psw_ie, 0);
+    tcg_gen_mov_tl(cpu_pc, target_pc);
+
+    ctx->base.is_jmp = DISAS_LOOKUP;
+
+    return true;
+}
+
+static TCGv rl78_gen_stack_pop(DisasContext* ctx)
+{
+    TCGv ret_pc;
+    TCGv pc_byte;
+    TCGv pc_loc;
+    TCGv psw;
+
+    pc_loc = rl78_gen_addr20(cpu_sp, tcg_constant_tl(0x0F));
+
+    psw = tcg_temp_new();
+    ret_pc = tcg_temp_new();
+    pc_byte = tcg_temp_new();
+    rl78_gen_lb(ctx, ret_pc, pc_loc);
+
+    tcg_gen_addi_tl(pc_loc, pc_loc, 1);
+    rl78_gen_lb(ctx, pc_byte, pc_loc);
+    tcg_gen_deposit_tl(ret_pc, ret_pc, pc_byte, 8, 8);
+
+    tcg_gen_addi_tl(pc_loc, pc_loc, 1);
+    rl78_gen_lb(ctx, pc_byte, pc_loc);
+    tcg_gen_deposit_tl(ret_pc, ret_pc, pc_byte, 16, 4);
+
+    tcg_gen_addi_tl(cpu_sp, cpu_sp, 4);
+    tcg_gen_mov_tl(cpu_pc, ret_pc);
+
+    tcg_gen_addi_tl(pc_loc, pc_loc, 1);
+    rl78_gen_lb(ctx, psw, pc_loc);
+
+    ctx->base.is_jmp = DISAS_LOOKUP;
+
+    return psw;
+}
+
 static bool trans_RET(DisasContext *ctx, arg_RET *a)
 {
     TCGv ret_pc;
@@ -2804,6 +2862,21 @@ static bool trans_RET(DisasContext *ctx, arg_RET *a)
     return true;
 }
 
+static bool trans_RETI(DisasContext *ctx, arg_RETI *a)
+{
+    TCGv psw = rl78_gen_stack_pop(ctx);
+    rl78_store_psw(ctx, psw);
+
+    return true;
+}
+
+static bool trans_RETB(DisasContext *ctx, arg_RETB *a)
+{
+    TCGv psw = rl78_gen_stack_pop(ctx);
+    rl78_store_psw(ctx, psw);
+
+    return true;
+}
 
 static bool trans_BR_addr16(DisasContext *ctx, arg_BR_addr16 *a)
 {

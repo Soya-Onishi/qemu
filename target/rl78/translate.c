@@ -2758,6 +2758,24 @@ static bool trans_CALL_addr20abs(DisasContext *ctx, arg_CALL_addr20abs *a)
     return true;
 }
 
+static bool trans_CALLT(DisasContext *ctx, arg_CALLT *a)
+{
+    const uint idx = a->idxl | (a->idxh << 3);
+    const uint addr = 0x0080 | (idx << 1);
+    TCGv ptr = tcg_constant_tl(addr);
+    TCGv table_pc = tcg_temp_new();
+
+    rl78_gen_lw(ctx, table_pc, ptr);
+    TCGv target_pc = rl78_gen_addr20(table_pc, tcg_constant_tl(0x00));
+
+    rl78_gen_prepare_call(ctx);
+    tcg_gen_mov_tl(cpu_pc, target_pc);
+
+    ctx->base.is_jmp = DISAS_LOOKUP;
+
+    return true;
+}
+
 static bool trans_RET(DisasContext *ctx, arg_RET *a)
 {
     TCGv ret_pc;

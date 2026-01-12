@@ -389,6 +389,8 @@ CALL_addr20rel        1111 1110 adrl:8 adrh:8
 CALL_addr16           1111 1101 adrl:8 adrh:8
 CALL_addr20abs        1111 1100 adrl:8 adrh:8 adrs:8
 
+CALLT                 0110 0001 1 idxl:3 01 idxh:2
+
 RET                   1101 0111
 
 BR_addr16 1110 1101 .... .... .... .... @br_addr16

@@ -1549,6 +1549,15 @@ static bool trans_CALL_addr20abs(DisasContext *ctx, arg_CALL_addr20abs *a)
     return true;
 }
 
+static bool trans_CALLT(DisasContext *ctx, arg_CALLT *a)
+{
+    const uint idx = a->idxl | (a->idxh << 3);
+    const uint addr = 0x80 | (idx << 1);
+
+    print("CALLT\t[0x%04x]", addr);
+    return true;
+}
+
 static bool trans_RET(DisasContext *ctx, arg_RET *a)
 {
     print("RET");

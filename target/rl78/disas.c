@@ -1620,15 +1620,80 @@ static bool trans_POP_PSW(DisasContext *ctx, arg_POP_PSW *a)
     return true;
 }
 
+static bool trans_BR_AX(DisasContext *ctx, arg_BR_AX *a)
+{
+    print("BR\tAX");
+    return true;
+}
+
+static bool trans_BR_rel8(DisasContext *ctx, arg_BR_rel8 *a)
+{
+    const uint pc = ctx->pc + (int8_t)a->adr;
+    print("BR\t$%05x", pc);
+    return true;
+}
+
+static bool trans_BR_rel16(DisasContext *ctx, arg_BR_rel16 *a)
+{
+    const int16_t rel = a->adrl | (a->adrh << 8);
+    const uint pc = ctx->pc + rel;
+
+    print("BR\t$!%05x", pc);
+    return true;
+}
+
 static bool trans_BR_addr16(DisasContext *ctx, arg_BR_addr16 *a)
 {
     print("BR\t!0x%04x", rl78_word(a->addr));
     return true;
 }
 
+static bool trans_BR_addr20(DisasContext *ctx, arg_BR_addr20 *a)
+{
+    const uint pc = a->adrl | (a->adrh << 8) | (a->adrs << 16);
+    print("BR\t!!%05x", pc);
+    return true;
+}
+
+static bool trans_BC(DisasContext *ctx, arg_BC *a)
+{
+    const uint pc = ctx->pc + (int8_t)a->addr;
+    print("BC\t$%05x", pc);
+    return true;
+}
+
+static bool trans_BNC(DisasContext *ctx, arg_BNC *a)
+{
+    const uint pc = ctx->pc + (int8_t)a->addr;
+    print("BNC\t$%05x", pc);
+    return true;
+}
+
+static bool trans_BZ(DisasContext *ctx, arg_BZ *a)
+{
+    const uint pc = ctx->pc + (int8_t)a->addr;
+    print("BZ\t$%05x", pc);
+    return true;
+}
+
 static bool trans_BNZ(DisasContext *ctx, arg_BNZ *a)
 {
-    print("BNZ\t$%d", (int8_t)a->addr);
+    const uint pc = ctx->pc + (int8_t)a->addr;
+    print("BNZt$%05x", pc);
+    return true;
+}
+
+static bool trans_BH(DisasContext *ctx, arg_BH *a)
+{
+    const uint pc = ctx->pc + (int8_t)a->addr;
+    print("BH\t$%05x", pc);
+    return true;
+}
+
+static bool trans_BNH(DisasContext *ctx, arg_BNH *a)
+{
+    const uint pc = ctx->pc + (int8_t)a->addr;
+    print("BNH\t$%05x", pc);
     return true;
 }
 

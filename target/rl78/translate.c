@@ -2953,6 +2953,33 @@ static bool trans_POP_PSW(DisasContext *ctx, arg_POP_PSW *a)
 
 }
 
+static bool trans_BR_AX(DisasContext *ctx, arg_BR_AX *a)
+{
+    TCGv target_pc = rl78_load_rp(RL78_GPREG_AX);
+
+    tcg_gen_deposit_tl(target_pc, target_pc, cpu_cs, 16, 4);
+    tcg_gen_mov_tl(cpu_pc, target_pc);
+    ctx->base.is_jmp = DISAS_LOOKUP;
+
+    return true;
+}
+
+static bool trans_BR_rel8(DisasContext *ctx, arg_BR_rel8 *a)
+{
+    const vaddr target_pc = ctx->base.pc_next + (int8_t)(a->adr);
+    gen_goto_tb(ctx, TB_EXIT_JUMP, target_pc);
+    return true;
+}
+
+static bool trans_BR_rel16(DisasContext *ctx, arg_BR_rel16 *a)
+{
+    const int16_t rel = (int16_t)(a->adrl | (a->adrh << 8));
+    const vaddr target_pc = ctx->base.pc_next + rel;
+
+    gen_goto_tb(ctx, TB_EXIT_JUMP, target_pc);
+    return true;
+}
+
 static bool trans_BR_addr16(DisasContext *ctx, arg_BR_addr16 *a)
 {
     const uint32_t addr = rl78_word(a->addr);
@@ -2960,16 +2987,58 @@ static bool trans_BR_addr16(DisasContext *ctx, arg_BR_addr16 *a)
     return true;
 }
 
-static bool trans_BNZ(DisasContext *ctx, arg_BNZ *a)
-{   
-    const vaddr br_pc = ctx->base.pc_next + (int8_t)a->addr;
-    TCGLabel *target = gen_new_label();
-
-    tcg_gen_brcondi_i32(TCG_COND_NE, cpu_psw_z, 0, target);
-    gen_goto_tb(ctx, TB_EXIT_JUMP, br_pc);
-    gen_set_label(target);
-    
+static bool trans_BR_addr20(DisasContext *ctx, arg_BR_addr20 *a)
+{
+    const vaddr target_pc = a->adrl | (a->adrh << 8) | (a->adrs << 16);
+    gen_goto_tb(ctx, TB_EXIT_JUMP, target_pc);
     return true;
+}
+
+static bool rl78_gen_branch(DisasContext *ctx, int8_t rel, TCGv actual, uint8_t expect)
+{
+    TCGLabel* nobranch = gen_new_label();
+
+    tcg_gen_brcondi_tl(TCG_COND_NE, actual, expect, nobranch);
+    gen_goto_tb(ctx, TB_EXIT_JUMP, ctx->base.pc_next + rel);
+    gen_set_label(nobranch);
+
+    ctx->base.is_jmp = DISAS_NORETURN;
+
+    return true;
+}
+
+static bool trans_BC(DisasContext *ctx, arg_BC *a)
+{
+    return rl78_gen_branch(ctx, a->addr, cpu_psw_cy, 1);
+}
+
+static bool trans_BNC(DisasContext *ctx, arg_BNC *a)
+{
+    return rl78_gen_branch(ctx, a->addr, cpu_psw_cy, 0);
+}
+
+static bool trans_BZ(DisasContext *ctx, arg_BZ *a)
+{
+    return rl78_gen_branch(ctx, a->addr, cpu_psw_z, 1);
+}
+
+static bool trans_BNZ(DisasContext *ctx, arg_BNZ *a)
+{
+    return rl78_gen_branch(ctx, a->addr, cpu_psw_z, 0);
+}
+
+static bool trans_BH(DisasContext *ctx, arg_BH *a)
+{
+    TCGv actual = tcg_temp_new();
+    tcg_gen_or_i32(actual, cpu_psw_cy, cpu_psw_z);
+    return rl78_gen_branch(ctx, a->addr, actual, 1);
+}
+
+static bool trans_BNH(DisasContext *ctx, arg_BNH *a)
+{
+    TCGv actual = tcg_temp_new();
+    tcg_gen_or_i32(actual, cpu_psw_cy, cpu_psw_z);
+    return rl78_gen_branch(ctx, a->addr, actual, 0);
 }
 
 static bool trans_SKZ(DisasContext *ctx, arg_SKZ *a)

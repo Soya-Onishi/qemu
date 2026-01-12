@@ -1518,6 +1518,43 @@ static bool trans_NOT1_CY(DisasContext *ctx, arg_NOT1_CY *a)
     return true;
 }
 
+static bool trans_CALL_rp(DisasContext *ctx, arg_CALL_rp *a)
+{
+    const char* rpnames[] = {
+        "AX", "BC", "DE", "HL"
+    };
+
+    print("CALL\t%s", rpnames[a->rp]);
+    return true;
+}
+
+static bool trans_CALL_addr20rel(DisasContext *ctx, arg_CALL_addr20rel *a)
+{
+    const int16_t rel = (int16_t)(a->adrl | (a->adrh << 8));
+    print("CALL\t$!%d", rel);
+    return true;
+}
+
+static bool trans_CALL_addr16(DisasContext *ctx, arg_CALL_addr16 *a)
+{
+    const uint addr = a->adrl | (a->adrh << 8);
+    print("CALL\t!%04x", addr);
+    return true;
+}
+
+static bool trans_CALL_addr20abs(DisasContext *ctx, arg_CALL_addr20abs *a)
+{
+    const uint addr = a->adrl | (a->adrh << 8) | (a->adrs << 16);
+    print("CALL\t!%05x", addr);
+    return true;
+}
+
+static bool trans_RET(DisasContext *ctx, arg_RET *a)
+{
+    print("RET");
+    return true;
+}
+
 static bool trans_BR_addr16(DisasContext *ctx, arg_BR_addr16 *a)
 {
     print("BR\t!0x%04x", rl78_word(a->addr));

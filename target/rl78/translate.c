@@ -89,6 +89,7 @@ void rl78_cpu_dump_state(CPUState *cs, FILE *f, int flags)
     const uint8_t psw = rl78_cpu_pack_psw(env->psw);
 
     qemu_fprintf(f, "pc=0x%06x\n", env->pc);
+    qemu_fprintf(f, "sp=0xf%04x\n", env->sp);
     qemu_fprintf(f, "psw=0x%02x\n", psw);
     qemu_fprintf(f, "es=0x%02x\n", env->es);
     qemu_fprintf(f, "cs=0x%02x\n", env->cs);
@@ -125,6 +126,16 @@ static TCGv rl78_gen_addr(const uint32_t adrl, const uint32_t adrh, TCGv_i32 es)
     tcg_gen_shli_i32(addr, es, 16);
     tcg_gen_ori_i32(addr, addr, addr16);
     return addr;
+}
+
+static TCGv rl78_gen_addr20(TCGv addr16, TCGv es)
+{
+    TCGv addr20 = tcg_temp_new_i32();
+
+    tcg_gen_mov_tl(addr20, addr16);
+    tcg_gen_deposit_tl(addr20, addr20, es, 16, 4);
+    
+    return addr20;
 }
 
 /* generic load wrapper */
@@ -2681,6 +2692,101 @@ static bool trans_NOT1_CY(DisasContext *ctx, arg_NOT1_CY *a)
     return true;
 }
 
+static bool rl78_gen_prepare_call(DisasContext *ctx)
+{
+    const uint ret_pc = ctx->base.pc_next;
+    const uint ret_pcs = (ret_pc >> 16) & 0x0F;
+    const uint ret_pch = (ret_pc >>  8) & 0xFF;
+    const uint ret_pcl = (ret_pc >>  0) & 0xFF;
+
+    TCGv pc_loc = rl78_gen_addr20(cpu_sp, tcg_constant_tl(0x0F));
+
+    tcg_gen_subi_tl(cpu_sp, cpu_sp, 4);
+
+    tcg_gen_subi_tl(pc_loc, pc_loc, 2 );
+    rl78_gen_sb(ctx, tcg_constant_tl(ret_pcs), pc_loc);
+    tcg_gen_subi_tl(pc_loc, pc_loc, 1);
+    rl78_gen_sb(ctx, tcg_constant_tl(ret_pch), pc_loc);
+    tcg_gen_subi_tl(pc_loc, pc_loc, 1);
+    rl78_gen_sb(ctx, tcg_constant_tl(ret_pcl), pc_loc);
+
+    return true;
+}
+
+static bool trans_CALL_rp(DisasContext *ctx, arg_CALL_rp *a)
+{
+    TCGv target_pc = rl78_load_rp(a->rp*2);
+
+    tcg_gen_deposit_tl(target_pc, target_pc, cpu_cs, 16, 4);
+
+    rl78_gen_prepare_call(ctx);
+    tcg_gen_mov_i32(cpu_pc, target_pc);
+
+    ctx->base.is_jmp = DISAS_LOOKUP;
+
+    return true;
+}
+
+static bool trans_CALL_addr20rel(DisasContext *ctx, arg_CALL_addr20rel *a)
+{
+    const int16_t rel = (int16_t)(a->adrl | (a->adrh << 8)); 
+    const uint target_pc = ctx->base.pc_next + rel;
+
+    rl78_gen_prepare_call(ctx);
+    gen_exit_tb(ctx, target_pc);
+
+    return true;
+}
+
+static bool trans_CALL_addr16(DisasContext *ctx, arg_CALL_addr16 *a)
+{
+    const uint target_pc = a->adrl | (a->adrh << 8);
+
+    rl78_gen_prepare_call(ctx);
+    gen_exit_tb(ctx, target_pc);
+
+    return true;
+}
+
+static bool trans_CALL_addr20abs(DisasContext *ctx, arg_CALL_addr20abs *a)
+{
+    const uint target_pc = (a->adrl | (a->adrh << 8) | (a->adrs << 16)) & 0x0FFFFF;
+
+    rl78_gen_prepare_call(ctx);
+    gen_exit_tb(ctx, target_pc);
+
+    return true;
+}
+
+static bool trans_RET(DisasContext *ctx, arg_RET *a)
+{
+    TCGv ret_pc;
+    TCGv pc_byte;
+    TCGv pc_loc;
+
+    pc_loc = rl78_gen_addr20(cpu_sp, tcg_constant_tl(0x0F));
+
+    ret_pc = tcg_temp_new();
+    pc_byte = tcg_temp_new();
+    rl78_gen_lb(ctx, ret_pc, pc_loc);
+
+    tcg_gen_addi_tl(pc_loc, pc_loc, 1);
+    rl78_gen_lb(ctx, pc_byte, pc_loc);
+    tcg_gen_deposit_tl(ret_pc, ret_pc, pc_byte, 8, 8);
+
+    tcg_gen_addi_tl(pc_loc, pc_loc, 1);
+    rl78_gen_lb(ctx, pc_byte, pc_loc);
+    tcg_gen_deposit_tl(ret_pc, ret_pc, pc_byte, 16, 4);
+
+    tcg_gen_addi_tl(cpu_sp, cpu_sp, 4);
+    tcg_gen_mov_tl(cpu_pc, ret_pc);
+
+    ctx->base.is_jmp = DISAS_LOOKUP;
+    
+    return true;
+}
+
+
 static bool trans_BR_addr16(DisasContext *ctx, arg_BR_addr16 *a)
 {
     const uint32_t addr = rl78_word(a->addr);
@@ -2776,7 +2882,7 @@ static void rl78_tr_tb_stop(DisasContextBase *dcbase, CPUState *cs)
         break;
     case DISAS_LOOKUP:
         tcg_gen_lookup_and_goto_ptr(); 
-        tcg_gen_exit_tb(dcbase->tb, TB_EXIT_NOJUMP);
+        tcg_gen_exit_tb(NULL, TB_EXIT_NOJUMP);
         break;
     case DISAS_TOO_MANY:
         gen_goto_tb(ctx, TB_EXIT_NOJUMP, ctx->base.pc_next);

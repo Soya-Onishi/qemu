@@ -2878,6 +2878,65 @@ static bool trans_RETB(DisasContext *ctx, arg_RETB *a)
     return true;
 }
 
+static bool trans_PUSH_rp(DisasContext *ctx, arg_PUSH_rp *a)
+{
+    TCGv rp = rl78_load_rp(a->rp*2);
+    TCGv sp = tcg_temp_new();
+
+    tcg_gen_subi_i32(sp, cpu_sp, 2);
+    TCGv ptr = rl78_gen_addr20(sp, tcg_constant_tl(0x0F));
+
+    rl78_gen_sw(ctx, rp, ptr);      
+    tcg_gen_mov_tl(cpu_sp, sp);
+
+    return true;
+}
+
+static bool trans_PUSH_PSW(DisasContext *ctx, arg_PUSH_PSW *a)
+{
+    TCGv psw = rl78_load_psw();
+    TCGv sp = tcg_temp_new();
+
+    tcg_gen_subi_i32(sp, cpu_sp, 2);
+    TCGv ptr = rl78_gen_addr20(sp, tcg_constant_tl(0x0F));
+
+    // 2バイト目にPSWの値を持ってくるため、シフト。
+    tcg_gen_shli_tl(psw, psw, 8);
+    rl78_gen_sw(ctx, psw, ptr);
+    tcg_gen_mov_tl(cpu_sp, sp);
+
+    return true;
+}
+
+static bool trans_POP_rp(DisasContext *ctx, arg_POP_rp *a)
+{
+    RL78GPRegister loc = a->rp*2;
+    TCGv rp = tcg_temp_new();
+    TCGv ptr = rl78_gen_addr20(cpu_sp, tcg_constant_tl(0x0F));
+
+    rl78_gen_lw(ctx, rp, ptr);
+
+    rl78_store_rp(loc, rp);
+    tcg_gen_addi_i32(cpu_sp, cpu_sp, 2);
+
+    return true;
+}
+
+static bool trans_POP_PSW(DisasContext *ctx, arg_POP_PSW *a)
+{
+    TCGv psw = tcg_temp_new();
+    TCGv ptr = rl78_gen_addr20(cpu_sp, tcg_constant_tl(0x0F));
+
+    rl78_gen_lw(ctx, psw, ptr);
+    tcg_gen_extract_tl(psw, psw, 8, 8);
+
+    rl78_store_psw(ctx, psw);
+    tcg_gen_addi_i32(cpu_sp, cpu_sp, 2);
+
+    return true;
+
+}
+
 static bool trans_BR_addr16(DisasContext *ctx, arg_BR_addr16 *a)
 {
     const uint32_t addr = rl78_word(a->addr);

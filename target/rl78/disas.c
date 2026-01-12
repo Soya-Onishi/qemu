@@ -1582,6 +1582,32 @@ static bool trans_RETB(DisasContext *ctx, arg_RETB *a)
     return true;
 }
 
+static bool trans_PUSH_rp(DisasContext *ctx, arg_PUSH_rp *a)
+{
+    const char* rpnames[] = { "AX", "BC", "DE", "HL" };
+    print("PUSH\t%s", rpnames[a->rp]);
+    return true;
+}
+
+static bool trans_PUSH_PSW(DisasContext *ctx, arg_PUSH_PSW *a)
+{
+    print("PUSH\tPSW");
+    return true;
+}
+
+static bool trans_POP_rp(DisasContext *ctx, arg_POP_rp *a)
+{
+    const char* rpnames[] = { "AX", "BC", "DE", "HL" };
+    print("POP\t%s", rpnames[a->rp]);
+    return true;
+}
+
+static bool trans_POP_PSW(DisasContext *ctx, arg_POP_PSW *a)
+{
+    print("POP\tPSW");
+    return true;
+}
+
 static bool trans_BR_addr16(DisasContext *ctx, arg_BR_addr16 *a)
 {
     print("BR\t!0x%04x", rl78_word(a->addr));

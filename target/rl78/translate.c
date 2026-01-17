@@ -3314,10 +3314,29 @@ static bool trans_SKNH(DisasContext *ctx, arg_SKNH *a)
     return true;
 }
 
+static bool trans_SEL(DisasContext *ctx, arg_SEL *a)
+{
+    tcg_gen_movi_i32(cpu_psw_rbs, a->rb);
+    return true;
+}
+
 static bool trans_NOP(DisasContext *ctx, arg_NOP *a)
 {
     return true;
 }
+
+static bool trans_HALT(DisasContext *ctx, arg_HALT *a)
+{
+    // TODO: implement
+    return true;
+}
+
+static bool trans_STOP(DisasContext *ctx, arg_STOP *a)
+{
+    // TODO: implement
+    return true;
+}
+
 
 static void rl78_tr_init_disas_context(DisasContextBase *dcbase, CPUState *cs)
 {

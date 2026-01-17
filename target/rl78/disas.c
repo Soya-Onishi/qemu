@@ -1849,9 +1849,27 @@ static bool trans_SKNH(DisasContext *ctx, arg_SKNH *a)
     return true;
 }
 
+static bool trans_SEL(DisasContext *ctx, arg_SEL *a)
+{
+    print("SEL RB%d", a->rb);
+    return true;
+}
+
 static bool trans_NOP(DisasContext *ctx, arg_NOP *a)
 {
     print("NOP");
+    return true;
+}
+
+static bool trans_HALT(DisasContext *ctx, arg_HALT *a)
+{
+    print("HALT");
+    return true;
+}
+
+static bool trans_STOP(DisasContext *ctx, arg_STOP *a)
+{
+    print("STOP");
     return true;
 }
 

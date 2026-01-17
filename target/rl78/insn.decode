@@ -415,6 +415,35 @@ BNZ 1101 1111 .... .... @br_rel_addr
 BH  0110 0001 1100 0011 addr:8
 BNH 0110 0001 1101 0011 addr:8
 
-SKZ 0110 0001 1110 1000
+BT_saddr    0011 0001 0 bit:3 0010 saddr:8 addr:8
+BT_A        0011 0001 0 bit:3 0011 addr:8
+BT_indHL    0011 0001 1 bit:3 0011 addr:8
+{
+  BT_PSW    0011 0001 1 bit:3 0010 1111 1010 addr:8
+  BT_sfr    0011 0001 1 bit:3 0010 sfr:8     addr:8
+}
+
+BF_saddr    0011 0001 0 bit:3 0100 saddr:8 addr:8
+BF_A        0011 0001 0 bit:3 0101 addr:8
+BF_indHL    0011 0001 1 bit:3 0101 addr:8
+{
+  BF_PSW    0011 0001 1 bit:3 0100 1111 1010 addr:8
+  BF_sfr    0011 0001 1 bit:3 0100 sfr:8     addr:8
+}
+
+BTCLR_saddr 0011 0001 0 bit:3 0000 saddr:8 addr:8
+BTCLR_A     0011 0001 0 bit:3 0001 addr:8
+BTCLR_indHL 0011 0001 1 bit:3 0001 addr:8
+{
+  BTCLR_PSW 0011 0001 1 bit:3 0000 1111 1010 addr:8
+  BTCLR_sfr 0011 0001 1 bit:3 0000 sfr:8     addr:8
+}
+
+SKC   0110 0001 1100 1000
+SKNC  0110 0001 1101 1000
+SKZ   0110 0001 1110 1000
+SKNZ  0110 0001 1111 1000
+SKH   0110 0001 1110 0011
+SKNH  0110 0001 1111 0011
 
 NOP 0000 0000

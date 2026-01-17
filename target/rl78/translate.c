@@ -359,9 +359,8 @@ static bool trans_MOV_H_A(DisasContext *ctx, arg_MOV_H_A *a)
 
 static bool trans_MOV_saddr_i(DisasContext *ctx, arg_MOV_saddr_i *a)
 {
-    const uint32_t offset = a->saddr;
-    TCGv_i32 imm = tcg_constant_i32(a->imm);
-    TCGv ptr = tcg_constant_tl(0xFFE20 + offset);
+    TCGv imm = tcg_constant_tl(a->imm);
+    TCGv ptr = rl78_gen_saddr(tcg_constant_tl(a->saddr));
 
     rl78_gen_sb(ctx, imm, ptr);
 
@@ -3041,9 +3040,274 @@ static bool trans_BNH(DisasContext *ctx, arg_BNH *a)
     return rl78_gen_branch(ctx, a->addr, actual, 0);
 }
 
+static bool trans_BT_saddr(DisasContext *ctx, arg_BT_saddr *a)
+{
+    TCGv saddr = rl78_gen_saddr(tcg_constant_tl(a->saddr));
+    TCGv actual = tcg_temp_new();
+
+    rl78_gen_lb(ctx, actual, saddr);
+    tcg_gen_extract_tl(actual, actual, a->bit, 1);
+    return rl78_gen_branch(ctx, a->addr, actual, 1);
+}
+
+static bool trans_BT_A(DisasContext *ctx, arg_BT_A *a)
+{
+    TCGv actual = tcg_temp_new();
+
+    tcg_gen_extract_tl(actual, cpu_regs[RL78_GPREG_A], a->bit, 1);
+    return rl78_gen_branch(ctx, a->addr, actual, 1);
+}
+
+static bool trans_BT_indHL(DisasContext *ctx, arg_BT_indHL *a)
+{
+    TCGv base = rl78_load_rp(RL78_GPREG_HL);
+    TCGv ptr = rl78_indirect_ptr(base, tcg_constant_tl(0));
+    TCGv actual = tcg_temp_new(); 
+
+    rl78_gen_lb(ctx, actual, ptr);
+    tcg_gen_extract_tl(actual, actual, a->bit, 1);
+    return rl78_gen_branch(ctx, a->addr, actual, 1); 
+}
+
+static bool trans_BT_PSW(DisasContext *ctx, arg_BT_PSW *a)
+{
+    TCGv psw = rl78_load_psw();
+    TCGv actual = tcg_temp_new();
+
+    tcg_gen_extract_tl(actual, psw, a->bit, 1);
+    return rl78_gen_branch(ctx, a->addr, actual, 1);
+}
+
+static bool trans_BT_sfr(DisasContext *ctx, arg_BT_sfr *a)
+{
+    TCGv ptr = rl78_gen_sfr(a->sfr);
+    TCGv actual = tcg_temp_new();
+
+    rl78_gen_lb(ctx, actual, ptr);
+
+    tcg_gen_extract_tl(actual, actual, a->bit, 1);
+    return rl78_gen_branch(ctx, a->addr, actual, 1);
+}
+
+static bool trans_BF_saddr(DisasContext *ctx, arg_BF_saddr *a)
+{
+    TCGv saddr = rl78_gen_saddr(tcg_constant_tl(a->saddr));
+    TCGv actual = tcg_temp_new();
+
+    rl78_gen_lb(ctx, actual, saddr);
+    tcg_gen_extract_tl(actual, actual, a->bit, 1);
+    return rl78_gen_branch(ctx, a->addr, actual, 0);
+}
+
+static bool trans_BF_A(DisasContext *ctx, arg_BF_A *a)
+{
+    TCGv actual = tcg_temp_new();
+
+    tcg_gen_extract_tl(actual, cpu_regs[RL78_GPREG_A], a->bit, 1);
+    return rl78_gen_branch(ctx, a->addr, actual, 0);
+}
+
+static bool trans_BF_indHL(DisasContext *ctx, arg_BF_indHL *a)
+{
+    TCGv base = rl78_load_rp(RL78_GPREG_HL);
+    TCGv ptr = rl78_indirect_ptr(base, tcg_constant_tl(0));
+    TCGv actual = tcg_temp_new(); 
+
+    rl78_gen_lb(ctx, actual, ptr);
+    tcg_gen_extract_tl(actual, actual, a->bit, 1);
+    return rl78_gen_branch(ctx, a->addr, actual, 0); 
+}
+
+static bool trans_BF_PSW(DisasContext *ctx, arg_BF_PSW *a)
+{
+    TCGv psw = rl78_load_psw();
+    TCGv actual = tcg_temp_new();
+
+    tcg_gen_extract_tl(actual, psw, a->bit, 1);
+    return rl78_gen_branch(ctx, a->addr, actual, 0);
+}
+
+static bool trans_BF_sfr(DisasContext *ctx, arg_BF_sfr *a)
+{
+    TCGv ptr = rl78_gen_sfr(a->sfr);
+    TCGv actual = tcg_temp_new();
+
+    rl78_gen_lb(ctx, actual, ptr);
+
+    tcg_gen_extract_tl(actual, actual, a->bit, 1);
+    return rl78_gen_branch(ctx, a->addr, actual, 0);
+}
+
+static bool trans_BTCLR_saddr(DisasContext *ctx, arg_BTCLR_saddr *a)
+{
+    TCGv saddr = rl78_gen_saddr(tcg_constant_tl(a->saddr));
+    TCGv byte = tcg_temp_new();
+    TCGv actual = tcg_temp_new();
+    TCGLabel* nobranch = gen_new_label();
+    int8_t rel = (int8_t)a->addr;
+    const uint mask = ~(1 << a->bit);
+
+    rl78_gen_lb(ctx, byte, saddr);
+    tcg_gen_extract_tl(actual, byte, a->bit, 1);
+    tcg_gen_brcondi_tl(TCG_COND_NE, actual, 1, nobranch);
+
+    tcg_gen_andi_tl(byte, byte, mask);
+    rl78_gen_sb(ctx, byte, saddr);
+    gen_goto_tb(ctx, TB_EXIT_JUMP, ctx->base.pc_next + rel);
+
+    gen_set_label(nobranch);
+    ctx->base.is_jmp = DISAS_NORETURN; 
+
+    return true;
+}
+
+static bool trans_BTCLR_A(DisasContext *ctx, arg_BTCLR_A *a)
+{
+    TCGv byte = tcg_temp_new();
+    TCGv actual = tcg_temp_new();
+    TCGLabel* nobranch = gen_new_label();
+    int8_t rel = (int8_t)a->addr;
+    const uint mask = ~(1 << a->bit);
+    
+    tcg_gen_mov_tl(byte, cpu_regs[RL78_GPREG_A]);
+    tcg_gen_extract_tl(actual, byte, a->bit, 1);
+    tcg_gen_brcondi_tl(TCG_COND_NE, actual, 1, nobranch);
+
+    tcg_gen_andi_tl(byte, byte, mask);
+    tcg_gen_mov_tl(cpu_regs[RL78_GPREG_A], byte);
+    gen_goto_tb(ctx, TB_EXIT_JUMP, ctx->base.pc_next + rel);
+
+    gen_set_label(nobranch);
+    ctx->base.is_jmp = DISAS_NORETURN; 
+
+    return true;
+}
+
+static bool trans_BTCLR_indHL(DisasContext *ctx, arg_BTCLR_indHL *a)
+{
+    TCGv base = rl78_load_rp(RL78_GPREG_HL);
+    TCGv ptr = rl78_indirect_ptr(base, tcg_constant_tl(0));
+    TCGv byte = tcg_temp_new();
+    TCGv actual = tcg_temp_new();
+    TCGLabel* nobranch = gen_new_label();
+    int8_t rel = (int8_t)a->addr;
+    const uint mask = ~(1 << a->bit);
+
+    rl78_gen_lb(ctx, byte, ptr);
+    tcg_gen_extract_tl(actual, byte, a->bit, 1);
+    tcg_gen_brcondi_tl(TCG_COND_NE, actual, 1, nobranch);
+
+    tcg_gen_andi_tl(byte, byte, mask);
+    rl78_gen_sb(ctx, byte, ptr);
+    gen_goto_tb(ctx, TB_EXIT_JUMP, ctx->base.pc_next + rel);
+
+    gen_set_label(nobranch);
+    ctx->base.is_jmp = DISAS_NORETURN; 
+
+    return true;
+
+}
+
+static bool trans_BTCLR_PSW(DisasContext *ctx, arg_BTCLR_PSW *a)
+{
+    TCGv psw = rl78_load_psw();
+    TCGv actual = tcg_temp_new();
+    TCGLabel* nobranch = gen_new_label();
+    const uint mask = ~(1 << a->bit);
+
+    tcg_gen_extract_tl(actual, psw, a->bit, 1);
+    tcg_gen_brcondi_tl(TCG_COND_NE, actual, 1, nobranch);
+
+    tcg_gen_andi_tl(psw, psw, mask);
+    rl78_store_psw(ctx, psw);
+    gen_goto_tb(ctx, TB_EXIT_JUMP, ctx->base.pc_next + a->addr);
+
+    gen_set_label(nobranch);
+    ctx->base.is_jmp = DISAS_NORETURN;
+
+    return true;
+}
+
+static bool trans_BTCLR_sfr(DisasContext *ctx, arg_BTCLR_sfr *a)
+{
+    TCGv ptr = rl78_gen_sfr(a->sfr);
+    TCGv byte = tcg_temp_new();
+    TCGv actual = tcg_temp_new();
+    TCGLabel* nobranch = gen_new_label();
+    const uint mask = ~(1 << a->bit);
+
+    rl78_gen_lb(ctx, byte, ptr);
+    tcg_gen_extract_tl(actual, byte, a->bit, 1);
+    tcg_gen_brcondi_tl(TCG_COND_NE, actual, 1, nobranch);
+
+    tcg_gen_andi_tl(byte, byte, mask);
+    rl78_gen_sb(ctx, byte, ptr);
+    gen_goto_tb(ctx, TB_EXIT_JUMP, ctx->base.pc_next + a->addr);
+
+    gen_set_label(nobranch);
+    ctx->base.is_jmp = DISAS_NORETURN;
+
+    return true;
+}
+
+static bool trans_SKC(DisasContext *ctx, arg_SKC *a)
+{
+    tcg_gen_setcondi_i32(TCG_COND_NE, cpu_skip_required, cpu_psw_cy, 0);
+    tcg_gen_movi_i32(cpu_skip_enabled, 1);
+    ctx->skip_flag = true;
+
+    return true;
+}
+
+static bool trans_SKNC(DisasContext *ctx, arg_SKNC *a)
+{
+    tcg_gen_setcondi_i32(TCG_COND_EQ, cpu_skip_required, cpu_psw_cy, 0);
+    tcg_gen_movi_i32(cpu_skip_enabled, 1);
+    ctx->skip_flag = true;
+
+    return true;
+}
+
 static bool trans_SKZ(DisasContext *ctx, arg_SKZ *a)
 {
     tcg_gen_setcondi_i32(TCG_COND_NE, cpu_skip_required, cpu_psw_z, 0);
+    tcg_gen_movi_i32(cpu_skip_enabled, 1);
+    ctx->skip_flag = true;
+
+    return true;
+}
+
+static bool trans_SKNZ(DisasContext *ctx, arg_SKNZ *a)
+{
+    tcg_gen_setcondi_i32(TCG_COND_EQ, cpu_skip_required, cpu_psw_z, 0);
+    tcg_gen_movi_i32(cpu_skip_enabled, 1);
+    ctx->skip_flag = true;
+
+    return true;
+}
+
+static bool trans_SKH(DisasContext *ctx, arg_SKH *a)
+{
+    TCGv cond = tcg_temp_new();
+    
+    tcg_gen_mov_tl(cond, cpu_psw_cy);
+    tcg_gen_or_tl(cond, cond, cpu_psw_z);
+
+    tcg_gen_setcondi_tl(TCG_COND_NE, cpu_skip_required, cond, 0);
+    tcg_gen_movi_i32(cpu_skip_enabled, 1);
+    ctx->skip_flag = true;
+
+    return true;
+}
+
+static bool trans_SKNH(DisasContext *ctx, arg_SKNH *a)
+{
+    TCGv cond = tcg_temp_new();
+    
+    tcg_gen_mov_tl(cond, cpu_psw_cy);
+    tcg_gen_or_tl(cond, cond, cpu_psw_z);
+
+    tcg_gen_setcondi_tl(TCG_COND_EQ, cpu_skip_required, cond, 0);
     tcg_gen_movi_i32(cpu_skip_enabled, 1);
     ctx->skip_flag = true;
 

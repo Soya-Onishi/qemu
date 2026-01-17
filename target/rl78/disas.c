@@ -1697,9 +1697,155 @@ static bool trans_BNH(DisasContext *ctx, arg_BNH *a)
     return true;
 }
 
+static bool trans_BT_saddr(DisasContext *ctx, arg_BT_saddr *a)
+{
+    const uint32_t saddr = rl78_gen_saddr(a->saddr);
+    const uint32_t pc = ctx->pc + (int8_t)a->addr;
+
+    print("BT\t%05x.%d, $%05x", saddr, a->bit, pc);
+
+    return true;
+}
+
+static bool trans_BT_A(DisasContext *ctx, arg_BT_A *a)
+{
+    const uint32_t pc = ctx->pc + (int8_t)a->addr;
+    print("BT\tA.%d, $%05x", a->bit, pc);
+    return true;
+}
+
+static bool trans_BT_indHL(DisasContext *ctx, arg_BT_indHL *a)
+{
+    const uint32_t pc = ctx->pc + (int8_t)a->addr;
+    print("BT\t[HL].%d, $%05x", a->bit, pc);
+    return true;
+}
+
+static bool trans_BT_PSW(DisasContext *ctx, arg_BT_PSW *a)
+{
+    const uint32_t pc = ctx->pc + (int8_t)a->addr;
+    print("BT\tPSW.%d, $%05x", a->bit, pc);
+    return true;
+}
+
+static bool trans_BT_sfr(DisasContext *ctx, arg_BT_sfr *a)
+{
+    const uint32_t pc = ctx->pc + (int8_t)a->addr;
+    print("BT\t%05x.%d, $%05x", 0xFFF00 + a->sfr, a->bit, pc);
+    return true;
+}
+
+static bool trans_BF_saddr(DisasContext *ctx, arg_BF_saddr *a)
+{
+    const uint32_t saddr = rl78_gen_saddr(a->saddr);
+    const uint32_t pc = ctx->pc + (int8_t)a->addr;
+
+    print("BF\t%05x.%d, $%05x", saddr, a->bit, pc);
+
+    return true;
+}
+
+static bool trans_BF_A(DisasContext *ctx, arg_BF_A *a)
+{
+    const uint32_t pc = ctx->pc + (int8_t)a->addr;
+    print("BF\tA.%d, $%05x", a->bit, pc);
+    return true;
+}
+
+static bool trans_BF_indHL(DisasContext *ctx, arg_BF_indHL *a)
+{
+    const uint32_t pc = ctx->pc + (int8_t)a->addr;
+    print("BF\t[HL].%d, $%05x", a->bit, pc);
+    return true;
+}
+
+static bool trans_BF_PSW(DisasContext *ctx, arg_BF_PSW *a)
+{
+    const uint32_t pc = ctx->pc + (int8_t)a->addr;
+    print("BF\tPSW.%d, $%05x", a->bit, pc);
+    return true;
+}
+
+static bool trans_BF_sfr(DisasContext *ctx, arg_BF_sfr *a)
+{
+    const uint32_t sfr = 0xFFF00 + a->sfr;
+    const uint32_t pc = ctx->pc + (int8_t)a->addr;
+    print("BF\t%05x.%d, $%05x", sfr, a->bit, pc);
+    return true;
+}
+
+static bool trans_BTCLR_saddr(DisasContext *ctx, arg_BTCLR_saddr *a)
+{
+    const uint32_t saddr = rl78_gen_saddr(a->saddr);
+    const uint32_t pc = ctx->pc + (int8_t)a->addr;
+
+    print("BTCLR\t%05x.%d, $%05x", saddr, a->bit, pc);
+
+    return true;
+}
+
+static bool trans_BTCLR_A(DisasContext *ctx, arg_BTCLR_A *a)
+{
+    const uint32_t pc = ctx->pc + (int8_t)a->addr;
+    print("BTCLR\tA.%d, $%05x", a->bit, pc);
+    return true;
+}
+
+static bool trans_BTCLR_indHL(DisasContext *ctx, arg_BTCLR_indHL *a)
+{
+    const uint32_t pc = ctx->pc + (int8_t)a->addr;
+    print("BTCLR\t[HL].%d, $%05x", a->bit, pc);
+    return true;
+}
+
+static bool trans_BTCLR_PSW(DisasContext *ctx, arg_BTCLR_PSW *a)
+{
+    const uint32_t pc = ctx->pc + (int8_t)a->addr;
+    print("BTCLR\tPSW.%d, $%05x", a->bit, pc);
+    return true;
+}
+
+static bool trans_BTCLR_sfr(DisasContext *ctx, arg_BTCLR_sfr *a)
+{
+    const uint32_t sfr = 0xFFF00 + a->sfr;
+    const uint32_t pc = ctx->pc + (int8_t)a->addr;
+    print("BTCLR\t%05x.%d, $%05x", sfr, a->bit, pc);
+    return true;
+}
+
+static bool trans_SKC(DisasContext *ctx, arg_SKC *a)
+{
+    print("SKC");
+    return true;
+}
+
+static bool trans_SKNC(DisasContext *ctx, arg_SKNC *a)
+{
+    print("SKNC");
+    return true;
+}
+
 static bool trans_SKZ(DisasContext *ctx, arg_SKZ *a)
 {
     print("SKZ");
+    return true;
+}
+
+static bool trans_SKNZ(DisasContext *ctx, arg_SKNZ *a)
+{
+    print("SKNZ");
+    return true;
+}
+
+static bool trans_SKH(DisasContext *ctx, arg_SKH *a)
+{
+    print("SKH");
+    return true;
+}
+
+static bool trans_SKNH(DisasContext *ctx, arg_SKNH *a)
+{
+    print("SKNH");
     return true;
 }
 

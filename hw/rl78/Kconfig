@@ -1,5 +1,6 @@
 config RL78_MCU
     bool
+    select  RL78_SAU
 
 config RL78_GDBSIM
     bool

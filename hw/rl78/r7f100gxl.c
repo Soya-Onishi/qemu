@@ -28,28 +28,50 @@ struct R7F100GXLClass {
 typedef struct R7F100GXLClass R7F100GXLClass;
 DECLARE_CLASS_CHECKERS(R7F100GXLClass, R7F100GXL_MCU, TYPE_R7F100GXL_MCU)
 
+/*
+static void register_sau(R7F100GXLState *s, unsigned unit)
+{
+    SysBusDevice *sau;
+
+    object_initialize_child(OBJECT(s), "sau[*]", &s->sau[unit], TYPE_RL78_SAU);
+
+    sau = SYS_BUS_DEVICE(&s->sau[unit]);
+    qdev_prop_set_chr(DEVICE(sau), "chardev[0]", serial_hd(unit*4+0));
+    qdev_prop_set_chr(DEVICE(sau), "chardev[1]", serial_hd(unit*4+1));
+    qdev_prop_set_chr(DEVICE(sau), "chardev[2]", serial_hd(unit*4+2));
+    qdev_prop_set_chr(DEVICE(sau), "chardev[3]", serial_hd(unit*4+3));
+
+    sysbus_realize(sau, &error_abort);
+
+    sysbus_mmio_map_overlap(sau, 0, 0xFFF10, 1);
+    sysbus_mmio_map_overlap(sau, 1, 0xFFF44, 1);
+    sysbus_mmio_map_overlap(sau, 2, 0xF0100, 1);
+}
+*/
+
 static void r7f100gxl_realize(DeviceState *dev, Error **errp) 
 {
     R7F100GXLState *s = R7F100GXL_MCU(dev);
     R7F100GXLClass *rlc = R7F100GXL_MCU_GET_CLASS(dev);
 
     MemoryRegion *system = get_system_memory();
-    void *sram_mem = g_malloc0(rlc->data_ram_size);
 
     memory_region_init_rom(&s->flash, OBJECT(dev), "flash-insn", 
                            rlc->insn_flash_size, &error_abort);
     memory_region_add_subregion(system, R7F100GXL_INSN_FLASH_BASE, 
                                 &s->flash);
 
-    memory_region_init_ram_device_ptr(&s->sram, OBJECT(dev), "sram",
-                                       rlc->data_ram_size, sram_mem);
-    vmstate_register_ram(&s->sram, dev);
+    memory_region_init_ram(&s->sram, OBJECT(dev), "sram", 
+                    0xFFEE0 - 0xF3F00, &error_abort);
+
     memory_region_add_subregion(system, R7F100GXL_DATA_RAM_BASE,
                                 &s->sram);
 
     /* Initialize CPU */
     object_initialize_child(OBJECT(s), "cpu", &s->cpu, TYPE_R7F100GXL_CPU);
     qdev_realize(DEVICE(&s->cpu), NULL, &error_abort);
+
+    // register_sau(s, 0);
 }
 
 static void r7f100gxl_class_init(ObjectClass *oc, const void *data) 

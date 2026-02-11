@@ -69,6 +69,9 @@ config TERMINAL3270
 config SH_SCI
     bool
 
+config RL78_SAU
+    bool
+
 config RENESAS_SCI
     bool
 

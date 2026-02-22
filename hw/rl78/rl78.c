@@ -48,16 +48,18 @@ static void rl78g23_realize(DeviceState *dev, Error **errp)
 
     object_initialize_child(OBJECT(s), "cpu", &s->cpu, TYPE_RL78G23_MCU);
 
-    object_property_set_link(OBJECT(&s->cpu), "code-flash", OBJECT(code_flash),
-                             &error_abort);
-    object_property_set_link(OBJECT(&s->cpu), "extended-sfr",
+    object_property_set_link(OBJECT(&s->cpu), RL78_CPU_PROP_MR_CODE_FLASH,
+                             OBJECT(code_flash), &error_abort);
+    object_property_set_link(OBJECT(&s->cpu), RL78_CPU_PROP_MR_EXTENDED_SFR,
                              OBJECT(extended_sfr), &error_abort);
-    object_property_set_link(OBJECT(&s->cpu), "data-flash", OBJECT(data_flash),
+    object_property_set_link(OBJECT(&s->cpu), RL78_CPU_PROP_MR_DATA_FLASH,
+                             OBJECT(data_flash), &error_abort);
+    object_property_set_link(OBJECT(&s->cpu), RL78_CPU_PROP_MR_MIRROR,
+                             OBJECT(mirror), &error_abort);
+    object_property_set_link(OBJECT(&s->cpu), RL78_CPU_PROP_MR_RAM, OBJECT(ram),
                              &error_abort);
-    object_property_set_link(OBJECT(&s->cpu), "mirror", OBJECT(mirror),
+    object_property_set_link(OBJECT(&s->cpu), RL78_CPU_PROP_MR_SFR, OBJECT(sfr),
                              &error_abort);
-    object_property_set_link(OBJECT(&s->cpu), "ram", OBJECT(ram), &error_abort);
-    object_property_set_link(OBJECT(&s->cpu), "sfr", OBJECT(sfr), &error_abort);
 
     sysbus_realize(SYS_BUS_DEVICE(&s->cpu), &error_abort);
 }

@@ -31,16 +31,16 @@ static vaddr rl78_cpu_get_pc(CPUState *cs)
 static TCGTBCPUState rl78_get_tb_cpu_state(CPUState *cs)
 {
     CPURL78State *env = cpu_env(cs);
-    uint32_t flags = 0;
+    uint32_t flags    = 0;
 
-    if(env->skip_en) {
+    if (env->skip_en) {
         flags |= TB_FLAG_SKIP;
     }
 
-    return (TCGTBCPUState){ .pc = env->pc, .flags = flags };
+    return (TCGTBCPUState){.pc = env->pc, .flags = flags};
 }
 
-static void rl78_cpu_synchronize_from_tb(CPUState *cs, 
+static void rl78_cpu_synchronize_from_tb(CPUState *cs,
                                          const TranslationBlock *tb)
 {
     CPURL78State *env = cpu_env(cs);
@@ -71,7 +71,7 @@ static bool rl78_cpu_has_work(CPUState *cs)
 
 static int rl78_cpu_mmu_index(CPUState *cs, bool ifetch)
 {
-    return ifetch ? RL78_AS_CODE_FLASH : RL78_AS_RAM;
+    return RL78_AS_SYSTEM;
 }
 
 static void rl78_cpu_reset_hold(Object *obj, ResetType type)
@@ -93,7 +93,7 @@ static void rl78_cpu_reset_hold(Object *obj, ResetType type)
         rlc->parent_phases.hold(obj, type);
     }
 
-    AddressSpace *as   = cpu_get_address_space(cs, RL78_AS_CODE_FLASH);
+    AddressSpace *as   = cpu_get_address_space(cs, RL78_AS_SYSTEM);
     uint16_t *resetvec = rom_ptr_for_as(as, 0x000000, 2);
     if (resetvec) {
         env->pc = lduw_le_p(resetvec);
@@ -118,13 +118,9 @@ static void rl78_cpu_realize(DeviceState *dev, Error **errp)
     RL78CPUClass *rlc = RL78_CPU_GET_CLASS(dev);
     Error *local_err  = NULL;
 
-    cpu_address_space_init(cs, RL78_AS_CODE_FLASH, "code-flash", cs->memory);
-    cpu_address_space_init(cs, RL78_AS_EXTENDED_SFR, "extended-sfr",
-                           cs->memory);
-    cpu_address_space_init(cs, RL78_AS_DATA_FLASH, "data-flash", cs->memory);
-    cpu_address_space_init(cs, RL78_AS_MIRROR, "mirror", cs->memory);
-    cpu_address_space_init(cs, RL78_AS_RAM, "ram", cs->memory);
-    cpu_address_space_init(cs, RL78_AS_SFR, "sfr", cs->memory);
+    cpu_address_space_init(cs, RL78_AS_SYSTEM, "system", cs->memory);
+    cpu_address_space_init(cs, RL78_AS_CONTROL, "control", cs->memory);
+    cpu_address_space_init(cs, RL78_AS_ALIAS, "alias", cs->memory);
 
     cpu_exec_realizefn(cs, &local_err);
 
@@ -162,27 +158,16 @@ static void rl78_cpu_init(Object *obj)
 {
     RL78CPU *cpu = RL78_CPU(obj);
 
-    object_property_add_link(obj, RL78_CPU_PROP_MR_CODE_FLASH,
-                             TYPE_MEMORY_REGION, (Object **)&cpu->code_flash,
+    object_property_add_link(obj, RL78_CPU_PROP_MR_SYSTEM, TYPE_MEMORY_REGION,
+                             (Object **)&cpu->system,
                              qdev_prop_allow_set_link_before_realize,
                              OBJ_PROP_LINK_STRONG);
-    object_property_add_link(obj, RL78_CPU_PROP_MR_EXTENDED_SFR,
-                             TYPE_MEMORY_REGION, (Object **)&cpu->extended_sfr,
-                             qdev_prop_allow_set_link_before_realize,
-                             OBJ_PROP_LINK_STRONG);
-    object_property_add_link(obj, RL78_CPU_PROP_MR_DATA_FLASH,
-                             TYPE_MEMORY_REGION, (Object **)&cpu->data_flash,
-                             qdev_prop_allow_set_link_before_realize,
-                             OBJ_PROP_LINK_STRONG);
-    object_property_add_link(obj, RL78_CPU_PROP_MR_MIRROR, TYPE_MEMORY_REGION,
-                             (Object **)&cpu->mirror,
+    object_property_add_link(obj, RL78_CPU_PROP_MR_CONTROL, TYPE_MEMORY_REGION,
+                             (Object **)&cpu->control,
                              qdev_prop_allow_set_link_before_realize,
                              OBJ_PROP_LINK_STRONG);
     object_property_add_link(
-        obj, RL78_CPU_PROP_MR_RAM, TYPE_MEMORY_REGION, (Object **)&cpu->ram,
-        qdev_prop_allow_set_link_before_realize, OBJ_PROP_LINK_STRONG);
-    object_property_add_link(
-        obj, RL78_CPU_PROP_MR_SFR, TYPE_MEMORY_REGION, (Object **)&cpu->sfr,
+        obj, RL78_CPU_PROP_MR_ALIAS, TYPE_MEMORY_REGION, (Object **)&cpu->alias,
         qdev_prop_allow_set_link_before_realize, OBJ_PROP_LINK_STRONG);
 }
 
@@ -197,19 +182,19 @@ static const TCGCPUOps rl78_tcg_ops = {
     .guest_default_memory_order = TCG_MO_ALL,
     .mttcg_supported            = false,
 
-    .initialize = rl78_translate_init,
-    .translate_code = rl78_translate_code,
-    .get_tb_cpu_state = rl78_get_tb_cpu_state,
-    .synchronize_from_tb = rl78_cpu_synchronize_from_tb,
+    .initialize           = rl78_translate_init,
+    .translate_code       = rl78_translate_code,
+    .get_tb_cpu_state     = rl78_get_tb_cpu_state,
+    .synchronize_from_tb  = rl78_cpu_synchronize_from_tb,
     .restore_state_to_opc = rl78_restore_state_to_opc,
     .mmu_index            = rl78_cpu_mmu_index,
     .tlb_fill             = rl78_cpu_tlb_fill,
     .pointer_wrap         = rl78_cpu_pointer_wrap,
 
     .cpu_exec_interrupt = rl78_cpu_exec_interrupt,
-    .cpu_exec_halt  = rl78_cpu_has_work,
-    .cpu_exec_reset = cpu_reset,
-    .do_interrupt = rl78_cpu_do_interrupt,
+    .cpu_exec_halt      = rl78_cpu_has_work,
+    .cpu_exec_reset     = cpu_reset,
+    .do_interrupt       = rl78_cpu_do_interrupt,
 };
 
 static void rl78_cpu_class_init(ObjectClass *oc, const void *data)
@@ -241,13 +226,13 @@ static void rl78_cpu_class_init(ObjectClass *oc, const void *data)
 }
 
 static const TypeInfo rl78_cpu_info = {
-    .name = TYPE_RL78_CPU,
-    .parent = TYPE_CPU,
-    .instance_size = sizeof(RL78CPU),
+    .name           = TYPE_RL78_CPU,
+    .parent         = TYPE_CPU,
+    .instance_size  = sizeof(RL78CPU),
     .instance_align = __alignof(RL78CPU),
-    .instance_init = rl78_cpu_init,
-    .class_size = sizeof(RL78CPUClass),
-    .class_init = rl78_cpu_class_init,
+    .instance_init  = rl78_cpu_init,
+    .class_size     = sizeof(RL78CPUClass),
+    .class_init     = rl78_cpu_class_init,
 };
 
 static void rl78_cpu_register_types(void)

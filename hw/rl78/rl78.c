@@ -1,5 +1,6 @@
 #include "qemu/osdep.h"
 #include "exec/hwaddr.h"
+#include "exec/target_page.h"
 #include "hw/core/sysbus.h"
 #include "qapi/error.h"
 #include "qom/object.h"
@@ -19,47 +20,69 @@ struct RL78G23McuClass {
     MemMapEntry data_flash;
     MemMapEntry mirror;
     MemMapEntry ram;
-    MemMapEntry sfr;
+    MemMapEntry standard_sfr;
 };
 
 typedef struct RL78G23McuClass RL78G23McuClass;
 
 DECLARE_CLASS_CHECKERS(RL78G23McuClass, RL78G23_MCU, TYPE_RL78G23_MCU)
 
+static MemMapEntry align_page_size(const MemMapEntry mm)
+{
+    const hwaddr aligned_base = ROUND_DOWN(mm.base, TARGET_PAGE_SIZE);
+    const hwaddr source_size  = mm.size + mm.base - aligned_base;
+    const hwaddr aligned_size = ROUND_UP(source_size, TARGET_PAGE_SIZE);
+
+    return (MemMapEntry){
+        .base = aligned_base,
+        .size = aligned_size,
+    };
+}
+
 static void rl78g23_realize(DeviceState *dev, Error **errp)
 {
-    RL78G23McuState *s = RL78G23_MCU(dev);
+    RL78G23McuState *s   = RL78G23_MCU(dev);
+    RL78G23McuClass *rlc = RL78G23_MCU_GET_CLASS(dev);
 
-    MemoryRegion *code_flash   = g_new(MemoryRegion, 1);
-    MemoryRegion *extended_sfr = g_new(MemoryRegion, 1);
-    MemoryRegion *data_flash   = g_new(MemoryRegion, 1);
-    MemoryRegion *mirror       = g_new(MemoryRegion, 1);
-    MemoryRegion *ram          = g_new(MemoryRegion, 1);
-    MemoryRegion *sfr          = g_new(MemoryRegion, 1);
+    MemoryRegion *mr_code_flash = g_new(MemoryRegion, 1);
+    MemoryRegion *mr_ram        = g_new(MemoryRegion, 1);
+    MemoryRegion *mr_data_flash = g_new(MemoryRegion, 1);
+    MemoryRegion *mr_mirror     = g_new(MemoryRegion, 1);
 
-    memory_region_init_rom(code_flash, OBJECT(dev), "code-flash", 0xC0000,
-                           &error_abort);
-    memory_region_init(extended_sfr, OBJECT(dev), "extended-sfr", 0x100000);
-    memory_region_init(data_flash, OBJECT(dev), "data-flash", 0x100000);
-    memory_region_init_alias(mirror, OBJECT(dev), "mirror", code_flash, 0x0000,
-                             0x100000);
-    memory_region_init_ram(ram, OBJECT(dev), "ram", 0x100000, &error_abort);
-    memory_region_init(sfr, OBJECT(dev), "sfr", 0x100000);
+    memory_region_init(&s->system, OBJECT(dev), "system", 1024 * 1024);
+    memory_region_init(&s->control, OBJECT(dev), "control", 1024 * 1024);
+    memory_region_init(&s->alias, OBJECT(dev), "alias", 1024 * 1024);
+
+    MemMapEntry code_flash = align_page_size(rlc->code_flash);
+    memory_region_init_rom(mr_code_flash, OBJECT(dev), "code-flash",
+                           code_flash.size, &error_abort);
+    memory_region_add_subregion(&s->system, code_flash.base, mr_code_flash);
+
+    MemMapEntry ram = align_page_size(rlc->ram);
+    memory_region_init_ram(mr_ram, OBJECT(dev), "ram", ram.size, &error_abort);
+    memory_region_add_subregion(&s->system, ram.base, mr_ram);
+
+    MemMapEntry data_flash = align_page_size(rlc->data_flash);
+    memory_region_init_ram(mr_data_flash, OBJECT(dev), "data-flash",
+                           data_flash.size, &error_abort);
+    memory_region_add_subregion(&s->system, data_flash.base, mr_data_flash);
+
+    MemMapEntry mirror = align_page_size(rlc->mirror);
+    memory_region_init_alias(mr_mirror, OBJECT(dev), "mirror", mr_code_flash,
+                             0x00000, 0x10000);
+    memory_region_add_subregion(&s->alias, mirror.base, mr_mirror);
 
     object_initialize_child(OBJECT(s), "cpu", &s->cpu, TYPE_RL78G23_MCU);
+    object_property_set_link(OBJECT(&s->cpu), RL78_CPU_PROP_MR_SYSTEM,
+                             OBJECT(&s->system), &error_abort);
+    object_property_set_link(OBJECT(&s->cpu), RL78_CPU_PROP_MR_CONTROL,
+                             OBJECT(&s->control), &error_abort);
+    object_property_set_link(OBJECT(&s->cpu), RL78_CPU_PROP_MR_ALIAS,
+                             OBJECT(&s->alias), &error_abort);
 
-    object_property_set_link(OBJECT(&s->cpu), RL78_CPU_PROP_MR_CODE_FLASH,
-                             OBJECT(code_flash), &error_abort);
-    object_property_set_link(OBJECT(&s->cpu), RL78_CPU_PROP_MR_EXTENDED_SFR,
-                             OBJECT(extended_sfr), &error_abort);
-    object_property_set_link(OBJECT(&s->cpu), RL78_CPU_PROP_MR_DATA_FLASH,
-                             OBJECT(data_flash), &error_abort);
-    object_property_set_link(OBJECT(&s->cpu), RL78_CPU_PROP_MR_MIRROR,
-                             OBJECT(mirror), &error_abort);
-    object_property_set_link(OBJECT(&s->cpu), RL78_CPU_PROP_MR_RAM, OBJECT(ram),
-                             &error_abort);
-    object_property_set_link(OBJECT(&s->cpu), RL78_CPU_PROP_MR_SFR, OBJECT(sfr),
-                             &error_abort);
+    s->cpu.mirror       = rlc->mirror;
+    s->cpu.standard_sfr = rlc->standard_sfr;
+    s->cpu.extended_sfr = rlc->extended_sfr;
 
     sysbus_realize(SYS_BUS_DEVICE(&s->cpu), &error_abort);
 }
@@ -83,7 +106,7 @@ static void r7f100gxl_class_init(ObjectClass *oc, const void *data)
     rlc->data_flash   = r7f100gxl_mm[RL78G23_MM_DATA_FLASH];
     rlc->mirror       = r7f100gxl_mm[RL78G23_MM_MIRROR];
     rlc->ram          = r7f100gxl_mm[RL78G23_MM_RAM];
-    rlc->sfr          = r7f100gxl_mm[RL78G23_MM_SFR];
+    rlc->standard_sfr = r7f100gxl_mm[RL78G23_MM_SFR];
 }
 
 static const TypeInfo rl78g23_mcu_types[] = {

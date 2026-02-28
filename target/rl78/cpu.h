@@ -11,12 +11,13 @@
 
 #define REGISTER_BANK_NUM (4)
 
-#define RL78_CPU_PROP_MR_CODE_FLASH "mr-code-flash"
-#define RL78_CPU_PROP_MR_EXTENDED_SFR "mr-extended-sfr"
-#define RL78_CPU_PROP_MR_DATA_FLASH "mr-data-flash"
-#define RL78_CPU_PROP_MR_MIRROR "mr-mirror"
-#define RL78_CPU_PROP_MR_RAM "mr-ram"
-#define RL78_CPU_PROP_MR_SFR "mr-sfr"
+#define RL78_CPU_PROP_MR_SYSTEM "mr-system"
+#define RL78_CPU_PROP_MR_CONTROL "mr-control"
+#define RL78_CPU_PROP_MR_ALIAS "mr-alias"
+
+#define RL78_CPU_PROP_STANDARD_SFR "standard-sfr"
+#define RL78_CPU_PROP_EXTENDED_SFR "extended-sfr"
+#define RL78_CPU_PROP_MIRROR "mirror"
 
 /* PSW define */
 REG32(PSW, 0)
@@ -28,15 +29,12 @@ FIELD(PSW, RBS1, 5, 1)
 FIELD(PSW, Z,    6, 1)
 FIELD(PSW, IE,   7, 1)
 
-enum {
-    RL78_AS_CODE_FLASH,
-    RL78_AS_EXTENDED_SFR,
-    RL78_AS_DATA_FLASH,
-    RL78_AS_MIRROR,
-    RL78_AS_RAM,
-    RL78_AS_SFR,
+typedef enum {
+    RL78_AS_SYSTEM,
+    RL78_AS_CONTROL,
+    RL78_AS_ALIAS,
     RL78_AS_NUM,
-};
+} RL78AddressSpace;
 
 typedef enum {
     RL78_BYTE_REG_X = 0,
@@ -87,12 +85,13 @@ struct ArchCPU {
 
     CPURL78State env;
 
-    MemoryRegion *code_flash;
-    MemoryRegion *extended_sfr;
-    MemoryRegion *data_flash;
-    MemoryRegion *mirror;
-    MemoryRegion *ram;
-    MemoryRegion *sfr;
+    MemoryRegion *system;
+    MemoryRegion *control;
+    MemoryRegion *alias;
+
+    MemMapEntry standard_sfr;
+    MemMapEntry extended_sfr;
+    MemMapEntry mirror;
 };
 
 struct RL78CPUClass {

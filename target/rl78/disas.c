@@ -44,14 +44,6 @@ static void dump_bytes(DisasContext *ctx)
                                op0, op1);                                  \
     } while (0)
 
-static uint32_t rl78_word(uint32_t raw)
-{
-    const uint32_t lower = (raw & 0x0000FF00) >> 8;
-    const uint32_t upper = (raw & 0x000000FF) << 8;
-
-    return lower | upper;
-}
-
 static char *es(DisasContext *ctx, const RL78Operand op)
 {
     return g_strdup_printf("ES");
@@ -282,7 +274,7 @@ static char *bit(DisasContext *ctx, const RL78Operand op)
 
 static char *unknown(DisasContext *ctx, const RL78Operand op)
 {
-    return g_strdup_printf("");
+    return g_strdup_printf("unknown");
 }
 
 static char *(*print_operand_table[])(DisasContext *ctx,

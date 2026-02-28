@@ -70,8 +70,6 @@ enum RL78Mnemonic {
     RL78_INSN_CALL,
     RL78_INSN_CALLT,
     RL78_INSN_BRK,
-    RL78_INSN_HALT,
-    RL78_INSN_STOP,
     RL78_INSN_RET,
     RL78_INSN_RETI,
     RL78_INSN_RETB,
@@ -99,6 +97,8 @@ enum RL78Mnemonic {
 
     RL78_INSN_SEL,
     RL78_INSN_NOP,
+    RL78_INSN_HALT,
+    RL78_INSN_STOP,
 
     RL78_INSN_UNKNOWN,
 };
@@ -183,6 +183,7 @@ typedef struct RL78OperandBit RL78OperandBit;
 
 struct RL78Operand {
     RL78OperandKind kind;
+    MemOp memop;
     union {
         RL78ByteRegister byte_reg;
         RL78WordRegister word_reg;

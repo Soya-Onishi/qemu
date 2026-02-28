@@ -1,7 +1,7 @@
+#include "qemu/osdep.h"
 #include "decode.h"
 #include "cpu.h"
 #include "qemu/compiler.h"
-#include "qemu/osdep.h"
 
 struct DisasContext;
 typedef struct DisasContext DisasContext;

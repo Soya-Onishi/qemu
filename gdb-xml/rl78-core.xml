@@ -1,0 +1,89 @@
+<?xml version="1.0"?>
+<!-- Copyright (C) 2019 Free Software Foundation, Inc.
+
+     Copying and distribution of this file, with or without modification,
+     are permitted in any medium without royalty provided the copyright
+     notice and this notice are preserved.  -->
+
+<!DOCTYPE feature SYSTEM "gdb-target.dtd">
+<feature name="org.gnu.gdb.rl78.core">
+  <reg name="psw" regnum="32" bitsize="8" type="_rl78_psw" group="general"/>
+  <reg name="es"  regnum="33" bitsize="8" type="int8_t" group="system"/>
+  <reg name="cs"  regnum="34" bitsize="8" type="int8_t" group="system"/>
+
+  <reg name="pmc" regnum="38" bitsize="8" type="int8_t" group="system"/>
+  <reg name="mem" regnum="39" bitsize="8" type="int8_t" group="system"/>
+
+  <reg name="pc" regnum="40" bitsize="32" type="rl78_code_addr_t" group="general"/>
+  <reg name="sp" regnum="41" bitsize="16" type="rl78_data_addr_t" group="general"/>
+
+  <reg name="x" regnum="42" bitsize="8" type="int8_t" group="general"/>
+  <reg name="a" regnum="43" bitsize="8" type="int8_t" group="general"/>
+  <reg name="c" regnum="44" bitsize="8" type="int8_t" group="general"/>
+  <reg name="b" regnum="45" bitsize="8" type="int8_t" group="general"/>
+  <reg name="e" regnum="46" bitsize="8" type="int8_t" group="general"/>
+  <reg name="d" regnum="47" bitsize="8" type="int8_t" group="general"/>
+  <reg name="l" regnum="48" bitsize="8" type="int8_t" group="general"/>
+  <reg name="h" regnum="49" bitsize="8" type="int8_t" group="general"/>
+
+  <reg name="ax" regnum="50" bitsize="16" type="int16_t" group="general"/>
+  <reg name="bc" regnum="51" bitsize="16" type="int16_t" group="general"/>
+  <reg name="de" regnum="52" bitsize="16" type="int16_t" group="general"/>
+  <reg name="hl" regnum="53" bitsize="16" type="int16_t" group="general"/>
+
+  <reg name="bank0_r0" regnum="54" bitsize="8" type="int8_t" group="system"/>
+  <reg name="bank0_r1" regnum="55" bitsize="8" type="int8_t" group="system"/>
+  <reg name="bank0_r2" regnum="56" bitsize="8" type="int8_t" group="system"/>
+  <reg name="bank0_r3" regnum="57" bitsize="8" type="int8_t" group="system"/>
+  <reg name="bank0_r4" regnum="58" bitsize="8" type="int8_t" group="system"/>
+  <reg name="bank0_r5" regnum="59" bitsize="8" type="int8_t" group="system"/>
+  <reg name="bank0_r6" regnum="60" bitsize="8" type="int8_t" group="system"/>
+  <reg name="bank0_r7" regnum="61" bitsize="8" type="int8_t" group="system"/>
+
+  <reg name="bank1_r0" regnum="62" bitsize="8" type="int8_t" group="system"/>
+  <reg name="bank1_r1" regnum="63" bitsize="8" type="int8_t" group="system"/>
+  <reg name="bank1_r2" regnum="64" bitsize="8" type="int8_t" group="system"/>
+  <reg name="bank1_r3" regnum="65" bitsize="8" type="int8_t" group="system"/>
+  <reg name="bank1_r4" regnum="66" bitsize="8" type="int8_t" group="system"/>
+  <reg name="bank1_r5" regnum="67" bitsize="8" type="int8_t" group="system"/>
+  <reg name="bank1_r6" regnum="68" bitsize="8" type="int8_t" group="system"/>
+  <reg name="bank1_r7" regnum="69" bitsize="8" type="int8_t" group="system"/>
+
+  <reg name="bank2_r0" regnum="70" bitsize="8" type="int8_t" group="system"/>
+  <reg name="bank2_r1" regnum="71" bitsize="8" type="int8_t" group="system"/>
+  <reg name="bank2_r2" regnum="72" bitsize="8" type="int8_t" group="system"/>
+  <reg name="bank2_r3" regnum="73" bitsize="8" type="int8_t" group="system"/>
+  <reg name="bank2_r4" regnum="74" bitsize="8" type="int8_t" group="system"/>
+  <reg name="bank2_r5" regnum="75" bitsize="8" type="int8_t" group="system"/>
+  <reg name="bank2_r6" regnum="76" bitsize="8" type="int8_t" group="system"/>
+  <reg name="bank2_r7" regnum="77" bitsize="8" type="int8_t" group="system"/>
+
+  <reg name="bank3_r0" regnum="78" bitsize="8" type="int8_t" group="system"/>
+  <reg name="bank3_r1" regnum="79" bitsize="8" type="int8_t" group="system"/>
+  <reg name="bank3_r2" regnum="80" bitsize="8" type="int8_t" group="system"/>
+  <reg name="bank3_r3" regnum="81" bitsize="8" type="int8_t" group="system"/>
+  <reg name="bank3_r4" regnum="82" bitsize="8" type="int8_t" group="system"/>
+  <reg name="bank3_r5" regnum="83" bitsize="8" type="int8_t" group="system"/>
+  <reg name="bank3_r6" regnum="84" bitsize="8" type="int8_t" group="system"/>
+  <reg name="bank3_r7" regnum="85" bitsize="8" type="int8_t" group="system"/>
+
+  <reg name="bank0_rp0" regnum="86" bitsize="16" type="int16_t" group="system"/>
+  <reg name="bank0_rp1" regnum="87" bitsize="16" type="int16_t" group="system"/>
+  <reg name="bank0_rp2" regnum="88" bitsize="16" type="int16_t" group="system"/>
+  <reg name="bank0_rp3" regnum="89" bitsize="16" type="int16_t" group="system"/>
+
+  <reg name="bank1_rp0" regnum="90" bitsize="16" type="int16_t" group="system"/>
+  <reg name="bank1_rp1" regnum="91" bitsize="16" type="int16_t" group="system"/>
+  <reg name="bank1_rp2" regnum="92" bitsize="16" type="int16_t" group="system"/>
+  <reg name="bank1_rp3" regnum="93" bitsize="16" type="int16_t" group="system"/>
+
+  <reg name="bank2_rp0" regnum="94" bitsize="16" type="int16_t" group="system"/>
+  <reg name="bank2_rp1" regnum="95" bitsize="16" type="int16_t" group="system"/>
+  <reg name="bank2_rp2" regnum="96" bitsize="16" type="int16_t" group="system"/>
+  <reg name="bank2_rp3" regnum="97" bitsize="16" type="int16_t" group="system"/>
+
+  <reg name="bank3_rp0" regnum="98"  bitsize="16" type="int16_t" group="system"/>
+  <reg name="bank3_rp1" regnum="99"  bitsize="16" type="int16_t" group="system"/>
+  <reg name="bank3_rp2" regnum="100" bitsize="16" type="int16_t" group="system"/>
+  <reg name="bank3_rp3" regnum="101" bitsize="16" type="int16_t" group="system"/>
+</feature>

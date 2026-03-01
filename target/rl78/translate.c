@@ -78,7 +78,7 @@ void rl78_cpu_dump_state(CPUState *cs, FILE *f, int flags)
 static TCGv_i32 rl78_gen_addr(DisasContext *ctx, TCGv_i32 addr)
 {
     TCGv_i32 ret = tcg_temp_new_i32();
-    TCGv_i32 es = tcg_temp_new_i32();
+    TCGv_i32 es  = tcg_temp_new_i32();
 
     if (ctx->use_es) {
         tcg_gen_shli_i32(es, cpu_es, 16);
@@ -501,7 +501,8 @@ static void store_ind_reg_imm(DisasContext *ctx, const RL78OperandIndRegImm op,
     rl78_gen_store(ctx, addr, data, memop);
 }
 
-static TCGv_i32 ind_base_byte(DisasContext *ctx, const uint32_t base, const RL78ByteRegister idx)
+static TCGv_i32 ind_base_byte(DisasContext *ctx, const uint32_t base,
+                              const RL78ByteRegister idx)
 {
     TCGv_i32 tcg_base = tcg_constant_i32(base);
     TCGv_i32 tcg_idx  = load_byte_reg(idx);
@@ -526,7 +527,8 @@ static void store_ind_base_byte(DisasContext *ctx,
     rl78_gen_store(ctx, addr, data, memop);
 }
 
-static TCGv_i32 ind_base_word(DisasContext *ctx, const uint32_t base, const RL78WordRegister idx)
+static TCGv_i32 ind_base_word(DisasContext *ctx, const uint32_t base,
+                              const RL78WordRegister idx)
 {
     TCGv_i32 tcg_base = tcg_constant_i32(base);
     TCGv_i32 tcg_idx  = load_word_reg(idx);
@@ -618,7 +620,7 @@ static TCGv_i32 rl78_gen_load_operand(DisasContext *ctx, const RL78Operand op)
 }
 
 static void rl78_gen_store_operand(DisasContext *ctx, const RL78Operand op,
-                          TCGv_i32 data)
+                                   TCGv_i32 data)
 {
     switch (op.kind) {
     case RL78_OP_BYTE_REG:
@@ -676,8 +678,7 @@ static void rl78_gen_store_operand(DisasContext *ctx, const RL78Operand op,
     }
 }
 
-static RL78BitData rl78_gen_load_bit(DisasContext *ctx,
-                                        const RL78OperandBit op)
+static RL78BitData rl78_gen_load_bit(DisasContext *ctx, const RL78OperandBit op)
 {
     TCGv_i32 data;
     TCGv_i32 bit = tcg_temp_new_i32();
@@ -2007,7 +2008,11 @@ static void rl78_tr_translate_insn(DisasContextBase *dcbase, CPUState *cs)
 
     ctx->pc = ctx->base.pc_next;
 
+    vaddr head_pc = ctx->pc;
     if (!decode(ctx, &handler)) {
+        error_report("Failed to decode instruction at PC: %08X[byte: %d]",
+                     (uint32_t)head_pc,
+                     (uint32_t)(ctx->base.pc_next - head_pc));
         exit(1);
         // TODO: gen_helper_raise_illegal_instruction(tcg_env);
     }

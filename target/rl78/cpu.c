@@ -115,12 +115,13 @@ static ObjectClass *rl78_cpu_class_by_name(const char *cpu_model)
 static void rl78_cpu_realize(DeviceState *dev, Error **errp)
 {
     CPUState *cs      = CPU(dev);
+    RL78CPU *cpu      = RL78_CPU(dev);
     RL78CPUClass *rlc = RL78_CPU_GET_CLASS(dev);
     Error *local_err  = NULL;
 
-    cpu_address_space_init(cs, RL78_AS_SYSTEM, "system", cs->memory);
-    cpu_address_space_init(cs, RL78_AS_CONTROL, "control", cs->memory);
-    cpu_address_space_init(cs, RL78_AS_ALIAS, "alias", cs->memory);
+    cpu_address_space_init(cs, RL78_AS_SYSTEM, "system", cpu->system);
+    cpu_address_space_init(cs, RL78_AS_CONTROL, "control", cpu->control);
+    cpu_address_space_init(cs, RL78_AS_ALIAS, "alias", cpu->alias);
 
     cpu_exec_realizefn(cs, &local_err);
 

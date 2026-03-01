@@ -2,6 +2,7 @@
 #include "decode.h"
 #include "cpu.h"
 #include "qemu/compiler.h"
+#include "qemu/error-report.h"
 
 struct DisasContext;
 typedef struct DisasContext DisasContext;
@@ -1066,8 +1067,8 @@ static RL78Operand (*decode_operand_table[RL78_OP_NUM])(DisasContext *,
 };
 
 static UnknownHandlerResult unknown_handler(const RL78Instruction *map,
-                                            const bool is_first_byte,
-                                            const uint8_t byte)
+                                            const uint8_t byte,
+                                            const bool is_first_byte)
 {
     if (map == decode_table_1st_map && is_first_byte && byte == 0x11) {
         return UNKNOWN_HANDLER_USE_PREFIX;
@@ -1117,6 +1118,9 @@ bool decode(DisasContext *ctx, const DecodeHandler *handler)
             handler->set_es(ctx, true);
             break;
         default:
+            error_report(
+                "Failed to decode instruction at PC: %08X[byte: 0x%02x]",
+                (uint32_t)pc, byte);
             return false;
         }
 

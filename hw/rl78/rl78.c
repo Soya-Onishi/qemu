@@ -72,7 +72,7 @@ static void rl78g23_realize(DeviceState *dev, Error **errp)
                              0x00000, 0x10000);
     memory_region_add_subregion(&s->alias, mirror.base, mr_mirror);
 
-    object_initialize_child(OBJECT(s), "cpu", &s->cpu, TYPE_RL78G23_MCU);
+    object_initialize_child(OBJECT(s), "cpu", &s->cpu, TYPE_RL78_CPU);
     object_property_set_link(OBJECT(&s->cpu), RL78_CPU_PROP_MR_SYSTEM,
                              OBJECT(&s->system), &error_abort);
     object_property_set_link(OBJECT(&s->cpu), RL78_CPU_PROP_MR_CONTROL,
@@ -84,7 +84,7 @@ static void rl78g23_realize(DeviceState *dev, Error **errp)
     s->cpu.standard_sfr = rlc->standard_sfr;
     s->cpu.extended_sfr = rlc->extended_sfr;
 
-    sysbus_realize(SYS_BUS_DEVICE(&s->cpu), &error_abort);
+    qdev_realize(DEVICE(&s->cpu), NULL, &error_abort);
 }
 
 static void rl78g23_class_init(ObjectClass *oc, const void *data)

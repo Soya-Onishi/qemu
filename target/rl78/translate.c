@@ -2029,6 +2029,7 @@ static void rl78_tr_tb_stop(DisasContextBase *dcbase, CPUState *cs)
     switch (ctx->base.is_jmp) {
     case DISAS_NEXT:
     case DISAS_EXIT:
+    case DISAS_NORETURN:
         break;
     case DISAS_TOO_MANY:
         rl78_gen_goto_tb(ctx, TB_EXIT_IDX0, ctx->base.pc_next);

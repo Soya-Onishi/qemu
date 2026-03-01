@@ -150,7 +150,7 @@ static bool rl78_cpu_tlb_fill(CPUState *cs, vaddr addr, int size,
     const uint32_t address = addr & TARGET_PAGE_MASK;
     const uint32_t prot    = PAGE_READ | PAGE_WRITE | PAGE_EXEC;
 
-    tlb_set_page(cs, address, address, prot, mmu_idx, size);
+    tlb_set_page(cs, address, address, prot, mmu_idx, TARGET_PAGE_SIZE);
 
     return true;
 }

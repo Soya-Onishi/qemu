@@ -1,5 +1,6 @@
 #include "qemu/osdep.h"
 #include "hw/core/boards.h"
+#include "system/reset.h"
 #include "qemu/error-report.h"
 #include "qapi/error.h"
 #include "rl78.h"
@@ -28,12 +29,19 @@ typedef struct RL78VirtMachineState RL78VirtMachineState;
 DECLARE_OBJ_CHECKERS(RL78VirtMachineState, RL78VirtMachineClass,
                      RL78_VIRT_MACHINE, TYPE_RL78_VIRT_MACHINE)
 
+static void rl78_cpu_reset(void *opaque) {
+    RL78CPU *cpu = opaque;
+
+    cpu_reset(CPU(cpu));
+}
+
 static void rl78_virt_init(MachineState *machine)
 {
     RL78VirtMachineState *s   = RL78_VIRT_MACHINE(machine);
     RL78VirtMachineClass *rlc = RL78_VIRT_MACHINE_GET_CLASS(machine);
 
     object_initialize_child(OBJECT(machine), "mcu", &s->mcu, rlc->mcu_type);
+    sysbus_realize(SYS_BUS_DEVICE(&s->mcu), &error_abort);
 
     if (machine->firmware) {
         if (!rl78_load_firmware(&s->mcu.cpu, machine, &s->mcu.system,
@@ -43,7 +51,7 @@ static void rl78_virt_init(MachineState *machine)
         }
     }
 
-    sysbus_realize(SYS_BUS_DEVICE(&s->mcu), &error_abort);
+    qemu_register_reset(rl78_cpu_reset, &s->mcu.cpu);
 }
 
 static void rl78_virt_class_init(ObjectClass *oc, const void *data)

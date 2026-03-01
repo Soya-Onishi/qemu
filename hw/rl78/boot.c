@@ -18,8 +18,9 @@ bool rl78_load_firmware(RL78CPU *cpu, MachineState *ms, MemoryRegion *flash,
         return false;
     }
 
+    AddressSpace *as = cpu_get_address_space(CPU(cpu), RL78_AS_SYSTEM);
     bytes_loaded = load_elf_as(filename, NULL, NULL, NULL, NULL, NULL, NULL,
-                               NULL, ELFDATA2LSB, EM_RL78, 0, 0, NULL);
+                               NULL, ELFDATA2LSB, EM_RL78, 0, 0, as);
 
     if (bytes_loaded < 0) {
         error_report("Unable to load firmware image %s as ELF", firmware);

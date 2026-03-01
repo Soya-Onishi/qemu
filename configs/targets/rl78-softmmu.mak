@@ -1,3 +1,3 @@
 TARGET_ARCH=rl78
-#TARGET_XML_FILES= gdb-xml/rl78-cpu.xml
+TARGET_XML_FILES= gdb-xml/rl78-core.xml
 TARGET_LONG_BITS=32

@@ -14,7 +14,7 @@ static void cpu_state_write_impl(CPURL78State *env, hwaddr offset, uint8_t val)
         break;
     case 0x08:
         env->sp &= 0xFF00;
-        env->sp |= (uint16_t)val;
+        env->sp |= (uint16_t)(val & 0xFE);
         break;
     case 0x09:
         env->sp &= 0x00FF;

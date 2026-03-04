@@ -247,6 +247,24 @@ static void store_psw(TCGv_i32 psw)
     tcg_gen_deposit_i32(cpu_psw_rbs, cpu_psw_rbs, rbs1, 1, 1);
 }
 
+static TCGv_i32 load_sp(void)
+{
+    TCGv_i32 ret = tcg_temp_new_i32();
+
+    tcg_gen_mov_i32(ret, cpu_sp);
+    tcg_gen_andi_i32(ret, ret, 0xFFFE);
+
+    return ret;
+}
+
+static void store_sp(TCGv_i32 sp)
+{
+    TCGv_i32 tmp = tcg_temp_new_i32();
+
+    tcg_gen_andi_i32(tmp, sp, 0xFFFE);
+    tcg_gen_mov_i32(cpu_sp, tmp);
+}
+
 static TCGv_i32 load_abs16(DisasContext *ctx, const uint32_t addr,
                            const MemOp memop)
 {
@@ -407,7 +425,6 @@ static void store_ind_base_word(DisasContext *ctx,
         tcg_gen_mov_i32(cpu_##reg, data);       \
     }
 
-control_reg(sp);
 control_reg(es);
 control_reg(psw_cy);
 

@@ -178,7 +178,7 @@ static TCGv_i32 load_word_reg(const RL78WordRegister reg)
     TCGv_i32 ret_hi = tcg_temp_new_i32();
 
     tcg_gen_ld_i32(ret_lo, regptr, 0);
-    tcg_gen_ld_i32(ret_hi, regptr, 1);
+    tcg_gen_ld_i32(ret_hi, regptr, 4);
 
     tcg_gen_shli_i32(ret_hi, ret_hi, 8);
     tcg_gen_andi_i32(ret_lo, ret_lo, 0xFF);
@@ -198,7 +198,7 @@ static void store_byte_reg(const RL78ByteRegister reg, TCGv_i32 data)
 
 static void store_word_reg(const RL78WordRegister reg, TCGv_i32 data)
 {
-    TCGv_ptr regptr = reg_ptr((uint)reg);
+    TCGv_ptr regptr = reg_ptr((uint)reg*2);
     TCGv_i32 store_data = tcg_temp_new_i32();
 
     tcg_gen_andi_i32(store_data, data, 0xFF);
@@ -206,7 +206,7 @@ static void store_word_reg(const RL78WordRegister reg, TCGv_i32 data)
 
     tcg_gen_shri_i32(store_data, data, 8);
     tcg_gen_andi_i32(store_data, store_data, 0xFF);
-    tcg_gen_st_i32(store_data, regptr, 1);
+    tcg_gen_st_i32(store_data, regptr, 4);
 }
 
 static TCGv_i32 load_psw(void)

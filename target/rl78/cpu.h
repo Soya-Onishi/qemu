@@ -1,6 +1,8 @@
 #ifndef RL78_CPU_H
 #define RL78_CPU_H
 
+#include "qemu/typedefs.h"
+#include "system/memory.h"
 #include "hw/core/registerfields.h"
 #include "cpu-qom.h"
 #include "exec/target_long.h"
@@ -10,14 +12,6 @@
 #endif
 
 #define REGISTER_BANK_NUM (4)
-
-#define RL78_CPU_PROP_MR_SYSTEM "mr-system"
-#define RL78_CPU_PROP_MR_CONTROL "mr-control"
-#define RL78_CPU_PROP_MR_ALIAS "mr-alias"
-
-#define RL78_CPU_PROP_STANDARD_SFR "standard-sfr"
-#define RL78_CPU_PROP_EXTENDED_SFR "extended-sfr"
-#define RL78_CPU_PROP_MIRROR "mirror"
 
 /* PSW define */
 REG32(PSW, 0)
@@ -30,13 +24,6 @@ FIELD(PSW, Z,    6, 1)
 FIELD(PSW, IE,   7, 1)
 
 typedef enum {
-    RL78_AS_SYSTEM,
-    RL78_AS_CONTROL,
-    RL78_AS_ALIAS,
-    RL78_AS_NUM,
-} RL78AddressSpace;
-
-typedef enum {
     RL78_BYTE_REG_X = 0,
     RL78_BYTE_REG_A,
     RL78_BYTE_REG_C,
@@ -45,6 +32,7 @@ typedef enum {
     RL78_BYTE_REG_D,
     RL78_BYTE_REG_L,
     RL78_BYTE_REG_H,
+    RL78_BYTE_REG_NUM,
 } RL78ByteRegister;
 
 typedef enum {
@@ -52,6 +40,7 @@ typedef enum {
     RL78_WORD_REG_BC,
     RL78_WORD_REG_DE,
     RL78_WORD_REG_HL,
+    RL78_WORD_REG_NUM,
 } RL78WordRegister;
 
 typedef struct RL78PSW {
@@ -66,10 +55,14 @@ typedef struct RL78PSW {
 typedef struct CPUArchState {
     RL78PSW psw;
 
+    /* General Purpose Registers */
+    uint32_t regs[REGISTER_BANK_NUM][RL78_BYTE_REG_NUM];
+
     /* Control Registers */
     uint32_t sp;
     uint32_t pc;
     uint32_t pmc;
+    uint32_t mem;
 
     /* Segment Registers */
     uint32_t es;
@@ -84,14 +77,6 @@ struct ArchCPU {
     CPUState parent_obj;
 
     CPURL78State env;
-
-    MemoryRegion *system;
-    MemoryRegion *control;
-    MemoryRegion *alias;
-
-    MemMapEntry standard_sfr;
-    MemMapEntry extended_sfr;
-    MemMapEntry mirror;
 };
 
 struct RL78CPUClass {

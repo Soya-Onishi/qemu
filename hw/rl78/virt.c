@@ -29,7 +29,8 @@ typedef struct RL78VirtMachineState RL78VirtMachineState;
 DECLARE_OBJ_CHECKERS(RL78VirtMachineState, RL78VirtMachineClass,
                      RL78_VIRT_MACHINE, TYPE_RL78_VIRT_MACHINE)
 
-static void rl78_cpu_reset(void *opaque) {
+static void rl78_cpu_reset(void *opaque)
+{
     RL78CPU *cpu = opaque;
 
     cpu_reset(CPU(cpu));
@@ -44,8 +45,7 @@ static void rl78_virt_init(MachineState *machine)
     sysbus_realize(SYS_BUS_DEVICE(&s->mcu), &error_abort);
 
     if (machine->firmware) {
-        if (!rl78_load_firmware(&s->mcu.cpu, machine, &s->mcu.system,
-                                machine->firmware)) {
+        if (!rl78_load_firmware(machine->firmware)) {
             error_report("Failed to load firmware image %s", machine->firmware);
             exit(1);
         }

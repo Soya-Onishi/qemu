@@ -7,6 +7,7 @@ rl78_ss.add(files(
     'helper.c',
     'op_helper.c',
     'gdbstub.c',
+    'cpu-state.c',
 ))
 
 target_arch += { 'rl78': rl78_ss }

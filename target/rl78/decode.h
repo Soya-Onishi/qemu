@@ -183,7 +183,6 @@ typedef struct RL78OperandBit RL78OperandBit;
 
 struct RL78Operand {
     RL78OperandKind kind;
-    MemOp memop;
     union {
         RL78ByteRegister byte_reg;
         RL78WordRegister word_reg;

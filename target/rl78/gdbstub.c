@@ -8,16 +8,12 @@ const char* rl78_cpu_gdb_arch_name(CPUState *cs)
     return "rl78";
 }
 
-static uint16_t rl78_cpu_read_register(CPUState *cs, uint rbs, uint n, uint size)
+static uint16_t rl78_cpu_read_register(CPURL78State *env, uint rbs, uint n, uint size)
 {
-    const uint reg = size == 1 ? n : n << (size - 1);
-    const uint offset = (rbs << 3) + reg;
-
-    const hwaddr addr = 0xFFEE0 + offset;
-
-    uint16_t value;
-    AddressSpace *system = cpu_get_address_space(cs, RL78_AS_SYSTEM);
-    address_space_read(system, addr, MEMTXATTRS_UNSPECIFIED, &value, size);
+    uint16_t value = 0;
+    for(int i = 0; i < size; i++) {
+        value |= (env->regs[rbs][n] & 0xFF) << (i * 8);
+    }
 
     return value;
 }
@@ -49,13 +45,13 @@ int rl78_cpu_gdb_read_register(CPUState *cs, GByteArray *mem_buf, int n)
         return gdb_get_reg16(mem_buf, env->sp);
     case 42 ... 49: {
         const uint reg = n - 42; 
-        uint16_t value = rl78_cpu_read_register(cs, env->psw.rbs, reg, 1);
+        uint16_t value = rl78_cpu_read_register(env, env->psw.rbs, reg, 1);
 
         return gdb_get_reg8(mem_buf, (uint8_t)value);
     }
     case 50 ... 53: {
         const uint reg = n - 50;
-        const uint16_t value = rl78_cpu_read_register(cs, env->psw.rbs, reg, 2);
+        const uint16_t value = rl78_cpu_read_register(env, env->psw.rbs, reg, 2);
 
         return gdb_get_reg16(mem_buf, value); 
     }
@@ -63,7 +59,7 @@ int rl78_cpu_gdb_read_register(CPUState *cs, GByteArray *mem_buf, int n)
         const int offset = n - 54;
         const int reg = offset % 8;
         const int rbs = offset / 8;
-        const uint16_t value = rl78_cpu_read_register(cs, rbs, reg, 1);
+        const uint16_t value = rl78_cpu_read_register(env, rbs, reg, 1);
 
         return gdb_get_reg8(mem_buf, (uint8_t)value);
     }
@@ -71,7 +67,7 @@ int rl78_cpu_gdb_read_register(CPUState *cs, GByteArray *mem_buf, int n)
         const uint offset = n - 86;
         const uint reg = (offset % 4);
         const uint rbs = offset / 4;
-        const uint16_t value = rl78_cpu_read_register(cs, rbs, reg, 2);
+        const uint16_t value = rl78_cpu_read_register(env, rbs, reg, 2);
 
         return gdb_get_reg16(mem_buf, value);
     }

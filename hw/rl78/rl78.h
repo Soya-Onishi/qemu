@@ -18,9 +18,15 @@ struct RL78G23McuState {
     /*< public >*/
     RL78CPU cpu;
 
-    MemoryRegion system;
-    MemoryRegion control;
-    MemoryRegion alias;
+    MemoryRegion code_flash;
+    MemoryRegion data_flash;
+    MemoryRegion standard_sfr;
+    MemoryRegion extended_sfr;
+    MemoryRegion mirror;
+    MemoryRegion ram_first;
+    MemoryRegion ram_remain;
+
+    MemoryRegion cpu_state;
 };
 
 enum {

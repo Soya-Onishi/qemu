@@ -5,6 +5,7 @@
 #include "exec/cputlb.h"
 #include "exec/target_page.h"
 #include "exec/translation-block.h"
+#include "system/memory.h"
 #include "accel/tcg/cpu-ops.h"
 #include "tcg/tcg-mo.h"
 #include "qapi/error.h"
@@ -71,7 +72,7 @@ static bool rl78_cpu_has_work(CPUState *cs)
 
 static int rl78_cpu_mmu_index(CPUState *cs, bool ifetch)
 {
-    return RL78_AS_SYSTEM;
+    return 0;
 }
 
 static void rl78_cpu_reset_hold(Object *obj, ResetType type)
@@ -93,8 +94,7 @@ static void rl78_cpu_reset_hold(Object *obj, ResetType type)
         rlc->parent_phases.hold(obj, type);
     }
 
-    AddressSpace *as   = cpu_get_address_space(cs, RL78_AS_SYSTEM);
-    uint16_t *resetvec = rom_ptr_for_as(as, 0x000000, 2);
+    uint16_t *resetvec = rom_ptr(0x000000, 2);
     if (resetvec) {
         env->pc = lduw_le_p(resetvec);
     }
@@ -115,13 +115,8 @@ static ObjectClass *rl78_cpu_class_by_name(const char *cpu_model)
 static void rl78_cpu_realize(DeviceState *dev, Error **errp)
 {
     CPUState *cs      = CPU(dev);
-    RL78CPU *cpu      = RL78_CPU(dev);
     RL78CPUClass *rlc = RL78_CPU_GET_CLASS(dev);
     Error *local_err  = NULL;
-
-    cpu_address_space_init(cs, RL78_AS_SYSTEM, "system", cpu->system);
-    cpu_address_space_init(cs, RL78_AS_CONTROL, "control", cpu->control);
-    cpu_address_space_init(cs, RL78_AS_ALIAS, "alias", cpu->alias);
 
     cpu_exec_realizefn(cs, &local_err);
 
@@ -157,19 +152,7 @@ static bool rl78_cpu_tlb_fill(CPUState *cs, vaddr addr, int size,
 
 static void rl78_cpu_init(Object *obj)
 {
-    RL78CPU *cpu = RL78_CPU(obj);
-
-    object_property_add_link(obj, RL78_CPU_PROP_MR_SYSTEM, TYPE_MEMORY_REGION,
-                             (Object **)&cpu->system,
-                             qdev_prop_allow_set_link_before_realize,
-                             OBJ_PROP_LINK_STRONG);
-    object_property_add_link(obj, RL78_CPU_PROP_MR_CONTROL, TYPE_MEMORY_REGION,
-                             (Object **)&cpu->control,
-                             qdev_prop_allow_set_link_before_realize,
-                             OBJ_PROP_LINK_STRONG);
-    object_property_add_link(
-        obj, RL78_CPU_PROP_MR_ALIAS, TYPE_MEMORY_REGION, (Object **)&cpu->alias,
-        qdev_prop_allow_set_link_before_realize, OBJ_PROP_LINK_STRONG);
+    // nothing to do
 }
 
 #include "hw/core/sysemu-cpu-ops.h"
@@ -214,7 +197,6 @@ static void rl78_cpu_class_init(ObjectClass *oc, const void *data)
     cc->set_pc        = rl78_cpu_set_pc;
     cc->get_pc        = rl78_cpu_get_pc;
 
-    cc->max_as         = RL78_AS_NUM;
     cc->sysemu_ops     = &rl78_sysemu_ops;
     cc->disas_set_info = rl78_cpu_disas_set_info;
 

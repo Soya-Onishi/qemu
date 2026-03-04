@@ -8,8 +8,8 @@ static const MemMapEntry r7f100gxl_mm[] = {
     [RL78G23_MM_CODE_FLASH]   = {.base = 0x00000, .size = 0x1FFFF},
     [RL78G23_MM_EXTENDED_SFR] = {.base = 0xF0000, .size = 0x00800},
     [RL78G23_MM_DATA_FLASH]   = {.base = 0xF1000, .size = 0x02000},
-    [RL78G23_MM_MIRROR]       = {.base = 0xF3000, .size = 0x08F00},
-    [RL78G23_MM_RAM]          = {.base = 0xFBF00, .size = 0x04000},
+    [RL78G23_MM_MIRROR]       = {.base = 0xF3000, .size = 0x00F00},
+    [RL78G23_MM_RAM]          = {.base = 0xF3F00, .size = 0x0C000},
     [RL78G23_MM_SFR]          = {.base = 0xFFF00, .size = 0x00100},
 };
 

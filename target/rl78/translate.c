@@ -173,7 +173,7 @@ static TCGv_i32 load_byte_reg(const RL78ByteRegister reg)
 
 static TCGv_i32 load_word_reg(const RL78WordRegister reg)
 {
-    TCGv_ptr regptr = reg_ptr((uint)reg);
+    TCGv_ptr regptr = reg_ptr((uint)reg*2);
     TCGv_i32 ret_lo = tcg_temp_new_i32();
     TCGv_i32 ret_hi = tcg_temp_new_i32();
 

@@ -118,6 +118,20 @@ static char *abs20(DisasContext *ctx, const RL78Operand op)
     return g_strdup_printf("!!0x%05x", op.const_op);
 }
 
+static char *ind_reg(DisasContext *ctx, const RL78Operand op)
+{
+    const char *prefix = ctx->use_es ? "ES:" : "";
+    const RL78Operand base_reg = {
+        .kind     = RL78_OP_WORD_REG,
+        .word_reg = op.ind_reg.base,
+    };
+    char *base = word_reg(ctx, base_reg);
+    char *op_str = g_strdup_printf("%s[%s]", prefix, base);
+    g_free(base);
+
+    return op_str;
+}
+
 static char *ind_reg_reg(DisasContext *ctx, const RL78Operand op)
 {
     const char *prefix         = ctx->use_es ? "ES:" : "";
@@ -292,6 +306,7 @@ static char *(*print_operand_table[])(DisasContext *ctx,
     [RL78_OP_ABS20]         = abs20,
     [RL78_OP_SADDR]         = saddr,
     [RL78_OP_SFR]           = sfr,
+    [RL78_OP_IND_REG]       = ind_reg,
     [RL78_OP_IND_REG_REG]   = ind_reg_reg,
     [RL78_OP_IND_REG_IMM]   = ind_reg_imm,
     [RL78_OP_IND_SP_IMM]    = ind_sp_imm,

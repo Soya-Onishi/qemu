@@ -35,6 +35,14 @@ typedef struct DisasContext DisasContext;
         },                                                                     \
     }
 
+#define IND_R(reg)                                                             \
+    {                                                                          \
+        .kind        = RL78_OP_IND_REG,                                        \
+        .ind_reg     = {                                                       \
+            .base = RL78_WORD_REG_##reg,                                       \
+        },                                                                     \
+    }
+
 #define IND_RI(base_reg)                                                       \
     {                                                                          \
         .kind        = RL78_OP_IND_REG_IMM,                                    \
@@ -111,7 +119,7 @@ static const RL78Instruction decode_table_1st_map[256] = {
     [0x0a] = ENTRY(ADD, op(SADDR), op(IMM8)),
     [0x0b] = ENTRY(ADD, BREG(A), op(SADDR)),
     [0x0c] = ENTRY(ADD, BREG(A), op(IMM8)),
-    [0x0d] = ENTRY(ADD, BREG(A), IND_RI(HL)),
+    [0x0d] = ENTRY(ADD, BREG(A), IND_R(HL)),
     [0x0e] = ENTRY(ADD, BREG(A), op(IND_REG_IMM)),
     [0x0f] = ENTRY(ADD, BREG(A), op(ABS16)),
 
@@ -129,7 +137,7 @@ static const RL78Instruction decode_table_1st_map[256] = {
     [0x1a] = ENTRY(ADDC, op(SADDR), op(IMM8)),
     [0x1b] = ENTRY(ADDC, BREG(A), op(SADDR)),
     [0x1c] = ENTRY(ADDC, BREG(A), op(IMM8)),
-    [0x1d] = ENTRY(ADDC, BREG(A), IND_RI(HL)),
+    [0x1d] = ENTRY(ADDC, BREG(A), IND_R(HL)),
     [0x1e] = ENTRY(ADDC, BREG(A), op(IND_REG_IMM)),
     [0x1f] = ENTRY(ADDC, BREG(A), op(ABS16)),
 
@@ -147,7 +155,7 @@ static const RL78Instruction decode_table_1st_map[256] = {
     [0x2a] = ENTRY(SUB, op(SADDR), op(IMM8)),
     [0x2b] = ENTRY(SUB, BREG(A), op(SADDR)),
     [0x2c] = ENTRY(SUB, BREG(A), op(IMM8)),
-    [0x2d] = ENTRY(SUB, BREG(A), IND_RI(HL)),
+    [0x2d] = ENTRY(SUB, BREG(A), IND_R(HL)),
     [0x2e] = ENTRY(SUB, BREG(A), op(IND_REG_IMM)),
     [0x2f] = ENTRY(SUB, BREG(A), op(ABS16)),
 
@@ -165,7 +173,7 @@ static const RL78Instruction decode_table_1st_map[256] = {
     [0x3a] = ENTRY(SUBC, op(SADDR), op(IMM8)),
     [0x3b] = ENTRY(SUBC, BREG(A), op(SADDR)),
     [0x3c] = ENTRY(SUBC, BREG(A), op(IMM8)),
-    [0x3d] = ENTRY(SUBC, BREG(A), IND_RI(HL)),
+    [0x3d] = ENTRY(SUBC, BREG(A), IND_R(HL)),
     [0x3e] = ENTRY(SUBC, BREG(A), op(IND_REG_IMM)),
     [0x3f] = ENTRY(SUBC, BREG(A), op(ABS16)),
 
@@ -183,7 +191,7 @@ static const RL78Instruction decode_table_1st_map[256] = {
     [0x4a] = ENTRY(CMP, op(SADDR), op(IMM8)),
     [0x4b] = ENTRY(CMP, BREG(A), op(SADDR)),
     [0x4c] = ENTRY(CMP, BREG(A), op(IMM8)),
-    [0x4d] = ENTRY(CMP, BREG(A), IND_RI(HL)),
+    [0x4d] = ENTRY(CMP, BREG(A), IND_R(HL)),
     [0x4e] = ENTRY(CMP, BREG(A), op(IND_REG_IMM)),
     [0x4f] = ENTRY(CMP, BREG(A), op(ABS16)),
 
@@ -201,7 +209,7 @@ static const RL78Instruction decode_table_1st_map[256] = {
     [0x5a] = ENTRY(AND, op(SADDR), op(IMM8)),
     [0x5b] = ENTRY(AND, BREG(A), op(SADDR)),
     [0x5c] = ENTRY(AND, BREG(A), op(IMM8)),
-    [0x5d] = ENTRY(AND, BREG(A), IND_RI(HL)),
+    [0x5d] = ENTRY(AND, BREG(A), IND_R(HL)),
     [0x5e] = ENTRY(AND, BREG(A), op(IND_REG_IMM)),
     [0x5f] = ENTRY(AND, BREG(A), op(ABS16)),
 
@@ -219,7 +227,7 @@ static const RL78Instruction decode_table_1st_map[256] = {
     [0x6a] = ENTRY(OR, op(SADDR), op(IMM8)),
     [0x6b] = ENTRY(OR, BREG(A), op(SADDR)),
     [0x6c] = ENTRY(OR, BREG(A), op(IMM8)),
-    [0x6d] = ENTRY(OR, BREG(A), IND_RI(HL)),
+    [0x6d] = ENTRY(OR, BREG(A), IND_R(HL)),
     [0x6e] = ENTRY(OR, BREG(A), op(IND_REG_IMM)),
     [0x6f] = ENTRY(OR, BREG(A), op(ABS16)),
 
@@ -237,7 +245,7 @@ static const RL78Instruction decode_table_1st_map[256] = {
     [0x7a] = ENTRY(XOR, op(SADDR), op(IMM8)),
     [0x7b] = ENTRY(XOR, BREG(A), op(SADDR)),
     [0x7c] = ENTRY(XOR, BREG(A), op(IMM8)),
-    [0x7d] = ENTRY(XOR, BREG(A), IND_RI(HL)),
+    [0x7d] = ENTRY(XOR, BREG(A), IND_R(HL)),
     [0x7e] = ENTRY(XOR, BREG(A), op(IND_REG_IMM)),
     [0x7f] = ENTRY(XOR, BREG(A), op(ABS16)),
 
@@ -251,9 +259,9 @@ static const RL78Instruction decode_table_1st_map[256] = {
     [0x86] = ENTRY(INC, BREG(L), op(NONE)),
     [0x87] = ENTRY(INC, BREG(H), op(NONE)),
     [0x88] = ENTRY(MOV, BREG(A), op(IND_SP_IMM)),
-    [0x89] = ENTRY(MOV, BREG(A), IND_RI(DE)),
+    [0x89] = ENTRY(MOV, BREG(A), IND_R(DE)),
     [0x8a] = ENTRY(MOV, BREG(A), IND_RI(DE)),
-    [0x8b] = ENTRY(MOV, BREG(A), IND_RI(HL)),
+    [0x8b] = ENTRY(MOV, BREG(A), IND_R(HL)),
     [0x8c] = ENTRY(MOV, BREG(A), IND_RI(HL)),
     [0x8d] = ENTRY(MOV, BREG(A), op(SADDR)),
     [0x8e] = ENTRY(MOV, BREG(A), op(SFR)),
@@ -269,9 +277,9 @@ static const RL78Instruction decode_table_1st_map[256] = {
     [0x96] = ENTRY(DEC, BREG(L), op(NONE)),
     [0x97] = ENTRY(DEC, BREG(H), op(NONE)),
     [0x98] = ENTRY(MOV, op(IND_SP_IMM), BREG(A)),
-    [0x99] = ENTRY(MOV, IND_RI(DE), BREG(A)),
+    [0x99] = ENTRY(MOV, IND_R(DE), BREG(A)),
     [0x9a] = ENTRY(MOV, IND_RI(DE), BREG(A)),
-    [0x9b] = ENTRY(MOV, IND_RI(HL), BREG(A)),
+    [0x9b] = ENTRY(MOV, IND_R(HL), BREG(A)),
     [0x9c] = ENTRY(MOV, IND_RI(HL), BREG(A)),
     [0x9d] = ENTRY(MOV, op(SADDR), BREG(A)),
     [0x9e] = ENTRY(MOV, op(SFR), BREG(A)),
@@ -287,9 +295,9 @@ static const RL78Instruction decode_table_1st_map[256] = {
     [0xa6] = ENTRY(INCW, op(SADDR), op(NONE)),
     [0xa7] = ENTRY(INCW, WREG(HL), op(NONE)),
     [0xa8] = ENTRY(MOVW, WREG(AX), op(IND_SP_IMM)),
-    [0xa9] = ENTRY(MOVW, WREG(AX), IND_RI(DE)),
+    [0xa9] = ENTRY(MOVW, WREG(AX), IND_R(DE)),
     [0xaa] = ENTRY(MOVW, WREG(AX), op(IND_REG_IMM)),
-    [0xab] = ENTRY(MOVW, WREG(AX), IND_RI(HL)),
+    [0xab] = ENTRY(MOVW, WREG(AX), IND_R(HL)),
     [0xac] = ENTRY(MOVW, WREG(AX), op(IND_REG_IMM)),
     [0xad] = ENTRY(MOVW, WREG(AX), op(SADDR)),
     [0xae] = ENTRY(MOVW, WREG(AX), op(SFR)),
@@ -305,9 +313,9 @@ static const RL78Instruction decode_table_1st_map[256] = {
     [0xb6] = ENTRY(DECW, op(SADDR), op(NONE)),
     [0xb7] = ENTRY(DECW, WREG(HL), op(NONE)),
     [0xb8] = ENTRY(MOVW, op(IND_SP_IMM), WREG(AX)),
-    [0xb9] = ENTRY(MOVW, IND_RI(DE), WREG(AX)),
+    [0xb9] = ENTRY(MOVW, IND_R(DE), WREG(AX)),
     [0xba] = ENTRY(MOVW, op(IND_REG_IMM), WREG(AX)),
-    [0xbb] = ENTRY(MOVW, IND_RI(HL), WREG(AX)),
+    [0xbb] = ENTRY(MOVW, IND_R(HL), WREG(AX)),
     [0xbc] = ENTRY(MOVW, op(IND_REG_IMM), WREG(AX)),
     [0xbd] = ENTRY(MOVW, op(SADDR), WREG(AX)),
     [0xbe] = ENTRY(MOVW, op(SFR), WREG(AX)),
@@ -580,9 +588,9 @@ static const RL78Instruction decode_table_2nd_map[256] = {
     [0xa9] = ENTRY(XCH, BREG(A), IND_RR(HL, C)),
     [0xaa] = ENTRY(XCH, BREG(A), op(ABS16)),
     [0xab] = ENTRY(XCH, BREG(A), op(SFR)),
-    [0xac] = ENTRY(XCH, BREG(A), IND_RI(HL)),
+    [0xac] = ENTRY(XCH, BREG(A), IND_R(HL)),
     [0xad] = ENTRY(XCH, BREG(A), IND_RI(HL)),
-    [0xae] = ENTRY(XCH, BREG(A), IND_RI(DE)),
+    [0xae] = ENTRY(XCH, BREG(A), IND_R(DE)),
     [0xaf] = ENTRY(XCH, BREG(A), IND_RI(DE)),
 
     /* Row B (0xBX) */
@@ -1054,6 +1062,7 @@ static RL78Operand (*decode_operand_table[RL78_OP_NUM])(DisasContext *,
     [RL78_OP_ABS20]         = decode_20bit_op,
     [RL78_OP_SADDR]         = decode_byte_op,
     [RL78_OP_SFR]           = decode_byte_op,
+    [RL78_OP_IND_REG]       = decode_dummy_op,
     [RL78_OP_IND_REG_REG]   = decode_dummy_op,
     [RL78_OP_IND_REG_IMM]   = decode_ind_reg_imm,
     [RL78_OP_IND_SP_IMM]    = decode_ind_sp_imm,

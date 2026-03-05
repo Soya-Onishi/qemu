@@ -311,6 +311,25 @@ static void store_sfr(DisasContext *ctx, const uint32_t sfr, TCGv_i32 data,
     rl78_gen_store(ctx, tcg_constant_i32(access_addr), data, memop);
 }
 
+static TCGv_i32 ind_reg(DisasContext *ctx, const RL78WordRegister base)
+{
+    TCGv_i32 tcg_base = load_word_reg(base);
+    return rl78_gen_addr(ctx, tcg_base);
+}
+
+static TCGv_i32 load_ind_reg(DisasContext *ctx, const RL78OperandIndReg op, const MemOp memop)
+{
+    const TCGv_i32 addr = ind_reg(ctx, op.base);
+    return rl78_gen_load(ctx, addr, memop);
+}
+
+static void store_ind_reg(DisasContext *ctx, const RL78OperandIndReg op,
+                          TCGv_i32 data, const MemOp memop)
+{
+    const TCGv_i32 addr = ind_reg(ctx, op.base);
+    rl78_gen_store(ctx, addr, data, memop);
+}
+
 static TCGv_i32 ind_reg_reg(DisasContext *ctx, const RL78WordRegister base,
                             const RL78ByteRegister idx)
 {
@@ -453,6 +472,8 @@ static TCGv_i32 rl78_gen_load_operand(DisasContext *ctx, const RL78Operand op, c
         return load_saddr(ctx, op.const_op, memop);
     case RL78_OP_SFR:
         return load_sfr(ctx, op.const_op, memop);
+    case RL78_OP_IND_REG:
+        return load_ind_reg(ctx, op.ind_reg, memop);
     case RL78_OP_IND_REG_REG:
         return load_ind_reg_reg(ctx, op.ind_reg_reg, memop);
     case RL78_OP_IND_REG_IMM:
@@ -509,6 +530,9 @@ static void rl78_gen_store_operand(DisasContext *ctx, const RL78Operand op,
         break;
     case RL78_OP_SFR:
         store_sfr(ctx, op.const_op, data, memop);
+        break;
+    case RL78_OP_IND_REG:
+        store_ind_reg(ctx, op.ind_reg, data, memop);
         break;
     case RL78_OP_IND_REG_REG:
         store_ind_reg_reg(ctx, op.ind_reg_reg, data, memop);

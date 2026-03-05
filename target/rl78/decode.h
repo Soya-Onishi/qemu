@@ -121,6 +121,7 @@ enum RL78OperandKind {
     RL78_OP_SFR,
     RL78_OP_IND_REG_REG,
     RL78_OP_IND_REG_IMM,
+    RL78_OP_IND_REG,
     RL78_OP_IND_SP_IMM,
     RL78_OP_IND_BASE_BYTE,
     RL78_OP_IND_BASE_WORD,
@@ -141,6 +142,10 @@ enum RL78BitOpKind {
     RL78_BITOP_IND_HL,
 };
 typedef enum RL78BitOpKind RL78BitOpKind;
+
+struct RL78OperandIndReg {
+    RL78WordRegister base;
+};
 
 struct RL78OperandIndRegReg {
     RL78WordRegister base;
@@ -174,6 +179,7 @@ struct RL78OperandBit {
     };
 };
 
+typedef struct RL78OperandIndReg RL78OperandIndReg;
 typedef struct RL78OperandIndRegReg RL78OperandIndRegReg;
 typedef struct RL78OperandIndRegImm RL78OperandIndRegImm;
 typedef struct RL78OperandIndSPImm RL78OperandIndSPImm;
@@ -187,6 +193,7 @@ struct RL78Operand {
         RL78ByteRegister byte_reg;
         RL78WordRegister word_reg;
         uint32_t const_op;
+        RL78OperandIndReg ind_reg;
         RL78OperandIndRegReg ind_reg_reg;
         RL78OperandIndRegImm ind_reg_imm;
         RL78OperandIndSPImm ind_sp_imm;
@@ -197,8 +204,7 @@ struct RL78Operand {
 };
 typedef struct RL78Operand RL78Operand;
 
-struct RL78Instruction {
-    RL78Mnemonic mnemonic;
+struct RL78Instruction { RL78Mnemonic mnemonic;
     RL78Operand operand[2];
 };
 typedef struct RL78Instruction RL78Instruction;

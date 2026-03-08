@@ -586,12 +586,15 @@ static RL78BitData rl78_gen_load_bit(DisasContext *ctx, const RL78OperandBit op)
         data = load_ind_reg_imm(ctx, indop, MO_8);
         break;
     }
+    case RL78_BITOP_CY:
+        data = load_psw_cy();
+        break;
     default:
         // implementation bug assertion
         break;
     }
 
-    tcg_gen_shli_i32(bit, data, op.bit);
+    tcg_gen_shri_i32(bit, data, op.bit);
     tcg_gen_andi_i32(bit, bit, 0x01);
 
     return (RL78BitData){.byte = data, .bit = bit};
@@ -627,6 +630,9 @@ static void rl78_gen_store_bit(DisasContext *ctx, const RL78OperandBit op,
         store_ind_reg_imm(ctx, addr, stored_data, MO_8);
         break;
     }
+    case RL78_BITOP_CY:
+        store_psw_cy(stored_data);
+        break;
     default:
         // implementation bug assertion
         break;

@@ -686,37 +686,37 @@ static const RL78Instruction decode_table_2nd_map[256] = {
 
 #define MAP_3RD_00_7F(n)                                                       \
     [0x00 + (n) * 0x10] = ENTRY(SET1, BIT_OP(ABS16, n), op(NONE)),   \
-    [0x01 + (n) * 0x10] = ENTRY(MOV1, BIT_OP(SADDR, n), op(CY)),     \
+    [0x01 + (n) * 0x10] = ENTRY(MOV1, BIT_OP(SADDR, n), BIT_OP(CY, 0)),     \
     [0x02 + (n) * 0x10] = ENTRY(SET1, BIT_OP(SADDR, n), op(NONE)),   \
     [0x03 + (n) * 0x10] = ENTRY(CLR1, BIT_OP(SADDR, n), op(NONE)),   \
-    [0x04 + (n) * 0x10] = ENTRY(MOV1, op(CY), BIT_OP(SADDR, n)),     \
-    [0x05 + (n) * 0x10] = ENTRY(AND1, op(CY), BIT_OP(SADDR, n)),     \
-    [0x06 + (n) * 0x10] = ENTRY(OR1, op(CY), BIT_OP(SADDR, n)),      \
-    [0x07 + (n) * 0x10] = ENTRY(XOR1, op(CY), BIT_OP(SADDR, n)),     \
+    [0x04 + (n) * 0x10] = ENTRY(MOV1, BIT_OP(CY, 0), BIT_OP(SADDR, n)),     \
+    [0x05 + (n) * 0x10] = ENTRY(AND1, BIT_OP(CY, 0), BIT_OP(SADDR, n)),     \
+    [0x06 + (n) * 0x10] = ENTRY(OR1, BIT_OP(CY, 0), BIT_OP(SADDR, n)),      \
+    [0x07 + (n) * 0x10] = ENTRY(XOR1, BIT_OP(CY, 0), BIT_OP(SADDR, n)),     \
     [0x08 + (n) * 0x10] = ENTRY(CLR1, BIT_OP(ABS16, n), op(NONE)),   \
-    [0x09 + (n) * 0x10] = ENTRY(MOV1, BIT_OP(SFR, n), op(CY)),       \
+    [0x09 + (n) * 0x10] = ENTRY(MOV1, BIT_OP(SFR, n), BIT_OP(CY, 0)),       \
     [0x0a + (n) * 0x10] = ENTRY(SET1, BIT_OP(SFR, n), op(NONE)),     \
     [0x0b + (n) * 0x10] = ENTRY(CLR1, BIT_OP(SFR, n), op(NONE)),     \
-    [0x0c + (n) * 0x10] = ENTRY(MOV1, op(CY), BIT_OP(SFR, n)),       \
-    [0x0d + (n) * 0x10] = ENTRY(AND1, op(CY), BIT_OP(SFR, n)),       \
-    [0x0e + (n) * 0x10] = ENTRY(OR1, op(CY), BIT_OP(SFR, n)),        \
-    [0x0f + (n) * 0x10] = ENTRY(XOR1, op(CY), BIT_OP(SFR, n))
+    [0x0c + (n) * 0x10] = ENTRY(MOV1, BIT_OP(CY, 0), BIT_OP(SFR, n)),       \
+    [0x0d + (n) * 0x10] = ENTRY(AND1, BIT_OP(CY, 0), BIT_OP(SFR, n)),       \
+    [0x0e + (n) * 0x10] = ENTRY(OR1, BIT_OP(CY, 0), BIT_OP(SFR, n)),        \
+    [0x0f + (n) * 0x10] = ENTRY(XOR1, BIT_OP(CY, 0), BIT_OP(SFR, n))
 
 #define MAP_3RD_80_FF(n)                                                       \
-    [0x81 + (n) * 0x10] = ENTRY(MOV1, BIT_OP(IND_HL, n), op(CY)),    \
+    [0x81 + (n) * 0x10] = ENTRY(MOV1, BIT_OP(IND_HL, n), BIT_OP(CY, 0)),    \
     [0x82 + (n) * 0x10] = ENTRY(SET1, BIT_OP(IND_HL, n), op(NONE)),  \
     [0x83 + (n) * 0x10] = ENTRY(CLR1, BIT_OP(IND_HL, n), op(NONE)),  \
-    [0x84 + (n) * 0x10] = ENTRY(MOV1, op(CY), BIT_OP(IND_HL, n)),    \
-    [0x85 + (n) * 0x10] = ENTRY(AND1, op(CY), BIT_OP(IND_HL, n)),    \
-    [0x86 + (n) * 0x10] = ENTRY(OR1, op(CY), BIT_OP(IND_HL, n)),     \
-    [0x87 + (n) * 0x10] = ENTRY(XOR1, op(CY), BIT_OP(IND_HL, n)),    \
-    [0x89 + (n) * 0x10] = ENTRY(MOV1, BIT_OP(REG_A, n), op(CY)),     \
+    [0x84 + (n) * 0x10] = ENTRY(MOV1, BIT_OP(CY, 0), BIT_OP(IND_HL, n)),    \
+    [0x85 + (n) * 0x10] = ENTRY(AND1, BIT_OP(CY, 0), BIT_OP(IND_HL, n)),    \
+    [0x86 + (n) * 0x10] = ENTRY(OR1, BIT_OP(CY, 0), BIT_OP(IND_HL, n)),     \
+    [0x87 + (n) * 0x10] = ENTRY(XOR1, BIT_OP(CY, 0), BIT_OP(IND_HL, n)),    \
+    [0x89 + (n) * 0x10] = ENTRY(MOV1, BIT_OP(REG_A, n), BIT_OP(CY, 0)),     \
     [0x8a + (n) * 0x10] = ENTRY(SET1, BIT_OP(REG_A, n), op(NONE)),   \
     [0x8b + (n) * 0x10] = ENTRY(CLR1, BIT_OP(REG_A, n), op(NONE)),   \
-    [0x8c + (n) * 0x10] = ENTRY(MOV1, op(CY), BIT_OP(REG_A, n)),     \
-    [0x8d + (n) * 0x10] = ENTRY(AND1, op(CY), BIT_OP(REG_A, n)),     \
-    [0x8e + (n) * 0x10] = ENTRY(OR1, op(CY), BIT_OP(REG_A, n)),      \
-    [0x8f + (n) * 0x10] = ENTRY(XOR1, op(CY), BIT_OP(REG_A, n))
+    [0x8c + (n) * 0x10] = ENTRY(MOV1, BIT_OP(CY, 0), BIT_OP(REG_A, n)),     \
+    [0x8d + (n) * 0x10] = ENTRY(AND1, BIT_OP(CY, 0), BIT_OP(REG_A, n)),     \
+    [0x8e + (n) * 0x10] = ENTRY(OR1, BIT_OP(CY, 0), BIT_OP(REG_A, n)),      \
+    [0x8f + (n) * 0x10] = ENTRY(XOR1, BIT_OP(CY, 0), BIT_OP(REG_A, n))
 
 static const RL78Instruction decode_table_3rd_map[256] = {
     MAP_3RD_00_7F(0),
@@ -737,15 +737,15 @@ static const RL78Instruction decode_table_3rd_map[256] = {
     MAP_3RD_80_FF(6),
     MAP_3RD_80_FF(7),
 
-    [0x80] = ENTRY(SET1, op(CY), op(NONE)),
-    [0x88] = ENTRY(CLR1, op(CY), op(NONE)),
+    [0x80] = ENTRY(SET1, BIT_OP(CY, 0), op(NONE)),
+    [0x88] = ENTRY(CLR1, BIT_OP(CY, 0), op(NONE)),
     [0x90] = ENTRY(UNKNOWN, op(NONE), op(NONE)),
     [0x98] = ENTRY(UNKNOWN, op(NONE), op(NONE)),
     [0xa0] = ENTRY(UNKNOWN, op(NONE), op(NONE)),
     [0xa8] = ENTRY(UNKNOWN, op(NONE), op(NONE)),
     [0xb0] = ENTRY(UNKNOWN, op(NONE), op(NONE)),
     [0xb8] = ENTRY(UNKNOWN, op(NONE), op(NONE)),
-    [0xc0] = ENTRY(NOT1, op(CY), op(NONE)),
+    [0xc0] = ENTRY(NOT1, BIT_OP(CY, 0), op(NONE)),
     [0xc8] = ENTRY(UNKNOWN, op(NONE), op(NONE)),
     [0xd0] = ENTRY(UNKNOWN, op(NONE), op(NONE)),
     [0xd8] = ENTRY(UNKNOWN, op(NONE), op(NONE)),

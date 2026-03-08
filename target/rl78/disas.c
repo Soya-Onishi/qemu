@@ -238,6 +238,11 @@ static char *sel_rb(DisasContext *ctx, const RL78Operand op)
 static char *bit(DisasContext *ctx, const RL78Operand op)
 {
     char *base;
+    char *operand;
+
+    if (op.bit.kind == RL78_BITOP_CY) {
+        return g_strdup_printf("CY");
+    }
 
     switch (op.bit.kind) {
     case RL78_BITOP_SADDR: {
@@ -281,9 +286,16 @@ static char *bit(DisasContext *ctx, const RL78Operand op)
         base = ind_base_byte(ctx, bitop);
         break;
     }
+    default:
+        // implementation bug assertion
+        base = g_strdup("");
+        break;
     }
 
-    return g_strdup_printf("%s.%d", base, op.bit.bit);
+    operand = g_strdup_printf("%s.%d", base, op.bit.bit);
+    g_free(base);
+
+    return operand;
 }
 
 static char *unknown(DisasContext *ctx, const RL78Operand op)

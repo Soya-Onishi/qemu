@@ -140,6 +140,7 @@ enum RL78BitOpKind {
     RL78_BITOP_REG_A,
     RL78_BITOP_ABS16,
     RL78_BITOP_IND_HL,
+    RL78_BITOP_CY,
 };
 typedef enum RL78BitOpKind RL78BitOpKind;
 

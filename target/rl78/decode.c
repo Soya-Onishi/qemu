@@ -1028,6 +1028,13 @@ static RL78Operand decode_bit_op(DisasContext *ctx,
     RL78OperandBit operand = op.bit;
 
     switch (operand.kind) {
+    case RL78_BITOP_ABS16: 
+        operand.addr = 0;
+        operand.addr |= handler->load_byte(ctx, pc);
+        operand.addr |= handler->load_byte(ctx, pc + 1) << 8;
+        handler->set_pc(ctx, pc + 2);
+
+        break;
     case RL78_BITOP_SADDR:
     case RL78_BITOP_SFR: 
         operand.addr = handler->load_byte(ctx, pc);

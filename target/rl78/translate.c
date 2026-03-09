@@ -750,7 +750,6 @@ static TCGv_i32 borrow_byte(TCGv_i32 result)
     TCGv_i32 cy = tcg_temp_new_i32();
 
     tcg_gen_shri_i32(cy, result, 8);
-    tcg_gen_xori_i32(cy, cy, 0x01);
     tcg_gen_andi_i32(cy, cy, 0x01);
 
     return cy;
@@ -819,12 +818,10 @@ static TCGv_i32 half_borrow(TCGv_i32 op0, TCGv_i32 op1, TCGv_i32 result)
     TCGv_i32 tmp = tcg_temp_new_i32();
     TCGv_i32 ac  = tcg_temp_new_i32();
 
-    tcg_gen_mov_i32(tmp, op0);
-    tcg_gen_xor_i32(tmp, tmp, op1);
+    tcg_gen_xor_i32(tmp, op0, op1);
     tcg_gen_xor_i32(tmp, tmp, result);
 
     tcg_gen_shri_i32(ac, tmp, 4);
-    tcg_gen_xori_i32(ac, ac, 0x01);
     tcg_gen_andi_i32(ac, ac, 0x01);
 
     return ac;

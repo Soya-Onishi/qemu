@@ -1025,24 +1025,21 @@ static RL78Operand decode_bit_op(DisasContext *ctx,
                                  const RL78Operand op)
 {
     const uint32_t pc   = handler->get_pc(ctx);
-    RL78Operand operand = op;
+    RL78OperandBit operand = op.bit;
 
-    switch (op.kind) {
-    case RL78_OP_SADDR:
-    case RL78_OP_SFR: {
-        const uint8_t bit_op = handler->load_byte(ctx, pc);
-
+    switch (operand.kind) {
+    case RL78_BITOP_SADDR:
+    case RL78_BITOP_SFR: 
+        operand.addr = handler->load_byte(ctx, pc);
         handler->set_pc(ctx, pc + 1);
-        operand.bit.addr = bit_op;
 
         break;
-    }
     default:
-        operand.bit.addr = 0;
+        operand.addr = 0;
         break;
     }
 
-    return operand;
+    return (RL78Operand){.kind = RL78_OP_BIT, .bit = operand};
 }
 
 static RL78Operand (*decode_operand_table[RL78_OP_NUM])(DisasContext *,

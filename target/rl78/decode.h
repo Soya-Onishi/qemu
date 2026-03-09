@@ -175,9 +175,7 @@ struct RL78OperandIndBaseWord {
 struct RL78OperandBit {
     RL78BitOpKind kind;
     uint32_t bit;
-    union {
-        uint32_t addr;
-    };
+    uint32_t addr;
 };
 
 typedef struct RL78OperandIndReg RL78OperandIndReg;

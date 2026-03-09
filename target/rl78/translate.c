@@ -614,10 +614,10 @@ static void rl78_gen_store_bit(DisasContext *ctx, const RL78OperandBit op,
 
     switch (op.kind) {
     case RL78_BITOP_SADDR:
-        rl78_gen_store(ctx, tcg_constant_i32(op.addr), stored_data, MO_8);
+        store_saddr(ctx, op.addr, stored_data, MO_8);
         break;
     case RL78_BITOP_SFR:
-        rl78_gen_store(ctx, tcg_constant_i32(op.addr), stored_data, MO_8);
+        store_sfr(ctx, op.addr, stored_data, MO_8);
         break;
     case RL78_BITOP_REG_A:
         store_byte_reg(RL78_BYTE_REG_A, stored_data);
@@ -1307,8 +1307,11 @@ static bool trans_ROLWC(DisasContext *ctx, RL78Instruction *insn)
 
 static bool trans_MOV1(DisasContext *ctx, RL78Instruction *insn)
 {
-    RL78BitData bitop = rl78_gen_load_bit(ctx, insn->operand[1].bit);
-    rl78_gen_store_bit(ctx, insn->operand[0].bit, bitop);
+    RL78BitData src = rl78_gen_load_bit(ctx, insn->operand[1].bit);
+    RL78BitData dst = rl78_gen_load_bit(ctx, insn->operand[0].bit);
+
+    dst.bit = src.bit;
+    rl78_gen_store_bit(ctx, insn->operand[0].bit, dst);
 
     return true;
 }

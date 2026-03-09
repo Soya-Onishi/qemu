@@ -407,10 +407,10 @@ static TCGv_i32 ind_base_byte(DisasContext *ctx, const uint32_t base,
                               const RL78ByteRegister idx)
 {
     TCGv_i32 tcg_base = tcg_constant_i32(base);
-    TCGv_i32 tcg_idx  = load_byte_reg(idx);
-    tcg_gen_add_i32(tcg_base, tcg_base, tcg_idx);
+    TCGv_i32 tcg_addr  = load_byte_reg(idx);
+    tcg_gen_add_i32(tcg_addr, tcg_addr, tcg_base);
 
-    return rl78_gen_addr(ctx, tcg_base);
+    return rl78_gen_addr(ctx, tcg_addr);
 }
 
 static TCGv_i32 load_ind_base_byte(DisasContext *ctx,
@@ -433,10 +433,10 @@ static TCGv_i32 ind_base_word(DisasContext *ctx, const uint32_t base,
                               const RL78WordRegister idx)
 {
     TCGv_i32 tcg_base = tcg_constant_i32(base);
-    TCGv_i32 tcg_idx  = load_word_reg(idx);
-    tcg_gen_add_i32(tcg_base, tcg_base, tcg_idx);
+    TCGv_i32 tcg_addr  = load_word_reg(idx);
+    tcg_gen_add_i32(tcg_addr, tcg_addr, tcg_base);
 
-    return rl78_gen_addr(ctx, tcg_base);
+    return rl78_gen_addr(ctx, tcg_addr);
 }
 
 static TCGv_i32 load_ind_base_word(DisasContext *ctx,

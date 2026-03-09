@@ -994,7 +994,7 @@ static RL78Operand decode_ind_base_byte(DisasContext *ctx,
 {
     const uint32_t pc    = handler->get_pc(ctx);
     const uint32_t basel = handler->load_byte(ctx, pc + 0);
-    const uint32_t baseh = handler->load_byte(ctx, pc + 1) << 8;
+    const uint32_t baseh = handler->load_byte(ctx, pc + 1);
     const uint32_t base  = (baseh << 8) | basel;
     RL78Operand operand  = op;
 
@@ -1010,7 +1010,7 @@ static RL78Operand decode_ind_base_word(DisasContext *ctx,
 {
     const uint32_t pc    = handler->get_pc(ctx);
     const uint32_t basel = handler->load_byte(ctx, pc + 0);
-    const uint32_t baseh = handler->load_byte(ctx, pc + 1) << 8;
+    const uint32_t baseh = handler->load_byte(ctx, pc + 1);
     const uint32_t base  = (baseh << 8) | basel;
     RL78Operand operand  = op;
 

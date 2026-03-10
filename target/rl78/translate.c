@@ -101,8 +101,15 @@ static TCGv_i32 rl78_gen_addr(DisasContext *ctx, TCGv_i32 addr)
 
 static TCGv_i32 rl78_gen_load(DisasContext *ctx, TCGv_i32 addr, MemOp memop)
 {
+    TCGv_i32 actual_addr = tcg_temp_new_i32();
     TCGv_i32 ret = tcg_temp_new_i32();
-    tcg_gen_qemu_ld_i32(ret, addr, 0, memop);
+
+    tcg_gen_mov_i32(actual_addr, addr);
+    if(memop == MO_16) {
+        tcg_gen_andi_i32(actual_addr, actual_addr, ~0x01);
+    }
+
+    tcg_gen_qemu_ld_i32(ret, actual_addr, 0, memop);
 
     return ret;
 }

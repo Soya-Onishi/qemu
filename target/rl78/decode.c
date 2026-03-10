@@ -352,10 +352,10 @@ static const RL78Instruction decode_table_1st_map[256] = {
     [0xd9] = ENTRY(MOV, BREG(X), op(ABS16)),
     [0xda] = ENTRY(MOVW, WREG(BC), op(SADDR)),
     [0xdb] = ENTRY(MOVW, WREG(BC), op(ABS16)),
-    [0xdc] = ENTRY(BZ, op(REL8), op(NONE)),
-    [0xdd] = ENTRY(BNC, op(REL8), op(NONE)),
-    [0xde] = ENTRY(BNZ, op(REL8), op(NONE)),
-    [0xdf] = ENTRY(BR, op(REL8), op(NONE)),
+    [0xdc] = ENTRY(BC, op(REL8), op(NONE)),
+    [0xdd] = ENTRY(BZ, op(REL8), op(NONE)),
+    [0xde] = ENTRY(BNC, op(REL8), op(NONE)),
+    [0xdf] = ENTRY(BNZ, op(REL8), op(NONE)),
 
     /* Row E (0xEX) */
     [0xe0] = ENTRY(ONEB, BREG(X), op(NONE)),
@@ -791,12 +791,16 @@ static const RL78Instruction decode_table_4th_map[256] = {
     MAP_4TH_00_75(3),
     MAP_4TH_00_75(4),
     MAP_4TH_00_75(5),
+    MAP_4TH_00_75(6),
+    MAP_4TH_00_75(7),
 
     MAP_4TH_17_7B(1),
     MAP_4TH_17_7B(2),
     MAP_4TH_17_7B(3),
     MAP_4TH_17_7B(4),
     MAP_4TH_17_7B(5),
+    MAP_4TH_17_7B(6),
+    MAP_4TH_17_7B(7),
 
     MAP_4TH_1C_FF(1),
     MAP_4TH_1C_FF(2),
@@ -820,6 +824,8 @@ static const RL78Instruction decode_table_4th_map[256] = {
     MAP_4TH_80_F5(3),
     MAP_4TH_80_F5(4),
     MAP_4TH_80_F5(5),
+    MAP_4TH_80_F5(6),
+    MAP_4TH_80_F5(7),
 
     [0x06] = ENTRY(UNKNOWN, op(NONE), op(NONE)), /* Empty */
     [0x07] = ENTRY(UNKNOWN, op(NONE), op(NONE)), /* Empty */

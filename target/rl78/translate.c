@@ -715,7 +715,6 @@ static bool trans_MOVS(DisasContext *ctx, RL78Instruction *insn)
     TCGv_i32 is_src_zero = tcg_temp_new_i32();
     TCGv_i32 is_a_zero   = tcg_temp_new_i32();
     TCGv_i32 a           = load_byte_reg(RL78_BYTE_REG_A);
-    TCGv_i32 ac          = tcg_temp_new_i32();
 
     TCGv_i32 src = rl78_gen_load_operand(ctx, insn->operand[1], MO_8);
     rl78_gen_store_operand(ctx, insn->operand[0], src, MO_8);
@@ -726,8 +725,7 @@ static bool trans_MOVS(DisasContext *ctx, RL78Instruction *insn)
                         tcg_constant_i32(1), tcg_constant_i32(0));
     tcg_gen_mov_i32(cpu_psw_z, is_src_zero);
 
-    tcg_gen_or_i32(ac, is_src_zero, is_a_zero);
-    tcg_gen_mov_i32(cpu_psw_ac, ac);
+    tcg_gen_or_i32(cpu_psw_cy, is_src_zero, is_a_zero);
 
     return true;
 }

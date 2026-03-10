@@ -808,7 +808,6 @@ static TCGv_i32 borrow_word(TCGv_i32 result)
     TCGv_i32 cy = tcg_temp_new_i32();
 
     tcg_gen_shri_i32(cy, result, 16);
-    tcg_gen_xori_i32(cy, cy, 0x01);
     tcg_gen_andi_i32(cy, cy, 0x01);
 
     return cy;

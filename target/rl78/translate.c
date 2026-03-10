@@ -1219,21 +1219,14 @@ static bool trans_SARW(DisasContext *ctx, RL78Instruction *insn)
 static bool trans_ROR(DisasContext *ctx, RL78Instruction *insn)
 {
     TCGv_i32 src    = rl78_gen_load_operand(ctx, insn->operand[0], MO_8);
-    TCGv_i32 shamt  = rl78_gen_load_operand(ctx, insn->operand[1], MO_8);
     TCGv_i32 result = tcg_temp_new_i32();
-    TCGv_i32 cutoff = tcg_temp_new_i32();
 
-    tcg_gen_movi_i32(result, 0);
-    tcg_gen_shli_i32(result, src, 24);
-    tcg_gen_shr_i32(result, result, shamt);
+    tcg_gen_shli_i32(result, src, 8);
+    tcg_gen_or_i32(result, result, src);
+    tcg_gen_shri_i32(result, result, 1);
 
-    tcg_gen_andi_i32(cutoff, result, 0x00FF0000);
-    tcg_gen_shli_i32(cutoff, cutoff, 8);
-    tcg_gen_or_i32(result, result, cutoff);
-
-    tcg_gen_shri_i32(result, result, 24);
-    tcg_gen_shri_i32(cpu_psw_cy, result, 7);
-    tcg_gen_andi_i32(cpu_psw_cy, cpu_psw_cy, 0x01);
+    tcg_gen_andi_i32(result, result, 0xFF);
+    tcg_gen_andi_i32(cpu_psw_cy, src, 0x01);
 
     rl78_gen_store_operand(ctx, insn->operand[0], result, MO_8);
 
@@ -1243,15 +1236,15 @@ static bool trans_ROR(DisasContext *ctx, RL78Instruction *insn)
 static bool trans_ROL(DisasContext *ctx, RL78Instruction *insn)
 {
     TCGv_i32 src    = rl78_gen_load_operand(ctx, insn->operand[0], MO_8);
-    TCGv_i32 shamt  = rl78_gen_load_operand(ctx, insn->operand[1], MO_8);
     TCGv_i32 result = tcg_temp_new_i32();
-    TCGv_i32 cutoff = tcg_temp_new_i32();
+    
+    tcg_gen_shli_i32(result, src, 8);
+    tcg_gen_or_i32(result, result, src);
+    tcg_gen_shli_i32(result, result, 1);
+    tcg_gen_shri_i32(result, result, 8);
+    tcg_gen_andi_i32(result, result, 0xFF);
 
-    tcg_gen_shl_i32(result, src, shamt);
-    tcg_gen_shri_i32(cutoff, result, 8);
-    tcg_gen_or_i32(result, result, cutoff);
-
-    tcg_gen_andi_i32(cpu_psw_cy, result, 0x01);
+    tcg_gen_shri_i32(cpu_psw_cy, src, 7);
     rl78_gen_store_operand(ctx, insn->operand[0], result, MO_8);
 
     return true;
@@ -1259,45 +1252,33 @@ static bool trans_ROL(DisasContext *ctx, RL78Instruction *insn)
 
 static bool trans_RORC(DisasContext *ctx, RL78Instruction *insn)
 {
-    TCGv_i32 src    = rl78_gen_load_operand(ctx, insn->operand[0], MO_8);
-    TCGv_i32 shamt  = rl78_gen_load_operand(ctx, insn->operand[1], MO_8);
+    TCGv_i32 src    = load_byte_reg(RL78_BYTE_REG_A);
+    TCGv_i32 cy     = tcg_temp_new_i32();
     TCGv_i32 result = tcg_temp_new_i32();
-    TCGv_i32 cutoff = tcg_temp_new_i32();
 
-    tcg_gen_shli_i32(result, src, 1);
-    tcg_gen_or_i32(result, result, cpu_psw_cy);
-    tcg_gen_rotr_i32(result, result, shamt);
+    tcg_gen_shli_i32(cy, cpu_psw_cy, 7);
+    tcg_gen_shri_i32(result, src, 1);
+    tcg_gen_or_i32(result, result, cy);
+    tcg_gen_andi_i32(cpu_psw_cy, src, 0x01);
 
-    tcg_gen_andi_i32(cpu_psw_cy, result, 0x01);
-    tcg_gen_shri_i32(cutoff, result, 24);
-    tcg_gen_shri_i32(result, result, 1);
-    tcg_gen_or_i32(result, result, cutoff);
-
-    rl78_gen_store_operand(ctx, insn->operand[0], result, MO_8);
+    store_byte_reg(RL78_BYTE_REG_A, result);
 
     return true;
 }
 
 static bool trans_ROLC(DisasContext *ctx, RL78Instruction *insn)
 {
-    TCGv_i32 src    = rl78_gen_load_operand(ctx, insn->operand[0], MO_8);
-    TCGv_i32 shamt  = rl78_gen_load_operand(ctx, insn->operand[1], MO_8);
+    TCGv_i32 src    = load_byte_reg(RL78_BYTE_REG_A);
+    TCGv_i32 cy     = tcg_temp_new_i32();
     TCGv_i32 result = tcg_temp_new_i32();
-    TCGv_i32 cutoff = tcg_temp_new_i32();
 
-    tcg_gen_shli_i32(src, src, 24);
-    tcg_gen_or_i32(src, src, cpu_psw_cy);
+    tcg_gen_mov_i32(cy, cpu_psw_cy);
+    tcg_gen_shli_i32(result, src, 1);
+    tcg_gen_or_i32(result, result, cy);
+    tcg_gen_andi_i32(result, result, 0xFF);
+    tcg_gen_shri_i32(cpu_psw_cy, src, 7);
 
-    tcg_gen_rotl_i32(result, src, shamt);
-
-    tcg_gen_andi_i32(cpu_psw_cy, result, 0x01);
-
-    tcg_gen_shri_i32(cutoff, result, 1);
-    tcg_gen_andi_i32(cutoff, cutoff, 0xFF);
-
-    tcg_gen_shri_i32(result, result, 24);
-    tcg_gen_or_i32(result, result, cutoff);
-    rl78_gen_store_operand(ctx, insn->operand[0], result, MO_8);
+    store_byte_reg(RL78_BYTE_REG_A, result);
 
     return true;
 }
@@ -1305,22 +1286,16 @@ static bool trans_ROLC(DisasContext *ctx, RL78Instruction *insn)
 static bool trans_ROLWC(DisasContext *ctx, RL78Instruction *insn)
 {
     TCGv_i32 src    = rl78_gen_load_operand(ctx, insn->operand[0], MO_16);
-    TCGv_i32 shamt  = rl78_gen_load_operand(ctx, insn->operand[1], MO_16);
     TCGv_i32 result = tcg_temp_new_i32();
-    TCGv_i32 cutoff = tcg_temp_new_i32();
+    TCGv_i32 cy     = tcg_temp_new_i32();
 
-    tcg_gen_shli_i32(src, src, 16);
-    tcg_gen_or_i32(src, src, cpu_psw_cy);
+    tcg_gen_shli_i32(result, src, 1);
+    tcg_gen_or_i32(result, result, cpu_psw_cy);
+    tcg_gen_andi_i32(result, result, 0xFFFF);
 
-    tcg_gen_rotl_i32(result, src, shamt);
-
-    tcg_gen_andi_i32(cpu_psw_cy, result, 0x01);
-
-    tcg_gen_shri_i32(cutoff, result, 1);
-    tcg_gen_andi_i32(cutoff, cutoff, 0xFFFF);
-
-    tcg_gen_shri_i32(result, result, 16);
-    tcg_gen_or_i32(result, result, cutoff);
+    tcg_gen_shri_i32(cy, src, 15);
+    tcg_gen_andi_i32(cpu_psw_cy, cy, 0x01);
+    
     rl78_gen_store_operand(ctx, insn->operand[0], result, MO_16);
 
     return true;

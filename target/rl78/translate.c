@@ -1629,10 +1629,10 @@ static bool trans_BR(DisasContext *ctx, RL78Instruction *insn)
     return true;
 }
 
-static void rl78_gen_branch(DisasContext *ctx, RL78Instruction *insn,
+static void rl78_gen_branch(DisasContext *ctx, const uint32_t op,
                             TCGCond cond, TCGv_i32 operand)
 {
-    const int32_t rel  = (int8_t)(insn->operand[0].const_op & 0xFF);
+    const int32_t rel  = (int8_t)(op & 0xFF);
     const vaddr target = ctx->base.pc_next + rel;
     TCGLabel *nobranch = gen_new_label();
 
@@ -1650,25 +1650,25 @@ static void rl78_gen_branch(DisasContext *ctx, RL78Instruction *insn,
 
 static bool trans_BC(DisasContext *ctx, RL78Instruction *insn)
 {
-    rl78_gen_branch(ctx, insn, TCG_COND_EQ, cpu_psw_cy);
+    rl78_gen_branch(ctx, insn->operand[0].const_op, TCG_COND_EQ, cpu_psw_cy);
     return true;
 }
 
 static bool trans_BNC(DisasContext *ctx, RL78Instruction *insn)
 {
-    rl78_gen_branch(ctx, insn, TCG_COND_NE, cpu_psw_cy);
+    rl78_gen_branch(ctx, insn->operand[0].const_op, TCG_COND_NE, cpu_psw_cy);
     return true;
 }
 
 static bool trans_BZ(DisasContext *ctx, RL78Instruction *insn)
 {
-    rl78_gen_branch(ctx, insn, TCG_COND_EQ, cpu_psw_z);
+    rl78_gen_branch(ctx, insn->operand[0].const_op, TCG_COND_EQ, cpu_psw_z);
     return true;
 }
 
 static bool trans_BNZ(DisasContext *ctx, RL78Instruction *insn)
 {
-    rl78_gen_branch(ctx, insn, TCG_COND_NE, cpu_psw_z);
+    rl78_gen_branch(ctx, insn->operand[0].const_op, TCG_COND_NE, cpu_psw_z);
     return true;
 }
 
@@ -1679,7 +1679,7 @@ static bool trans_BH(DisasContext *ctx, RL78Instruction *insn)
     tcg_gen_mov_i32(operand, cpu_psw_z);
     tcg_gen_or_i32(operand, operand, cpu_psw_cy);
 
-    rl78_gen_branch(ctx, insn, TCG_COND_EQ, operand);
+    rl78_gen_branch(ctx, insn->operand[0].const_op, TCG_COND_EQ, operand);
     return true;
 }
 
@@ -1690,39 +1690,42 @@ static bool trans_BNH(DisasContext *ctx, RL78Instruction *insn)
     tcg_gen_mov_i32(operand, cpu_psw_z);
     tcg_gen_or_i32(operand, operand, cpu_psw_cy);
 
-    rl78_gen_branch(ctx, insn, TCG_COND_NE, operand);
+    rl78_gen_branch(ctx, insn->operand[0].const_op, TCG_COND_NE, operand);
     return true;
 }
 
 static bool trans_BT(DisasContext *ctx, RL78Instruction *insn)
 {
-    TCGv_i32 operand = rl78_gen_load_operand(ctx, insn->operand[0], MO_8);
+    RL78BitData bit = rl78_gen_load_bit(ctx, insn->operand[0].bit);
 
-    rl78_gen_branch(ctx, insn, TCG_COND_EQ, operand);
+    rl78_gen_branch(ctx, insn->operand[1].const_op, TCG_COND_EQ, bit.bit);
 
     return true;
 }
 
 static bool trans_BF(DisasContext *ctx, RL78Instruction *insn)
 {
-    TCGv_i32 operand = rl78_gen_load_operand(ctx, insn->operand[0], MO_8);
-    rl78_gen_branch(ctx, insn, TCG_COND_NE, operand);
+    RL78BitData bit = rl78_gen_load_bit(ctx, insn->operand[0].bit);
+    rl78_gen_branch(ctx, insn->operand[1].const_op, TCG_COND_NE, bit.bit);
     return true;
 }
 
 static bool trans_BTCLR(DisasContext *ctx, RL78Instruction *insn)
 {
-    TCGv_i32 operand   = rl78_gen_load_operand(ctx, insn->operand[0], MO_8);
-    const int32_t rel  = (int8_t)(insn->operand[0].const_op & 0xFF);
+    const int32_t rel  = (int8_t)(insn->operand[1].const_op & 0xFF);
     const vaddr target = ctx->base.pc_next + rel;
+
+    RL78BitData bit = rl78_gen_load_bit(ctx, insn->operand[0].bit);
     TCGLabel *nobranch = gen_new_label();
 
-    tcg_gen_brcondi_i32(TCG_COND_EQ, operand, 0, nobranch);
-    rl78_gen_store_operand(ctx, insn->operand[0], tcg_constant_i32(0), MO_8);
+    tcg_gen_brcondi_i32(TCG_COND_EQ, bit.bit, 0, nobranch);
+    tcg_gen_movi_i32(bit.bit, 0);
+    rl78_gen_store_bit(ctx, insn->operand[0].bit, bit);
     rl78_gen_goto_tb(ctx, TB_EXIT_BRANCH, target);
 
     gen_set_label(nobranch);
-    rl78_gen_goto_tb(ctx, TB_EXIT_NOBRANCH, ctx->base.pc_next);
+
+    // same as `rl78_gen_branch`, goto_tb is not necessary here.
 
     return true;
 }

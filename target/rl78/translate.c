@@ -998,33 +998,28 @@ static bool trans_XOR(DisasContext *ctx, RL78Instruction *insn)
 
 static bool trans_CMPS(DisasContext *ctx, RL78Instruction *insn)
 {
-    TCGv_i32 op0    = rl78_gen_load_operand(ctx, insn->operand[0], MO_8);
+    TCGv_i32 x      = rl78_gen_load_operand(ctx, insn->operand[0], MO_8);
     TCGv_i32 op1    = rl78_gen_load_operand(ctx, insn->operand[1], MO_8);
     TCGv_i32 a      = load_byte_reg(RL78_BYTE_REG_A);
     TCGv_i32 result = tcg_temp_new_i32();
 
-    tcg_gen_sub_i32(result, op0, op1);
+    tcg_gen_sub_i32(result, x, op1);
 
-    tcg_gen_mov_i32(cpu_psw_ac, half_borrow(op0, op1, result));
+    tcg_gen_mov_i32(cpu_psw_ac, half_borrow(x, op1, result));
     tcg_gen_mov_i32(cpu_psw_z, zero_byte(result));
 
-    TCGv_i32 is_result_zero = tcg_temp_new_i32();
+    TCGv_i32 is_x_not_op1 = tcg_temp_new_i32();
     TCGv_i32 is_a_zero      = tcg_temp_new_i32();
-    TCGv_i32 is_dst_zero    = tcg_temp_new_i32();
+    TCGv_i32 is_x_zero    = tcg_temp_new_i32();
 
     tcg_gen_andi_i32(result, result, 0xFF);
-    tcg_gen_movcond_i32(TCG_COND_EQ, is_result_zero, result,
-                        tcg_constant_i32(0), tcg_constant_i32(1),
-                        tcg_constant_i32(0));
-    tcg_gen_movcond_i32(TCG_COND_EQ, is_a_zero, a, tcg_constant_i32(0),
-                        tcg_constant_i32(1), tcg_constant_i32(0));
-    tcg_gen_movcond_i32(TCG_COND_EQ, is_dst_zero, op0, tcg_constant_i32(0),
-                        tcg_constant_i32(1), tcg_constant_i32(0));
 
-    tcg_gen_or_i32(is_result_zero, is_result_zero, is_a_zero);
-    tcg_gen_or_i32(is_result_zero, is_result_zero, is_dst_zero);
+    tcg_gen_setcond_i32(TCG_COND_NE, is_x_not_op1, x, op1);
+    tcg_gen_setcond_i32(TCG_COND_EQ, is_a_zero, a, tcg_constant_i32(0));
+    tcg_gen_setcond_i32(TCG_COND_EQ, is_x_zero, x, tcg_constant_i32(0));
 
-    tcg_gen_mov_i32(cpu_psw_cy, is_result_zero);
+    tcg_gen_or_i32(cpu_psw_cy, is_x_not_op1, is_a_zero);
+    tcg_gen_or_i32(cpu_psw_cy, cpu_psw_cy, is_x_zero);
 
     return true;
 }

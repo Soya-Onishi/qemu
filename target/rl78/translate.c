@@ -117,7 +117,14 @@ static TCGv_i32 rl78_gen_load(DisasContext *ctx, TCGv_i32 addr, MemOp memop)
 static void rl78_gen_store(DisasContext *ctx, TCGv_i32 addr, TCGv_i32 data,
                            MemOp memop)
 {
-    tcg_gen_qemu_st_i32(data, addr, 0, memop);
+    TCGv_i32 actual_addr = tcg_temp_new_i32();
+
+    tcg_gen_mov_i32(actual_addr, addr);
+    if(memop == MO_16) {
+        tcg_gen_andi_i32(actual_addr, actual_addr, ~0x01);
+    }
+
+    tcg_gen_qemu_st_i32(data, actual_addr, 0, memop);
 }
 
 static TCGv_i32 rl78_gen_lb(DisasContext *ctx, TCGv_i32 addr)

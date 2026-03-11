@@ -1548,7 +1548,19 @@ static bool trans_RETB(DisasContext *ctx, RL78Instruction *insn)
 
 static bool trans_PUSH(DisasContext *ctx, RL78Instruction *insn)
 {
-    TCGv_i32 data = rl78_gen_load_operand(ctx, insn->operand[0], MO_16);
+    TCGv_i32 data = tcg_temp_new_i32();
+    switch(insn->operand[0].kind) {
+        case RL78_OP_WORD_REG:
+            data = load_word_reg(insn->operand[0].word_reg);
+            break;
+        case RL78_OP_PSW:
+            data = load_psw();
+            tcg_gen_shli_i32(data, data, 8);
+        default:
+            // TODO: raise implementation error assert
+            break;
+    }
+
     tcg_gen_subi_i32(cpu_sp, cpu_sp, 2);
     TCGv_i32 addr = rl78_gen_addr(ctx, cpu_sp);
     rl78_gen_sw(ctx, addr, data);
@@ -1560,8 +1572,20 @@ static bool trans_POP(DisasContext *ctx, RL78Instruction *insn)
 {
     TCGv_i32 addr = rl78_gen_addr(ctx, cpu_sp);
     TCGv_i32 data = rl78_gen_lw(ctx, addr);
+
     tcg_gen_addi_i32(cpu_sp, cpu_sp, 2);
-    rl78_gen_store_operand(ctx, insn->operand[0], data, MO_16);
+    switch(insn->operand[0].kind) {
+        case RL78_OP_WORD_REG:
+            store_word_reg(insn->operand[0].word_reg, data);
+            break;
+        case RL78_OP_PSW:
+            tcg_gen_shri_i32(data, data, 8);
+            store_psw(data);
+            break;
+        default:
+            // TODO: raise implementation error assert
+            break;
+    }
 
     return true;
 }

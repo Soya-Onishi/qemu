@@ -69,6 +69,41 @@ static void divwu(CPURL78State *env, uint32_t *regs)
     regs[RL78_BYTE_REG_H] = (remainder >> 24) & 0xFF;
 }
 
+static void machu(CPURL78State *env, uint32_t *regs)
+{
+    const uint64_t macr = env->macr;
+    const uint64_t ax = (regs[RL78_BYTE_REG_A] << 8) | regs[RL78_BYTE_REG_X];
+    const uint64_t bc = (regs[RL78_BYTE_REG_B] << 8) | regs[RL78_BYTE_REG_C];
+    const uint64_t result = macr + ax * bc;
+
+    env->psw.cy = result > 0xFFFFFFFFUL ? 1 : 0;
+    env->psw.ac = 0;
+
+    env->macr = result & 0xFFFFFFFFUL;
+}
+
+static void mach(CPURL78State *env, uint32_t *regs) 
+{
+    const int64_t macr = (int32_t)env->macr;
+    const int16_t ax = (regs[RL78_BYTE_REG_A] << 8) | regs[RL78_BYTE_REG_X];
+    const int16_t bc = (regs[RL78_BYTE_REG_B] << 8) | regs[RL78_BYTE_REG_C];
+    const int64_t op = (int64_t)ax * (int64_t)bc;
+    const uint64_t result = (uint64_t)(macr + op);
+
+    const uint64_t carry_macr = (uint64_t)env->macr;
+    const uint64_t carry_op = (uint64_t)op;
+    const uint64_t carry_result = carry_macr + carry_op;
+
+    const uint64_t pos_ovf = ~(carry_macr | carry_op) & carry_result;
+    const uint64_t neg_ovf = (carry_macr & carry_op) & ~carry_result;
+    const uint32_t ovf = (pos_ovf | neg_ovf) & 0x80000000 ? 1 : 0;
+
+    env->psw.cy = ovf;
+    env->psw.ac = result & 0x80000000 ? 1 : 0;
+
+    env->macr = result & 0xFFFFFFFF;
+}
+
 static void exec_mul_div(CPURL78State *env, uint8_t val) 
 {
     uint8_t rbs = env->psw.rbs;
@@ -87,21 +122,21 @@ static void exec_mul_div(CPURL78State *env, uint8_t val)
             divwu(env, env->regs[rbs]);
             break;
         case 0x05:
+            machu(env, env->regs[rbs]);
+            break;
         case 0x06:
-            // TODO: not implemented error assert
+            mach(env, env->regs[rbs]);
+            return;
         default:
             // TODO: raise implementation error assert
             break;
     }
 }
 
-static void cpu_state_write_impl(CPURL78State *env, hwaddr offset,
+
+static void cpu_state_write_byte(CPURL78State *env, hwaddr offset,
                                  uint8_t val) {
   switch (offset) {
-  case 0x00:
-  case 0x02:
-    // TODO: support MACR registers
-    break;
   case 0x08:
     env->sp &= 0xFF00;
     env->sp |= (uint16_t)(val & 0xFE);
@@ -128,24 +163,49 @@ static void cpu_state_write_impl(CPURL78State *env, hwaddr offset,
   case 0x0F:
     env->mem = val & 0xFF;
     break;
+  default:
+    // TODO: raise invalid access error
+    break;
   }
+}
+
+static void cpu_state_write_word(CPURL78State *env, hwaddr offset, uint16_t val) {
+    switch(offset) {
+        case 0x00:
+            env->macr &= 0xFFFF0000;
+            env->macr |= val;
+            break;
+        case 0x02:
+            env->macr &= 0x0000FFFF;
+            env->macr |= ((uint32_t)val << 16);
+            break;
+        case 0x08:
+            env->sp = val & 0xFFFE;
+            break;
+        default:
+            // TODO: raise invalid access error
+            break;
+    }
 }
 
 static void cpu_state_write(void *opaque, hwaddr offset, uint64_t val,
                             unsigned size) {
   RL78CPU *cpu = RL78_CPU(opaque);
-  for (int i = 0; i < size; i++) {
-    const uint8_t byte = val >> (i * 8);
-    cpu_state_write_impl(&cpu->env, offset + i, byte);
+  switch(size) {
+    case 1:
+        cpu_state_write_byte(&cpu->env, offset, val);
+        break;
+    case 2:
+        cpu_state_write_word(&cpu->env, offset, val);
+        break;
+    default:
+        // TODO: raise invalid access error
+        break;
   }
 }
-
-static uint16_t cpu_state_read_impl(CPURL78State *env, hwaddr offset) {
+  
+static uint16_t cpu_state_read_byte(CPURL78State *env, hwaddr offset) {
   switch (offset) {
-  case 0x00:
-  case 0x02:
-    // TODO: support MACR registers
-    return 0;
   case 0x08:
     return env->sp & 0x00FF;
   case 0x09:
@@ -160,18 +220,40 @@ static uint16_t cpu_state_read_impl(CPURL78State *env, hwaddr offset) {
     return env->pmc & 0x01;
   case 0x0F:
     return env->mem & 0xFF;
+  default:
+    // TODO: raise invalid access error
+    break;
   }
 
   return 0;
 }
 
+static uint16_t cpu_state_read_word(CPURL78State *env, hwaddr offset) {
+    switch(offset) {
+        case 0x00:
+            return env->macr & 0xFFFF;
+        case 0x02:
+            return env->macr >> 16;
+        case 0x08:
+            return env->sp;
+        default:
+            // TODO: raise invalid access error
+            return 0;
+    }
+}
+
 static uint64_t cpu_state_read(void *opaque, hwaddr offset, unsigned size) {
-  RL78CPU *cpu = RL78_CPU(opaque);
-  uint64_t val = 0;
-  for (int i = 0; i < size; i++) {
-    val |= cpu_state_read_impl(&cpu->env, offset + i) << (i * 8);
-  }
-  return val;
+    RL78CPU *cpu = RL78_CPU(opaque);
+
+    switch(size) {
+        case 1:
+            return cpu_state_read_byte(&cpu->env, offset);
+        case 2:
+            return cpu_state_read_word(&cpu->env, offset);
+        default:
+            // TODO: raise invalid access error
+            return 0;
+    }
 }
 
 static const MemoryRegionOps cpu_state_ops = {

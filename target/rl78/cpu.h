@@ -68,6 +68,9 @@ typedef struct CPUArchState {
     uint32_t es;
     uint32_t cs;
 
+    /* MACR Registers */
+    uint32_t macr;
+
     /* Skip Instruction Control */
     uint32_t skip_en;
     uint32_t skip_req;

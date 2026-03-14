@@ -6,6 +6,7 @@
 #include "qapi/error.h"
 #include "qom/object.h"
 #include "system/address-spaces.h"
+#include "system/memory.h"
 
 #include "target/rl78/cpu-state.h"
 
@@ -38,6 +39,21 @@ static void rl78g23_reset_hold(Object *obj, ResetType type)
     RL78G23McuState *s = RL78G23_MCU(obj);
 
     resettable_reset(OBJECT(&s->cpu), type);
+}
+
+static void rl78g23_register_clock(RL78G23McuState *s)
+{
+    SysBusDevice *clock;
+
+    object_initialize_child(OBJECT(s), "clock", &s->clock, TYPE_RL78_CLOCK);
+
+    clock = SYS_BUS_DEVICE(&s->clock);
+    sysbus_realize(clock, &error_abort);
+
+    sysbus_mmio_map(clock, 0, 0xFFFA0);
+    sysbus_mmio_map(clock, 1, 0xF00F2);
+    sysbus_mmio_map(clock, 2, 0xF00A0);
+    sysbus_mmio_map(clock, 3, 0xF0212);
 }
 
 static void rl78g23_realize(DeviceState *dev, Error **errp)
@@ -79,6 +95,7 @@ static void rl78g23_realize(DeviceState *dev, Error **errp)
     qdev_realize(DEVICE(&s->cpu), NULL, &error_abort);
 
     rl78_register_cpu_state_mmio(&s->cpu_state, &s->cpu, 0xFFFF0);
+    rl78g23_register_clock(s);
 }
 
 static void rl78g23_class_init(ObjectClass *oc, const void *data)

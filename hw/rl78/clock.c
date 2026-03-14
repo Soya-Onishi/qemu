@@ -125,25 +125,31 @@ static void rl78_clock_update_commit(RL78ClockState *s)
     const uint32_t mid_osc =
         FIELD_EX8(s->csc, CSC, MIOEN) ? mid_osc_mhz * MHZ : 0;
 
+    // TODO: support XT1 clock
     const uint32_t fSUB = FIELD_EX8(s->cksel, CKSEL, SELLOSC)
                               ? 0
-                              : low_osc; // TODO: support XT1 clock
+                              : low_osc; 
     const uint32_t fOCO = FIELD_EX8(s->ckc, CKC, MCM1) ? mid_osc : high_osc;
+
+    // TODO: support X1 clock
     const uint32_t fMAIN =
-        FIELD_EX8(s->ckc, CKC, MCM0) ? 0 : fOCO; // TODO: support X1 clock
+        FIELD_EX8(s->ckc, CKC, MCM0) ? 0 : fOCO; 
     const uint32_t fCLK = FIELD_EX8(s->ckc, CKC, MCS) ? fSUB : fMAIN;
     const uint32_t fIL  = low_osc;
 
+    // TODO support XT1 clock
     const uint32_t fSXP   = FIELD_EX8(s->osmc, OSMC, WUTMMCK)
                                 ? low_osc
-                                : 0; // TODO support XT1 clock
+                                : 0; 
+    // TODO support XT1 clock
     const uint32_t fRTCCK = FIELD_EX8(s->osmc, OSMC, WUTMMCK)
                                 ? low_osc
-                                : 0; // TODO support XT1 clock
+                                : 0; 
 
+    // TODO: support X1 clock
     const uint32_t fIHP = high_osc;
     const uint32_t fIMP = mid_osc;
-    const uint32_t fMXP = 0; // TODO: support X1 clock
+    const uint32_t fMXP = 0; 
 
     clock_update_hz(s->fIHP, fIHP);
     clock_update_hz(s->fIMP, fIMP);

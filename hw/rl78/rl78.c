@@ -1,6 +1,7 @@
 #include "qemu/osdep.h"
 #include "exec/hwaddr.h"
 #include "exec/target_page.h"
+#include "hw/core/resettable.h"
 #include "hw/core/sysbus.h"
 #include "qapi/error.h"
 #include "qom/object.h"
@@ -24,11 +25,20 @@ struct RL78G23McuClass {
     MemMapEntry mirror;
     MemMapEntry ram;
     MemMapEntry standard_sfr;
+
+    ResettablePhases parent_phases;
 };
 
 typedef struct RL78G23McuClass RL78G23McuClass;
 
 DECLARE_CLASS_CHECKERS(RL78G23McuClass, RL78G23_MCU, TYPE_RL78G23_MCU)
+
+static void rl78g23_reset_hold(Object *obj, ResetType type)
+{
+    RL78G23McuState *s = RL78G23_MCU(obj);
+
+    resettable_reset(OBJECT(&s->cpu), type);
+}
 
 static void rl78g23_realize(DeviceState *dev, Error **errp)
 {
@@ -74,6 +84,11 @@ static void rl78g23_realize(DeviceState *dev, Error **errp)
 static void rl78g23_class_init(ObjectClass *oc, const void *data)
 {
     DeviceClass *dc = DEVICE_CLASS(oc);
+    RL78G23McuClass *rlc = RL78G23_MCU_CLASS(oc);
+    ResettableClass *rc = RESETTABLE_CLASS(oc);
+
+    resettable_class_set_parent_phases(rc, NULL, rl78g23_reset_hold, NULL,
+                                       &rlc->parent_phases);
 
     dc->realize = rl78g23_realize;
 }

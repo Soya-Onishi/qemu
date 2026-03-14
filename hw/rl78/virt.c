@@ -44,8 +44,6 @@ static void rl78_virt_init(MachineState *machine)
             exit(1);
         }
     }
-
-    resettable_reset(OBJECT(&s->mcu), RESET_TYPE_COLD);
 }
 
 static void rl78_virt_class_init(ObjectClass *oc, const void *data)

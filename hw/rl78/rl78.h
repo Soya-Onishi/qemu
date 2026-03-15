@@ -5,6 +5,7 @@
 #include "hw/core/sysbus.h"
 #include "target/rl78/cpu.h"
 #include "hw/rl78/clock.h"
+#include "hw/rl78/sau.h"
 
 #define TYPE_RL78G23_MCU "RL78G23"
 #define TYPE_R7F100GXL_MCU "R7F100GxL"
@@ -19,6 +20,7 @@ struct RL78G23McuState {
     /*< public >*/
     RL78CPU cpu;
     RL78ClockState clock;
+    RL78SAUState sau;
 
     MemoryRegion code_flash;
     MemoryRegion data_flash;

@@ -3,6 +3,7 @@
 #include "exec/target_page.h"
 #include "hw/core/resettable.h"
 #include "hw/core/sysbus.h"
+#include "hw/core/qdev-clock.h"
 #include "qapi/error.h"
 #include "qom/object.h"
 #include "system/address-spaces.h"
@@ -56,6 +57,23 @@ static void rl78g23_register_clock(RL78G23McuState *s)
     sysbus_mmio_map(clock, 3, 0xF0212);
 }
 
+static void rl78g23_register_sau(RL78G23McuState *s, uint8_t unit)
+{
+    SysBusDevice *sau;
+
+    // TODO: support multiple SAU units
+
+    object_initialize_child(OBJECT(s), "sau[*]", &s->sau, TYPE_RL78_SAU);
+    qdev_connect_clock_in(DEVICE(&s->sau), "inclk", s->clock.fCLK);
+
+    sau = SYS_BUS_DEVICE(&s->sau);
+    sysbus_realize(sau, &error_abort);
+
+    sysbus_mmio_map(sau, 0, 0xFFF10);
+    sysbus_mmio_map(sau, 1, 0xFFF44);
+    sysbus_mmio_map(sau, 2, 0xF0100);
+}
+
 static void rl78g23_realize(DeviceState *dev, Error **errp)
 {
     RL78G23McuState *s   = RL78G23_MCU(dev);
@@ -96,6 +114,7 @@ static void rl78g23_realize(DeviceState *dev, Error **errp)
 
     rl78_register_cpu_state_mmio(&s->cpu_state, &s->cpu, 0xFFFF0);
     rl78g23_register_clock(s);
+    rl78g23_register_sau(s, 0);
 }
 
 static void rl78g23_class_init(ObjectClass *oc, const void *data)

@@ -74,6 +74,27 @@ static void rl78g23_register_sau(RL78G23McuState *s, uint8_t unit)
     sysbus_mmio_map(sau, 2, 0xF0100);
 }
 
+static void rl78g23_register_tau(RL78G23McuState *s, uint8_t unit)
+{
+    SysBusDevice *tau;
+
+    object_initialize_child(OBJECT(s), "tau[*]", &s->tau, TYPE_RL78_TAU);
+    qdev_connect_clock_in(DEVICE(&s->tau), "inclk", s->clock.fCLK);
+
+    tau = SYS_BUS_DEVICE(&s->tau);
+    sysbus_realize(tau, &error_abort);
+
+    sysbus_mmio_map(tau, 0, 0xFFF18);
+    sysbus_mmio_map(tau, 1, 0xFFF64);
+    sysbus_mmio_map(tau, 2, 0xF0180);
+    if(unit == 0) {
+        // TIS registers are supported only for TAU unit 0
+        sysbus_mmio_map(tau, 3, 0xF0074);
+    }
+
+    // TODO: connect irq to MCU core
+}
+
 static void rl78g23_realize(DeviceState *dev, Error **errp)
 {
     RL78G23McuState *s   = RL78G23_MCU(dev);
@@ -113,8 +134,11 @@ static void rl78g23_realize(DeviceState *dev, Error **errp)
     qdev_realize(DEVICE(&s->cpu), NULL, &error_abort);
 
     rl78_register_cpu_state_mmio(&s->cpu_state, &s->cpu, 0xFFFF0);
+
+    // register peripherals
     rl78g23_register_clock(s);
     rl78g23_register_sau(s, 0);
+    rl78g23_register_tau(s, 0);
 }
 
 static void rl78g23_class_init(ObjectClass *oc, const void *data)

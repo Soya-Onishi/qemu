@@ -56,21 +56,23 @@ REG16(TO, 0x38)
 REG16(TOL, 0x3C)
 REG16(TOM, 0x3E)
 
-static uint64_t rl78_tau_clock_ns(RL78TAUState *s, const uint8_t channel)
+static double rl78_tau_clock_duration(RL78TAUState *s, const uint8_t channel)
 {
-    const uint64_t inclk_hz  = clock_get_hz(s->inclk);
+    const double inclk_hz    = clock_get_hz(s->inclk);
     const uint32_t ck_select = s->tmr[channel].clock_select;
-    const uint64_t clock_hz  = inclk_hz / s->clk_divider[ck_select];
-    const uint64_t clock_ns  = 1000 * 1000 * 1000 / clock_hz;
+    const double clock_hz    = inclk_hz / s->clk_divider[ck_select];
+    const double clock_sec   = 1.0 / clock_hz;
 
-    return clock_ns;
+    return clock_sec;
 }
 
-static uint16_t rl78_tau_remain_count(QEMUTimer *timer, const uint64_t clock_ns)
+static uint16_t rl78_tau_remain_count(QEMUTimer *timer,
+                                      const double clock_duration)
 {
     const uint64_t remain_ns =
         timer_expire_time_ns(timer) - qemu_clock_get_ns(QEMU_CLOCK_VIRTUAL);
-    const uint16_t remain_count = remain_ns / clock_ns;
+    const double clock_ns       = clock_duration * 1000 * 1000 * 1000;
+    const uint16_t remain_count = (uint16_t)((double)remain_ns / clock_ns);
 
     return remain_count;
 }
@@ -92,15 +94,19 @@ static void rl78_tau_update_tdr_16bit(RL78TAUState *s, const uint16_t value,
 }
 
 static void rl78_tau_update_tdr_8bit_lo(RL78TAUState *s, const uint8_t value,
-                                      const uint8_t channel)
+                                        const uint8_t channel)
 {
-    if(channel != 1 && channel != 3) {
-        qemu_log_mask(LOG_GUEST_ERROR, "8bit access is not allowed for Channel3, 5: channel: %d\n", channel);
+    if (channel != 1 && channel != 3) {
+        qemu_log_mask(
+            LOG_GUEST_ERROR,
+            "8bit access is not allowed for Channel3, 5: channel: %d\n",
+            channel);
         return;
     }
 
-    if(! s->tmr[channel].use_split) {
-        qemu_log_mask(LOG_GUEST_ERROR, "8bit access is allowed only when TMR SPLIT bit is 1.\n");
+    if (!s->tmr[channel].use_split) {
+        qemu_log_mask(LOG_GUEST_ERROR,
+                      "8bit access is allowed only when TMR SPLIT bit is 1.\n");
         return;
     }
 
@@ -108,21 +114,24 @@ static void rl78_tau_update_tdr_8bit_lo(RL78TAUState *s, const uint8_t value,
 }
 
 static void rl78_tau_update_tdr_8bit_hi(RL78TAUState *s, const uint8_t value,
-                                      const uint8_t channel)
+                                        const uint8_t channel)
 {
-    if(channel != 1 && channel != 3) {
-        qemu_log_mask(LOG_GUEST_ERROR, "8bit access is not allowed for Channel3, 5: channel: %d\n", channel);
+    if (channel != 1 && channel != 3) {
+        qemu_log_mask(
+            LOG_GUEST_ERROR,
+            "8bit access is not allowed for Channel3, 5: channel: %d\n",
+            channel);
         return;
     }
 
-    if(! s->tmr[channel].use_split) {
-        qemu_log_mask(LOG_GUEST_ERROR, "8bit access is allowed only when TMR SPLIT bit is 0.\n");
+    if (!s->tmr[channel].use_split) {
+        qemu_log_mask(LOG_GUEST_ERROR,
+                      "8bit access is allowed only when TMR SPLIT bit is 0.\n");
         return;
     }
 
     s->channel[channel].tdr.bytes[1] = value;
 }
-
 
 static void rl78_tau_update_tps(RL78TAUState *s, uint16_t value)
 {
@@ -159,7 +168,23 @@ static void rl78_tau_update_tmr(RL78TAUState *s, const uint16_t value,
     s->tmr[channel].input_edge     = FIELD_EX16(value, TMR, CIS);
     s->tmr[channel].start_trigger  = FIELD_EX16(value, TMR, CCS);
     s->tmr[channel].use_ti         = FIELD_EX16(value, TMR, CCS);
-    s->tmr[channel].clock_select   = FIELD_EX16(value, TMR, CKS);
+
+    switch (FIELD_EX16(value, TMR, CKS)) {
+    default:
+    case 0:
+        s->tmr[channel].clock_select = 0;
+        break;
+    case 1:
+        s->tmr[channel].clock_select = 2;
+        break;
+    case 2:
+        s->tmr[channel].clock_select = 1;
+        break;
+    case 3:
+        s->tmr[channel].clock_select = 3;
+        break;
+    }
+
     switch (channel) {
     default:
     case 0:
@@ -195,25 +220,30 @@ static void rl78_tau_update_te(RL78TAUState *s, const uint16_t value)
 static void rl78_tau_start_timer(RL78TAUState *s, const uint8_t channel,
                                  const bool is_high)
 {
-    const uint32_t cks   = s->tmr[channel].clock_select;
-    const uint32_t ck_hz = clock_get_hz(s->inclk) / s->clk_divider[cks];
-    const uint32_t timer_clock_hz = s->tmr[channel].use_ti ? 0 : ck_hz;
-    const uint64_t clock_ns       = 1000 * 1000 * 1000 / timer_clock_hz;
-
+    const double clock_duration = rl78_tau_clock_duration(s, channel);
+    const double clock_ns       = clock_duration * 1000 * 1000 * 1000;
     if (is_high) {
         const uint64_t count    = s->channel[channel].tdr.bytes[1];
-        const uint64_t timer_ns = clock_ns * (count + 1);
+        const uint64_t timer_ns = (uint64_t)(clock_ns * (count + 1));
 
         timer_mod(&s->channel[channel].high_timer,
                   qemu_clock_get_ns(QEMU_CLOCK_VIRTUAL) + timer_ns);
+
+        if(s->tmr[channel].timer_behavior == 1) {
+            qemu_set_irq(s->channel[channel].irq_high, 1);
+        }
     } else {
         const uint64_t count    = s->tmr[channel].use_split
                                       ? s->channel[channel].tdr.bytes[0]
                                       : s->channel[channel].tdr.word;
-        const uint64_t timer_ns = clock_ns * (count + 1);
+        const uint64_t timer_ns = (uint64_t)(clock_ns * (count + 1));
 
         timer_mod(&s->channel[channel].timer,
                   qemu_clock_get_ns(QEMU_CLOCK_VIRTUAL) + timer_ns);
+
+        if(s->tmr[channel].timer_behavior == 1) {
+            qemu_set_irq(s->channel[channel].irq, 1);
+        }
     }
 }
 
@@ -253,22 +283,23 @@ static void rl78_tau_stop_timer(RL78TAUState *s, const uint8_t channel,
                                 const bool is_high)
 {
     // TODO: support other than interval timer mode.
-    const uint64_t clock_ns = rl78_tau_clock_ns(s, channel);
+    const double clock_duration = rl78_tau_clock_duration(s, channel);
 
     if (is_high) {
-        timer_del(&s->channel[channel].high_timer);
-        s->channel[channel].tcr.bytes[1] =
-            rl78_tau_remain_count(&s->channel[channel].high_timer, clock_ns);
-    } else {
-        timer_del(&s->channel[channel].timer);
+        s->channel[channel].tcr.bytes[1] = rl78_tau_remain_count(
+            &s->channel[channel].high_timer, clock_duration);
 
+        timer_del(&s->channel[channel].high_timer);
+    } else {
         const uint64_t remain_count =
-            rl78_tau_remain_count(&s->channel[channel].timer, clock_ns);
+            rl78_tau_remain_count(&s->channel[channel].timer, clock_duration);
         if (s->tmr[channel].use_split) {
             s->channel[channel].tcr.bytes[0] = remain_count;
         } else {
             s->channel[channel].tcr.word = remain_count;
         }
+
+        timer_del(&s->channel[channel].timer);
     }
 }
 
@@ -392,53 +423,60 @@ static uint16_t rl78_tau_read_tcr(RL78TAUState *s, const uint8_t channel)
     // value. Assert it.
     // TODO: support other than interval timer mode.
 
-    const uint64_t inclk_hz  = clock_get_hz(s->inclk);
-    const uint32_t ck_select = s->tmr[channel].clock_select;
-    const uint64_t clock_hz  = inclk_hz / s->clk_divider[ck_select];
-    const uint64_t clock_ns  = 1000 * 1000 * 1000 / clock_hz;
-
+    const double clock_duration = rl78_tau_clock_duration(s, channel);
     if (s->tmr[channel].use_split) {
-        uint16_t lo =
-            s->channel[channel].enabled
-                ? rl78_tau_remain_count(&s->channel[channel].timer, clock_ns)
-                : s->channel[channel].tcr.bytes[0];
-        uint16_t hi = s->channel[channel].enabled
+        uint16_t lo = s->channel[channel].enabled
+                          ? rl78_tau_remain_count(&s->channel[channel].timer,
+                                                  clock_duration)
+                          : s->channel[channel].tcr.bytes[0];
+        uint16_t hi = s->channel[channel].high_enabled
                           ? rl78_tau_remain_count(
-                                &s->channel[channel].high_timer, clock_ns)
+                                &s->channel[channel].high_timer, clock_duration)
                           : s->channel[channel].tcr.bytes[1];
 
         return (hi << 8) | lo;
     } else {
         return s->channel[channel].enabled
-                   ? rl78_tau_remain_count(&s->channel[channel].timer, clock_ns)
+                   ? rl78_tau_remain_count(&s->channel[channel].timer,
+                                           clock_duration)
                    : s->channel[channel].tcr.word;
     }
 }
 
-static uint16_t rl78_tau_read_tdr_8bit_lo(RL78TAUState *s, const uint8_t channel)
+static uint16_t rl78_tau_read_tdr_8bit_lo(RL78TAUState *s,
+                                          const uint8_t channel)
 {
-    if(channel != 1 && channel != 3) {
-        qemu_log_mask(LOG_GUEST_ERROR, "8bit access is allowed only for Channel3, 5: channel: %d\n", channel);
+    if (channel != 1 && channel != 3) {
+        qemu_log_mask(
+            LOG_GUEST_ERROR,
+            "8bit access is allowed only for Channel3, 5: channel: %d\n",
+            channel);
         return 0;
     }
 
-    if(! s->tmr[channel].use_split) {
-        qemu_log_mask(LOG_GUEST_ERROR, "8bit access is allowed only when TMR SPLIT bit is 1.\n");
+    if (!s->tmr[channel].use_split) {
+        qemu_log_mask(LOG_GUEST_ERROR,
+                      "8bit access is allowed only when TMR SPLIT bit is 1.\n");
         return 0;
     }
 
     return (uint16_t)(s->channel[channel].tdr.bytes[0]);
 }
 
-static uint16_t rl78_tau_read_tdr_8bit_hi(RL78TAUState *s, const uint8_t channel)
+static uint16_t rl78_tau_read_tdr_8bit_hi(RL78TAUState *s,
+                                          const uint8_t channel)
 {
-    if(channel != 1 && channel != 3) {
-        qemu_log_mask(LOG_GUEST_ERROR, "8bit access is allowed only for Channel3, 5: channel: %d\n", channel);
+    if (channel != 1 && channel != 3) {
+        qemu_log_mask(
+            LOG_GUEST_ERROR,
+            "8bit access is allowed only for Channel3, 5: channel: %d\n",
+            channel);
         return 0;
     }
-    
-    if(! s->tmr[channel].use_split) {
-        qemu_log_mask(LOG_GUEST_ERROR, "8bit access is allowed only when TMR SPLIT bit is 0.\n");
+
+    if (!s->tmr[channel].use_split) {
+        qemu_log_mask(LOG_GUEST_ERROR,
+                      "8bit access is allowed only when TMR SPLIT bit is 0.\n");
         return 0;
     }
 
@@ -447,7 +485,7 @@ static uint16_t rl78_tau_read_tdr_8bit_hi(RL78TAUState *s, const uint8_t channel
 
 static uint16_t rl78_tau_read_tdr_16bit(RL78TAUState *s, const uint8_t channel)
 {
-    if(s->tmr[channel].use_split) {
+    if (s->tmr[channel].use_split) {
         const uint16_t lo = (uint16_t)(s->channel[channel].tdr.bytes[0]);
         const uint16_t hi = (uint16_t)(s->channel[channel].tdr.bytes[1]);
 
@@ -491,8 +529,16 @@ static uint16_t rl78_tau_read_tmr(RL78TAUState *s, const uint8_t channel)
     return value;
 }
 
-static uint16_t rl78_tau_read_tsr(RL78TAUState *s)
+static uint16_t rl78_tau_read_tsr(RL78TAUState *s, const uint8_t channel)
 {
+    const RL78TAUTimerMode mode = s->tmr[channel].mode;
+    if (mode != RL78_TAU_TIMER_MODE_CAPTURE &&
+        mode != RL78_TAU_TIMER_MODE_CAPTURE_AND_ONE_COUNT) {
+        qemu_log_mask(LOG_GUEST_ERROR,
+                      "If not in Capture mode or Capture & Onecount mode, TSR "
+                      "register is always 0.\n");
+    }
+
     uint16_t value = 0;
     value = FIELD_DP16(value, TSR, OVF, s->channel[0].overflow_occurred);
 
@@ -582,51 +628,54 @@ static uint16_t rl78_tau_read_tom(RL78TAUState *s)
     return value;
 }
 
-static void rl78_tau_write_tdr(RL78TAUState *s, hwaddr offset, uint64_t data, unsigned size) {
-    switch(size) {
-        case 1: {
-            const uint8_t ch = offset / 2;
-            const bool is_hi = !!(offset % 2);
+static void rl78_tau_write_tdr(RL78TAUState *s, hwaddr offset, uint64_t data,
+                               unsigned size)
+{
+    switch (size) {
+    case 1: {
+        const uint8_t ch = offset / 2;
+        const bool is_hi = !!(offset % 2);
 
-            if(is_hi) {
-                rl78_tau_update_tdr_8bit_hi(s, (uint8_t)data, ch);
-            } else {
-                rl78_tau_update_tdr_8bit_lo(s, (uint8_t)data, ch);
-            }
+        if (is_hi) {
+            rl78_tau_update_tdr_8bit_hi(s, (uint8_t)data, ch);
+        } else {
+            rl78_tau_update_tdr_8bit_lo(s, (uint8_t)data, ch);
         }
+    } break;
+    case 2: {
+        const uint8_t ch = offset / 2;
+        rl78_tau_update_tdr_16bit(s, (uint16_t)data, ch);
         break;
-        case 2: {
-            const uint8_t ch = offset / 2;
-            rl78_tau_update_tdr_16bit(s, (uint16_t)data, ch);
-            break;
-        }
-        default:
-            break;
+    }
+    default:
+        break;
     }
 }
 
-static uint64_t rl78_tau_read_tdr(RL78TAUState *s, hwaddr offset, unsigned size) {
-    switch(size) {
-        case 1: {
-            const uint8_t ch = offset / 2;
-            const bool is_hi = !!(offset % 2);
+static uint64_t rl78_tau_read_tdr(RL78TAUState *s, hwaddr offset, unsigned size)
+{
+    switch (size) {
+    case 1: {
+        const uint8_t ch = offset / 2;
+        const bool is_hi = !!(offset % 2);
 
-            if(is_hi) {
-                return rl78_tau_read_tdr_8bit_hi(s, ch);
-            } else {
-                return rl78_tau_read_tdr_8bit_lo(s, ch);
-            }
+        if (is_hi) {
+            return rl78_tau_read_tdr_8bit_hi(s, ch);
+        } else {
+            return rl78_tau_read_tdr_8bit_lo(s, ch);
         }
-        case 2: {
-            const uint8_t ch = offset / 2;
-            return rl78_tau_read_tdr_16bit(s, ch);
-        }
-        default:
-            return 0;
+    }
+    case 2: {
+        const uint8_t ch = offset / 2;
+        return rl78_tau_read_tdr_16bit(s, ch);
+    }
+    default:
+        return 0;
     }
 }
 
-static void rl78_tau_write0(void *opaque, hwaddr offset, uint64_t data, unsigned size)
+static void rl78_tau_write0(void *opaque, hwaddr offset, uint64_t data,
+                            unsigned size)
 {
     // for TDRm0-1
     RL78TAUState *s = RL78_TAU(opaque);
@@ -640,7 +689,8 @@ static uint64_t rl78_tau_read0(void *opaque, hwaddr offset, unsigned size)
     return rl78_tau_read_tdr(s, offset, size);
 }
 
-static void rl78_tau_write1(void *opaque, hwaddr offset, uint64_t data, unsigned size)
+static void rl78_tau_write1(void *opaque, hwaddr offset, uint64_t data,
+                            unsigned size)
 {
     RL78TAUState *s = RL78_TAU(opaque);
     rl78_tau_write_tdr(s, offset, data, size);
@@ -653,230 +703,239 @@ static uint64_t rl78_tau_read1(void *opaque, hwaddr offset, unsigned size)
     return rl78_tau_read_tdr(s, offset + 4, size);
 }
 
-static void rl78_tau_write2(void *opaque, hwaddr offset, uint64_t data, unsigned size)
+static void rl78_tau_write2(void *opaque, hwaddr offset, uint64_t data,
+                            unsigned size)
 {
     // for other TAU registers
-    RL78TAUState *s = RL78_TAU(opaque);
+    RL78TAUState *s       = RL78_TAU(opaque);
     const uint8_t channel = (offset / 2) % RL78_TAU_CHANNEL_NUM;
-    
-    switch(offset) {
-        case 0x00:
-        case 0x02:
-        case 0x04:
-        case 0x06:
-        case 0x08:
-        case 0x0A:
-        case 0x0C:
-        case 0x0E:
-            if(size == 1) {
-                qemu_log_mask(LOG_GUEST_ERROR, "8bit access is not allowed for TCR register.\n");
-                return;
-            }
 
-            rl78_tau_update_tcr(s, (uint16_t)data);
-            break;
-        case 0x10:
-        case 0x12:
-        case 0x14:
-        case 0x16:
-        case 0x18:
-        case 0x1A:
-        case 0x1C:
-        case 0x1E:
-            if(size == 1) {
-                qemu_log_mask(LOG_GUEST_ERROR, "8bit access is not allowed for TMR register.\n");
-                return;
-            }
+    switch (offset) {
+    case 0x00:
+    case 0x02:
+    case 0x04:
+    case 0x06:
+    case 0x08:
+    case 0x0A:
+    case 0x0C:
+    case 0x0E:
+        if (size == 1) {
+            qemu_log_mask(LOG_GUEST_ERROR,
+                          "8bit access is not allowed for TCR register.\n");
+            return;
+        }
 
-            rl78_tau_update_tmr(s, (uint16_t)data, channel);
-            break;
-        case 0x20:
-        case 0x22:
-        case 0x24:
-        case 0x26:
-        case 0x28:
-        case 0x2A:
-        case 0x2C:
-        case 0x2E:
-            rl78_tau_update_tsr(s, (uint16_t)data);
-            break;
-        case 0x30:
-            rl78_tau_update_te(s, (uint16_t)data);
-            break;
-        case 0x32:
-            rl78_tau_update_ts(s, (uint16_t)data);
-            break;
-        case 0x34:
-            rl78_tau_update_tt(s, (uint16_t)data);
-            break;
-        case 0x36:
-            if(size == 1) {
-                qemu_log_mask(LOG_GUEST_ERROR, "8bit access is not allowed for TPS register.\n");
-                return;
-            }
+        rl78_tau_update_tcr(s, (uint16_t)data);
+        break;
+    case 0x10:
+    case 0x12:
+    case 0x14:
+    case 0x16:
+    case 0x18:
+    case 0x1A:
+    case 0x1C:
+    case 0x1E:
+        if (size == 1) {
+            qemu_log_mask(LOG_GUEST_ERROR,
+                          "8bit access is not allowed for TMR register.\n");
+            return;
+        }
 
-            rl78_tau_update_tps(s, (uint16_t)data);
-            break;
-        case 0x38:
-            rl78_tau_update_to(s, (uint16_t)data);
-            break;
-        case 0x3A:
-            rl78_tau_update_toe(s, (uint16_t)data);
-            break;
-        case 0x3C:
-            rl78_tau_update_tol(s, (uint16_t)data);
-            break;
-        case 0x3E:
-            rl78_tau_update_tom(s, (uint16_t)data);
-            break;
-        default:
-            qemu_log_mask(LOG_GUEST_ERROR, "Invalid access address\n");
-            break;
+        rl78_tau_update_tmr(s, (uint16_t)data, channel);
+        break;
+    case 0x20:
+    case 0x22:
+    case 0x24:
+    case 0x26:
+    case 0x28:
+    case 0x2A:
+    case 0x2C:
+    case 0x2E:
+        rl78_tau_update_tsr(s, (uint16_t)data);
+        break;
+    case 0x30:
+        rl78_tau_update_te(s, (uint16_t)data);
+        break;
+    case 0x32:
+        rl78_tau_update_ts(s, (uint16_t)data);
+        break;
+    case 0x34:
+        rl78_tau_update_tt(s, (uint16_t)data);
+        break;
+    case 0x36:
+        if (size == 1) {
+            qemu_log_mask(LOG_GUEST_ERROR,
+                          "8bit access is not allowed for TPS register.\n");
+            return;
+        }
+
+        rl78_tau_update_tps(s, (uint16_t)data);
+        break;
+    case 0x38:
+        rl78_tau_update_to(s, (uint16_t)data);
+        break;
+    case 0x3A:
+        rl78_tau_update_toe(s, (uint16_t)data);
+        break;
+    case 0x3C:
+        rl78_tau_update_tol(s, (uint16_t)data);
+        break;
+    case 0x3E:
+        rl78_tau_update_tom(s, (uint16_t)data);
+        break;
+    default:
+        qemu_log_mask(LOG_GUEST_ERROR, "Invalid access address\n");
+        break;
     }
 }
 
 static uint64_t rl78_tau_read2(void *opaque, hwaddr offset, unsigned size)
 {
     // for other TAU registers
-    RL78TAUState *s = RL78_TAU(opaque);
+    RL78TAUState *s       = RL78_TAU(opaque);
     const uint8_t channel = (offset / 2) % RL78_TAU_CHANNEL_NUM;
-    switch(offset) {
-        case 0x00:
-        case 0x02:
-        case 0x04:
-        case 0x06:
-        case 0x08:
-        case 0x0A:
-        case 0x0C:
-        case 0x0E:
-            if(size == 1) {
-                qemu_log_mask(LOG_GUEST_ERROR, "8bit access is not allowed for TCR register.\n");
-                return 0;
-            }
-
-            return rl78_tau_read_tcr(s, channel);
-        case 0x10:
-        case 0x12:
-        case 0x14:
-        case 0x16:
-        case 0x18:
-        case 0x1A:
-        case 0x1C:
-        case 0x1E:
-            if(size == 1) {
-                qemu_log_mask(LOG_GUEST_ERROR, "8bit access is not allowed for TMR register.\n");
-                return 0;
-            }
-
-            return rl78_tau_read_tmr(s, channel);
-        case 0x20:
-        case 0x22:
-        case 0x24:
-        case 0x26:
-        case 0x28:
-        case 0x2A:
-        case 0x2C:
-        case 0x2E:
-            return rl78_tau_read_tsr(s);
-        case 0x30:
-            return rl78_tau_read_te(s);
-        case 0x32:
-            return rl78_tau_read_ts(s);
-        case 0x34:
-            return rl78_tau_read_tt(s);
-        case 0x36:
-            if(size == 1) {
-                qemu_log_mask(LOG_GUEST_ERROR, "8bit access is not allowed for TPS register.\n");
-                return 0;
-            }
-
-            return rl78_tau_read_tps(s);
-        case 0x38:
-            return rl78_tau_read_to(s);
-        case 0x3A:
-            return rl78_tau_read_toe(s);
-        case 0x3C:
-            return rl78_tau_read_tol(s);
-        case 0x3E:
-            return rl78_tau_read_tom(s);
-        default:
-            qemu_log_mask(LOG_GUEST_ERROR, "Invalid access address\n");
+    switch (offset) {
+    case 0x00:
+    case 0x02:
+    case 0x04:
+    case 0x06:
+    case 0x08:
+    case 0x0A:
+    case 0x0C:
+    case 0x0E:
+        if (size == 1) {
+            qemu_log_mask(LOG_GUEST_ERROR,
+                          "8bit access is not allowed for TCR register.\n");
             return 0;
+        }
+
+        return rl78_tau_read_tcr(s, channel);
+    case 0x10:
+    case 0x12:
+    case 0x14:
+    case 0x16:
+    case 0x18:
+    case 0x1A:
+    case 0x1C:
+    case 0x1E:
+        if (size == 1) {
+            qemu_log_mask(LOG_GUEST_ERROR,
+                          "8bit access is not allowed for TMR register.\n");
+            return 0;
+        }
+
+        return rl78_tau_read_tmr(s, channel);
+    case 0x20:
+    case 0x22:
+    case 0x24:
+    case 0x26:
+    case 0x28:
+    case 0x2A:
+    case 0x2C:
+    case 0x2E:
+        return rl78_tau_read_tsr(s, channel);
+    case 0x30:
+        return rl78_tau_read_te(s);
+    case 0x32:
+        return rl78_tau_read_ts(s);
+    case 0x34:
+        return rl78_tau_read_tt(s);
+    case 0x36:
+        if (size == 1) {
+            qemu_log_mask(LOG_GUEST_ERROR,
+                          "8bit access is not allowed for TPS register.\n");
+            return 0;
+        }
+
+        return rl78_tau_read_tps(s);
+    case 0x38:
+        return rl78_tau_read_to(s);
+    case 0x3A:
+        return rl78_tau_read_toe(s);
+    case 0x3C:
+        return rl78_tau_read_tol(s);
+    case 0x3E:
+        return rl78_tau_read_tom(s);
+    default:
+        qemu_log_mask(LOG_GUEST_ERROR, "Invalid access address\n");
+        return 0;
     }
 }
 
-static void rl78_tau_write3(void *opaque, hwaddr offset, uint64_t data, unsigned size)
+static void rl78_tau_write3(void *opaque, hwaddr offset, uint64_t data,
+                            unsigned size)
 {
     RL78TAUState *s = RL78_TAU(opaque);
-    switch(offset) {
-        case 0x00:
-            rl78_tau_update_tis0(s, (uint8_t)data);
-            break;
-        case 0x01:
-            rl78_tau_update_tis1(s, (uint8_t)data);
-            break;
-        default:
-            break;
+    switch (offset) {
+    case 0x00:
+        rl78_tau_update_tis0(s, (uint8_t)data);
+        break;
+    case 0x01:
+        rl78_tau_update_tis1(s, (uint8_t)data);
+        break;
+    default:
+        break;
     }
 }
 
 static uint64_t rl78_tau_read3(void *opaque, hwaddr offset, unsigned size)
 {
     RL78TAUState *s = RL78_TAU(opaque);
-    switch(offset) {
-        case 0x00:
-            return rl78_tau_read_tis0(s);
-        case 0x01:
-            return rl78_tau_read_tis1(s);
-        default:
-            return 0;
+    switch (offset) {
+    case 0x00:
+        return rl78_tau_read_tis0(s);
+    case 0x01:
+        return rl78_tau_read_tis1(s);
+    default:
+        return 0;
     }
 }
 
 // for TDRm0-1
 static const MemoryRegionOps rl78_tau_ops0 = {
-    .write = rl78_tau_write0,
-    .read = rl78_tau_read0,
+    .write                 = rl78_tau_write0,
+    .read                  = rl78_tau_read0,
     .valid.max_access_size = 2,
     .valid.min_access_size = 1,
-    .impl.min_access_size = 2,
-    .impl.max_access_size = 1,
+    .impl.min_access_size  = 2,
+    .impl.max_access_size  = 1,
 };
 
 // for TDRm2-7
 static const MemoryRegionOps rl78_tau_ops1 = {
-    .write = rl78_tau_write1,
-    .read = rl78_tau_read1,
+    .write                 = rl78_tau_write1,
+    .read                  = rl78_tau_read1,
     .valid.max_access_size = 2,
     .valid.min_access_size = 1,
-    .impl.min_access_size = 2,
-    .impl.max_access_size = 1,
+    .impl.min_access_size  = 2,
+    .impl.max_access_size  = 1,
 };
 
 // for other TAU registers
 static const MemoryRegionOps rl78_tau_ops2 = {
-    .write = rl78_tau_write2,
-    .read = rl78_tau_read2,
+    .write                 = rl78_tau_write2,
+    .read                  = rl78_tau_read2,
     .valid.max_access_size = 2,
     .valid.min_access_size = 1,
-    .impl.min_access_size = 2,
-    .impl.max_access_size = 1,
+    .impl.min_access_size  = 2,
+    .impl.max_access_size  = 1,
 };
 
 // for TISx registers
 static const MemoryRegionOps rl78_tau_ops3 = {
-    .write = rl78_tau_write3,
-    .read = rl78_tau_read3,
+    .write                 = rl78_tau_write3,
+    .read                  = rl78_tau_read3,
     .valid.max_access_size = 1,
     .valid.min_access_size = 1,
-    .impl.min_access_size = 1,
-    .impl.max_access_size = 1,
+    .impl.min_access_size  = 1,
+    .impl.max_access_size  = 1,
 };
 
 static void rl78_tau_update_timer(QEMUTimer *timer, const uint16_t count,
-                                  const uint64_t clock_ns)
+                                  const double clock_duration)
 {
-    const uint64_t timer_ns = clock_ns * (count + 1);
+    const double timer_duration = clock_duration * (count + 1);
+    const uint64_t timer_ns = (uint64_t)(timer_duration * 1000 * 1000 * 1000);
     const uint64_t expire_time =
         qemu_clock_get_ns(QEMU_CLOCK_VIRTUAL) + timer_ns;
 
@@ -885,33 +944,34 @@ static void rl78_tau_update_timer(QEMUTimer *timer, const uint16_t count,
 
 static void rl78_tau_txend_interval_timer(QEMUTimer *timer, const qemu_irq irq,
                                           const uint16_t count,
-                                          const uint64_t clock_ns)
+                                          const double clock_duration)
 {
     qemu_set_irq(irq, 1);
-    rl78_tau_update_timer(timer, count, clock_ns);
+    rl78_tau_update_timer(timer, count, clock_duration);
 }
 
 static void rl78_tau_txend(RL78TAUState *s, const uint8_t channel)
 {
     // TODO: support other than interval timer mode.
-    const uint64_t clock_ns = rl78_tau_clock_ns(s, channel);
-    const uint16_t count    = s->tmr[channel].use_split
-                                  ? s->channel[channel].tdr.bytes[0]
-                                  : s->channel[channel].tdr.word;
+    const double clock_duration = rl78_tau_clock_duration(s, channel);
+    const uint16_t count        = s->tmr[channel].use_split
+                                      ? s->channel[channel].tdr.bytes[0]
+                                      : s->channel[channel].tdr.word;
 
     rl78_tau_txend_interval_timer(&s->channel[channel].timer,
-                                  s->channel[channel].irq, count, clock_ns);
+                                  s->channel[channel].irq, count,
+                                  clock_duration);
 }
 
 static void rl78_tau_txend_high(RL78TAUState *s, const uint8_t channel)
 {
     // TODO: support other than interval timer mode.
-    const uint64_t clock_ns = rl78_tau_clock_ns(s, channel);
-    const uint16_t count    = s->channel[channel].tdr.bytes[1];
+    const double clock_duration = rl78_tau_clock_duration(s, channel);
+    const uint16_t count        = s->channel[channel].tdr.bytes[1];
 
     rl78_tau_txend_interval_timer(&s->channel[channel].high_timer,
                                   s->channel[channel].irq_high, count,
-                                  clock_ns);
+                                  clock_duration);
 }
 
 #define RL78_TAU_TXEND_CALLBACK(channel_num)                                   \
@@ -1005,10 +1065,14 @@ static void rl78_tau_init(Object *obj)
 
     s->inclk = qdev_init_clock_in(dev, "inclk", NULL, dev, ClockUpdate);
 
-    memory_region_init_io(&s->mmio[0], OBJECT(s), &rl78_tau_ops0, s, "rl78-tau-mmio[0]", 0x04);
-    memory_region_init_io(&s->mmio[1], OBJECT(s), &rl78_tau_ops1, s, "rl78-tau-mmio[1]", 0x0C);
-    memory_region_init_io(&s->mmio[2], OBJECT(s), &rl78_tau_ops2, s, "rl78-tau-mmio[2]", 0x40);
-    memory_region_init_io(&s->mmio[3], OBJECT(s), &rl78_tau_ops3, s, "rl78-tau-mmio[3]", 0x02);
+    memory_region_init_io(&s->mmio[0], OBJECT(s), &rl78_tau_ops0, s,
+                          "rl78-tau-mmio[0]", 0x04);
+    memory_region_init_io(&s->mmio[1], OBJECT(s), &rl78_tau_ops1, s,
+                          "rl78-tau-mmio[1]", 0x0C);
+    memory_region_init_io(&s->mmio[2], OBJECT(s), &rl78_tau_ops2, s,
+                          "rl78-tau-mmio[2]", 0x40);
+    memory_region_init_io(&s->mmio[3], OBJECT(s), &rl78_tau_ops3, s,
+                          "rl78-tau-mmio[3]", 0x02);
 
     sysbus_init_mmio(sys, &s->mmio[0]);
     sysbus_init_mmio(sys, &s->mmio[1]);
@@ -1017,9 +1081,12 @@ static void rl78_tau_init(Object *obj)
 
     for (int i = 0; i < RL78_TAU_CHANNEL_NUM; i++) {
         sysbus_init_irq(sys, &s->channel[i].irq);
-        sysbus_init_irq(sys, &s->channel[i].irq_high);
         timer_init_ns(&s->channel[i].timer, QEMU_CLOCK_VIRTUAL,
                       rl78_tau_txend_callbacks[i], s);
+    }
+
+    for (int i = 0; i < RL78_TAU_CHANNEL_NUM; i++) {
+        sysbus_init_irq(sys, &s->channel[i].irq_high);
         timer_init_ns(&s->channel[i].high_timer, QEMU_CLOCK_VIRTUAL,
                       rl78_tau_txend_callbacks_high[i], s);
     }

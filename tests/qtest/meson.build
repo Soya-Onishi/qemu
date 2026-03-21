@@ -293,7 +293,8 @@ qtests_riscv64 = ['riscv-csr-test'] + \
    ['iommu-riscv-test'] : [])
 
 qtests_rl78 = [
-  'rl78-sau-test'
+  'rl78-sau-test',
+  'rl78-tau-test',
 ]
 
 qos_test_ss = ss.source_set()

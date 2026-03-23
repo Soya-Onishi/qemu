@@ -7,6 +7,7 @@ rl78_ss.add(files(
     'clock.c',
     'sau.c',
     'tau.c',
+    'adc.c',
 ))
 
 hw_arch += { 'rl78': rl78_ss }

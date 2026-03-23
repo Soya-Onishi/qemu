@@ -95,6 +95,23 @@ static void rl78g23_register_tau(RL78G23McuState *s, uint8_t unit)
     // TODO: connect irq to MCU core
 }
 
+static void rl78g23_register_adc(RL78G23McuState *s)
+{
+    SysBusDevice *adc;
+
+    object_initialize_child(OBJECT(s), "adc", &s->adc, TYPE_RL78_ADC);
+    qdev_connect_clock_in(DEVICE(&s->adc), "inclk", s->clock.fCLK);
+
+    adc = SYS_BUS_DEVICE(&s->adc);
+    sysbus_realize(adc, &error_abort);
+
+    sysbus_mmio_map(adc, 0, 0xFFF1E);
+    sysbus_mmio_map(adc, 1, 0xFFF30);
+    sysbus_mmio_map(adc, 2, 0xF0010);
+
+    // TODO: connect irq to MCU core
+}
+
 static void rl78g23_realize(DeviceState *dev, Error **errp)
 {
     RL78G23McuState *s   = RL78G23_MCU(dev);
@@ -139,6 +156,7 @@ static void rl78g23_realize(DeviceState *dev, Error **errp)
     rl78g23_register_clock(s);
     rl78g23_register_sau(s, 0);
     rl78g23_register_tau(s, 0);
+    rl78g23_register_adc(s);
 }
 
 static void rl78g23_class_init(ObjectClass *oc, const void *data)

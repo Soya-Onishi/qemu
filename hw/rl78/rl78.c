@@ -95,6 +95,25 @@ static void rl78g23_register_tau(RL78G23McuState *s, uint8_t unit)
     // TODO: connect irq to MCU core
 }
 
+static double adc_callback_sample_GND(void) {
+    return 0.0;
+}
+
+static double adc_callback_sample_VDD(void) {
+    return 5.0;
+}
+
+static double adc_callback_sample_stepup(void) {
+    static double voltage = 0.0;
+
+    voltage += 0.25;
+    if(voltage > 5.0) {
+        voltage = 0.0;
+    }
+
+    return voltage;
+}
+
 static void rl78g23_register_adc(RL78G23McuState *s)
 {
     SysBusDevice *adc;
@@ -108,6 +127,10 @@ static void rl78g23_register_adc(RL78G23McuState *s)
     sysbus_mmio_map(adc, 0, 0xFFF1E);
     sysbus_mmio_map(adc, 1, 0xFFF30);
     sysbus_mmio_map(adc, 2, 0xF0010);
+
+    rl78_adc_register_adc_result_callback(&s->adc, 0, adc_callback_sample_GND);
+    rl78_adc_register_adc_result_callback(&s->adc, 1, adc_callback_sample_VDD);
+    rl78_adc_register_adc_result_callback(&s->adc, 2, adc_callback_sample_stepup);
 
     // TODO: connect irq to MCU core
 }

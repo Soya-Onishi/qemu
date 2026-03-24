@@ -1176,6 +1176,10 @@ static void rl78_adc_init(Object *obj)
 
     sysbus_init_irq(sys, &s->irq);
     timer_init_ns(&s->timer, QEMU_CLOCK_VIRTUAL, rl78_adc_timer_end, s);
+
+    for (int i = 0; i < ARRAY_SIZE(s->adc_result_callbacks); i++) {
+        s->adc_result_callbacks[i] = NULL;
+    }
 }
 
 static void rl78_adc_class_init(ObjectClass *klass, const void *data)
@@ -1185,6 +1189,13 @@ static void rl78_adc_class_init(ObjectClass *klass, const void *data)
 
     resettable_class_set_parent_phases(rc, NULL, rl78_adc_reset_hold, NULL,
                                        &ac->parent_phases);
+}
+
+void rl78_adc_register_adc_result_callback(RL78ADCState *s, uint8_t index, double (*callback)(void))
+{
+    assert(index < ARRAY_SIZE(s->adc_result_callbacks));
+
+    s->adc_result_callbacks[index] = callback;
 }
 
 static const TypeInfo rl78_adc_info = {

@@ -139,4 +139,6 @@ typedef struct RL78ADCState RL78ADCState;
 #define TYPE_RL78_ADC "rl78-adc"
 DECLARE_INSTANCE_CHECKER(RL78ADCState, RL78_ADC, TYPE_RL78_ADC)
 
+void rl78_adc_register_adc_result_callback(RL78ADCState *s, uint8_t index, double (*callback)(void));
+
 #endif

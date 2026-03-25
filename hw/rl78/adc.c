@@ -214,6 +214,11 @@ static void rl78_adc_update_adm0(RL78ADCState *s, uint8_t value)
                                        "ADCS=1 and ADCE=0 is forbidden\n");
     }
 
+    if (is_sleeping && adcs == 1 && adce == 1) {
+        qemu_log_mask(LOG_GUEST_ERROR, "Changing from ADCS=0 and ADCE=0 to "
+                                       "ADCS=1 and ADCE=1 is forbidden\n");
+    }
+
     // No delays are required when updating ADCS=0 and ADCE=0 to ADCS=1 and
     // ADCE=1 for simplicity No delays are required when updating ADMD, FR, LV
     // bits for simplicity
@@ -1078,10 +1083,18 @@ static void rl78_adc_timer_end(void *opaque)
     // fetch ADC result from pins
     uint16_t adc_result =
         rl78_adc_fetch_adc_result(s, s->input_source, s->scan_index);
+
     if (s->convert_mode == RL78_ADC_CONVERT_MODE_SELECT) {
         s->adcr = adc_result;
     }
-    s->scan_adcr[s->scan_index] = adc_result;
+
+    const bool is_valid_adcr = s->interrupt_in_range
+                                   ? (s->adll <= s->adcr && s->adcr <= s->adul)
+                                   : (s->adcr < s->adll || s->adul <= s->adcr);
+
+    if (is_valid_adcr) {
+        s->scan_adcr[s->scan_index] = adc_result;
+    }
 
     uint8_t next_scan_index = s->scan_index;
     if (s->convert_mode == RL78_ADC_CONVERT_MODE_SCAN) {
@@ -1092,26 +1105,28 @@ static void rl78_adc_timer_end(void *opaque)
 
     // scan mode: if all scans are done, raise interrupt.
     // select mode: always raise interrupt (next_scan_index is always 0).
-    if (next_scan_index == 0) {
+    if (next_scan_index == 0 && is_valid_adcr) {
         qemu_irq_pulse(s->irq);
     }
 
     // if oneshot mode and all channels are scanned, stop ADC.
+    // When select mode, next_scan_index is always 0.
     if (s->operation_mode == RL78_ADC_OPERATION_MODE_ONESHOT &&
         next_scan_index == 0) {
         s->is_conversion_running = false;
         return;
+    } else {
+        // run next adc for continuous mode and scan mode.
+        const uint8_t divider       = rl78_adc_clock_divider(s);
+        const uint32_t adc_clocks   = rl78_adc_clock_cycles(s);
+        const uint32_t delay_clocks = rl78_adc_clock_interrupt_delay_cycles(s);
+        const uint32_t total_clocks = adc_clocks + delay_clocks;
+        const double clock_duration = 1.0 / clock_get_hz(s->inclk);
+        const double adc_duration   = clock_duration * divider * total_clocks;
+        const uint64_t duration_ns  = (uint64_t)(adc_duration * 1000 * 1000 * 1000);
+
+        timer_mod(&s->timer, qemu_clock_get_ns(QEMU_CLOCK_VIRTUAL) + duration_ns);
     }
-
-    const uint8_t divider       = rl78_adc_clock_divider(s);
-    const uint32_t adc_clocks   = rl78_adc_clock_cycles(s);
-    const uint32_t delay_clocks = rl78_adc_clock_interrupt_delay_cycles(s);
-    const uint32_t total_clocks = adc_clocks + delay_clocks;
-    const double clock_duration = 1.0 / clock_get_hz(s->inclk);
-    const double adc_duration   = clock_duration * divider * total_clocks;
-    const uint64_t duration_ns  = (uint64_t)(adc_duration * 1000 * 1000 * 1000);
-
-    timer_mod(&s->timer, qemu_clock_get_ns(QEMU_CLOCK_VIRTUAL) + duration_ns);
 }
 
 static void rl78_adc_reset_hold(Object *obj, ResetType type)
@@ -1191,7 +1206,8 @@ static void rl78_adc_class_init(ObjectClass *klass, const void *data)
                                        &ac->parent_phases);
 }
 
-void rl78_adc_register_adc_result_callback(RL78ADCState *s, uint8_t index, double (*callback)(void))
+void rl78_adc_register_adc_result_callback(RL78ADCState *s, uint8_t index,
+                                           double (*callback)(void))
 {
     assert(index < ARRAY_SIZE(s->adc_result_callbacks));
 

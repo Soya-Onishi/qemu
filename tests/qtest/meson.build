@@ -295,6 +295,7 @@ qtests_riscv64 = ['riscv-csr-test'] + \
 qtests_rl78 = [
   'rl78-sau-test',
   'rl78-tau-test',
+  'rl78-adc-test',
 ]
 
 qos_test_ss = ss.source_set()

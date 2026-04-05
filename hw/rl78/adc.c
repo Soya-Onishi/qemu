@@ -4,6 +4,7 @@
 #include "hw/core/irq.h"
 #include "hw/core/registerfields.h"
 #include "hw/core/clock.h"
+#include "hw/core/qdev.h"
 #include "hw/core/qdev-clock.h"
 #include "hw/core/resettable.h"
 #include "hw/rl78/adc.h"
@@ -322,7 +323,7 @@ static void rl78_adc_update_adm2(RL78ADCState *s, uint8_t value)
 
     s->reference_voltage  = adrefp;
     s->reference_gnd      = adrefm;
-    s->interrupt_in_range = adrck;
+    s->interrupt_in_range = !adrck;
     s->use_snooze         = awc;
 
     switch (adtyp) {
@@ -1049,31 +1050,45 @@ static uint16_t rl78_adc_fetch_adc_result(RL78ADCState *s,
         break;
     }
 
-    if (s->adc_result_callbacks[index] == NULL) {
-        return 0;
-    }
-
-    const double voltage = s->adc_result_callbacks[index]();
+    double voltage = s->adc_results[index];
 
     // TODO: make selectable reference voltage and GND.
     double adc_result = voltage / 5.0;
+    uint16_t adc_result_int;
     uint16_t result   = 0;
     switch (s->resolution) {
     case RL78_ADC_RESOLUTION_8_BITS:
-        adc_result *= 256;
-        result      = (uint16_t)adc_result << 8;
+        adc_result_int = (uint16_t)(adc_result * 256);
+        adc_result_int = adc_result_int > 255 ? 255 : adc_result_int;
+        result = adc_result_int << 8;
         break;
     case RL78_ADC_RESOLUTION_10_BITS:
-        adc_result *= 1024;
-        result      = (uint16_t)adc_result << 6;
+        adc_result_int = (uint16_t)(adc_result * 1024);
+        adc_result_int = adc_result_int > 1023 ? 1023 : adc_result_int;
+        result      = adc_result_int << 6;
         break;
     case RL78_ADC_RESOLUTION_12_BITS:
-        adc_result *= 4096;
-        result      = (uint16_t)adc_result;
+        adc_result_int = (uint16_t)(adc_result * 4096);
+        adc_result_int = adc_result_int > 4095 ? 4095 : adc_result_int;
+        result      = adc_result_int;
         break;
     }
 
+    qemu_log("[%p] adc_result[%d]: %lf(%lf V), int: %d, result: %d\n", s, index, adc_result, voltage, adc_result_int, result);
     return result;
+}
+
+static uint16_t rl78_adc_result_range_threshold(RL78ADCState *s, uint16_t range)
+{
+    switch(s->resolution) {
+        case RL78_ADC_RESOLUTION_8_BITS:
+        case RL78_ADC_RESOLUTION_10_BITS:
+            return range << 8;
+        case RL78_ADC_RESOLUTION_12_BITS:
+            return range << 4;
+        default:
+            return 0;
+    }
 }
 
 static void rl78_adc_timer_end(void *opaque)
@@ -1084,13 +1099,15 @@ static void rl78_adc_timer_end(void *opaque)
     uint16_t adc_result =
         rl78_adc_fetch_adc_result(s, s->input_source, s->scan_index);
 
-    if (s->convert_mode == RL78_ADC_CONVERT_MODE_SELECT) {
+    if (s->scan_index == 0) {
         s->adcr = adc_result;
     }
 
+    const uint16_t adul = rl78_adc_result_range_threshold(s, s->adul);
+    const uint16_t adll = rl78_adc_result_range_threshold(s, s->adll);
     const bool is_valid_adcr = s->interrupt_in_range
-                                   ? (s->adll <= s->adcr && s->adcr <= s->adul)
-                                   : (s->adcr < s->adll || s->adul <= s->adcr);
+                                   ? (adll <= s->adcr && s->adcr <= adul)
+                                   : (s->adcr < adll || adul <= s->adcr);
 
     if (is_valid_adcr) {
         s->scan_adcr[s->scan_index] = adc_result;
@@ -1123,9 +1140,11 @@ static void rl78_adc_timer_end(void *opaque)
         const uint32_t total_clocks = adc_clocks + delay_clocks;
         const double clock_duration = 1.0 / clock_get_hz(s->inclk);
         const double adc_duration   = clock_duration * divider * total_clocks;
-        const uint64_t duration_ns  = (uint64_t)(adc_duration * 1000 * 1000 * 1000);
+        const uint64_t duration_ns =
+            (uint64_t)(adc_duration * 1000 * 1000 * 1000);
 
-        timer_mod(&s->timer, qemu_clock_get_ns(QEMU_CLOCK_VIRTUAL) + duration_ns);
+        timer_mod(&s->timer,
+                  qemu_clock_get_ns(QEMU_CLOCK_VIRTUAL) + duration_ns);
     }
 }
 
@@ -1192,8 +1211,8 @@ static void rl78_adc_init(Object *obj)
     sysbus_init_irq(sys, &s->irq);
     timer_init_ns(&s->timer, QEMU_CLOCK_VIRTUAL, rl78_adc_timer_end, s);
 
-    for (int i = 0; i < ARRAY_SIZE(s->adc_result_callbacks); i++) {
-        s->adc_result_callbacks[i] = NULL;
+    for (int i = 0; i < ARRAY_SIZE(s->adc_results); i++) {
+        s->adc_results[i] = 0.0;
     }
 }
 
@@ -1206,12 +1225,9 @@ static void rl78_adc_class_init(ObjectClass *klass, const void *data)
                                        &ac->parent_phases);
 }
 
-void rl78_adc_register_adc_result_callback(RL78ADCState *s, uint8_t index,
-                                           double (*callback)(void))
+void rl78_adc_set_adc_result(RL78ADCState *s, uint8_t index, double result)
 {
-    assert(index < ARRAY_SIZE(s->adc_result_callbacks));
-
-    s->adc_result_callbacks[index] = callback;
+    s->adc_results[index] = result;
 }
 
 static const TypeInfo rl78_adc_info = {

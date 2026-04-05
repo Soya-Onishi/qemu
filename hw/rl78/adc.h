@@ -132,13 +132,13 @@ struct RL78ADCState {
 
     RL78ADCTestTarget test_target; // ADTES bits
 
-    double (*adc_result_callbacks[26])(void);
+    double adc_results[27];
 };
 typedef struct RL78ADCState RL78ADCState;
 
 #define TYPE_RL78_ADC "rl78-adc"
 DECLARE_INSTANCE_CHECKER(RL78ADCState, RL78_ADC, TYPE_RL78_ADC)
 
-void rl78_adc_register_adc_result_callback(RL78ADCState *s, uint8_t index, double (*callback)(void));
+void rl78_adc_set_adc_result(RL78ADCState *s, uint8_t index, double result);
 
 #endif

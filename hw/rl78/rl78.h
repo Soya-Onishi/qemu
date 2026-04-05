@@ -46,4 +46,6 @@ enum {
     RL78G23_MM_SFR,
 };
 
+void rl78g23_set_adc_result(RL78G23McuState *s, uint8_t index, double result);
+
 #endif

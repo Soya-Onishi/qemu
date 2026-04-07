@@ -1,12 +1,16 @@
 #include "qemu/osdep.h"
 #include "qemu/timer.h"
 #include "qemu/log.h"
+#include "qom/object.h"
+#include "qapi/visitor.h"
 #include "hw/core/irq.h"
 #include "hw/core/registerfields.h"
 #include "hw/core/clock.h"
 #include "hw/core/qdev.h"
 #include "hw/core/qdev-clock.h"
 #include "hw/core/resettable.h"
+#include "hw/core/qdev-properties.h"
+#include <stdint.h>
 #include "hw/rl78/adc.h"
 
 struct RL78ADCClass {
@@ -1189,6 +1193,26 @@ static void rl78_adc_reset_hold(Object *obj, ResetType type)
     timer_del(&s->timer);
 }
 
+static void property_get_double_ptr(Object *obj, Visitor *v, const char *name,
+                                    void *opaque, Error **errp)
+{
+    double value = *(double *)opaque;
+    visit_type_number(v, name, &value, errp);
+}
+
+static void property_set_double_ptr(Object *obj, Visitor *v, const char *name,
+                                    void *opaque, Error **errp)
+{
+    double *field = opaque;
+    double value;
+
+    if (!visit_type_number(v, name, &value, errp)) {
+        return;
+    }
+
+    *field = value;
+}
+
 static void rl78_adc_init(Object *obj)
 {
     DeviceState *dev  = DEVICE(obj);
@@ -1211,9 +1235,13 @@ static void rl78_adc_init(Object *obj)
     sysbus_init_irq(sys, &s->irq);
     timer_init_ns(&s->timer, QEMU_CLOCK_VIRTUAL, rl78_adc_timer_end, s);
 
-    for (int i = 0; i < ARRAY_SIZE(s->adc_results); i++) {
+    for (int i = 0; i < ARRAY_SIZE(s->adc_results); i++) { 
         s->adc_results[i] = 0.0;
-    }
+
+        char* name = g_strdup_printf("adc-result[%d]", i);
+        object_property_add(obj, name, "double", property_get_double_ptr, property_set_double_ptr, NULL, &s->adc_results[i]);
+        g_free(name);
+    } 
 }
 
 static void rl78_adc_class_init(ObjectClass *klass, const void *data)
@@ -1222,7 +1250,7 @@ static void rl78_adc_class_init(ObjectClass *klass, const void *data)
     RL78ADCClass *ac    = RL78_ADC_CLASS(klass);
 
     resettable_class_set_parent_phases(rc, NULL, rl78_adc_reset_hold, NULL,
-                                       &ac->parent_phases);
+                                       &ac->parent_phases); 
 }
 
 void rl78_adc_set_adc_result(RL78ADCState *s, uint8_t index, double result)

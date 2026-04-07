@@ -24,27 +24,27 @@ static void test_rl78_adc_select_oneshot_mode(void)
     qtest_qmp(s, 
         "{ 'execute': 'qom-set', "
         "  'arguments': { "
-        "    'path': '/machine', " 
-        "    'property': 'adc-values[0]', "
-        "    'value': 2048"
+        "    'path': '/machine/mcu/adc', " 
+        "    'property': 'adc-result[0]', "
+        "    'value': 2.5"
         "}}"
     );
 
     qtest_qmp(s, 
         "{ 'execute': 'qom-set', "
         "  'arguments': { "
-        "    'path': '/machine', " 
-        "    'property': 'adc-values[1]', "
-        "    'value': 4096"
+        "    'path': '/machine/mcu/adc', " 
+        "    'property': 'adc-result[1]', "
+        "    'value': 5.0"
         "}}"
     );
 
     qtest_qmp(s, 
         "{ 'execute': 'qom-set', "
         "  'arguments': { "
-        "    'path': '/machine', " 
-        "    'property': 'adc-values[2]', "
-        "    'value': 0"
+        "    'path': '/machine/mcu/adc', " 
+        "    'property': 'adc-result[2]', "
+        "    'value': 0.0"
         "}}"
     );
 

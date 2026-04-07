@@ -93,6 +93,7 @@ enum RL78ADCTestTarget {
 };
 typedef enum RL78ADCTestTarget RL78ADCTestTarget;
 
+#define RL78_ADC_SOURCE_NUM (27)
 struct RL78ADCState {
     /* private */
     SysBusDevice parent_obj;
@@ -132,9 +133,17 @@ struct RL78ADCState {
 
     RL78ADCTestTarget test_target; // ADTES bits
 
-    double adc_results[27];
+    NotifierList adc_results_rx_notifier[RL78_ADC_SOURCE_NUM];
+    double adc_results[RL78_ADC_SOURCE_NUM];
 };
 typedef struct RL78ADCState RL78ADCState;
+
+struct NotifierData {
+    void* state;
+    uint32_t index;
+    void* data;
+};
+typedef struct NotifierData NotifierData;
 
 #define TYPE_RL78_ADC "rl78-adc"
 DECLARE_INSTANCE_CHECKER(RL78ADCState, RL78_ADC, TYPE_RL78_ADC)

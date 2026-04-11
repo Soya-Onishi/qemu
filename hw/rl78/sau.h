@@ -14,6 +14,9 @@ struct RL78SAUState {
     /* <public> */
     Clock* inclk;
 
+    qemu_irq irq[RL78_SAU_CHANNEL_NUM];
+    qemu_irq irq_err[RL78_SAU_CHANNEL_NUM];
+
     QEMUTimer tx_timer[RL78_SAU_CHANNEL_NUM];
     NotifierList tx_notify[RL78_SAU_CHANNEL_NUM];
     NotifierList rx_notify[RL78_SAU_CHANNEL_NUM];

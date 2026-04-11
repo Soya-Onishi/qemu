@@ -5,6 +5,7 @@
 #include "hw/core/qdev-properties.h"
 #include "hw/core/qdev-properties-system.h"
 #include "hw/core/qdev-clock.h"
+#include "hw/core/irq.h"
 #include "qemu/notify.h"
 #include "chardev/char.h"
 #include "qemu/rcu.h"
@@ -676,7 +677,7 @@ static void rl78_sau_tx_timer_up(RL78SAUState *s, int channel)
     }
 
     if ((FIELD_EX16(s->smr[channel], SMR, MD) & 0x01) == 0) {
-        // TODO: raise TX interrupt
+        qemu_irq_pulse(s->irq[channel]);
     }
 }
 
@@ -717,6 +718,9 @@ static void rl78_sau_init(Object *obj)
 
     s->inclk =
         qdev_init_clock_in(dev, "inclk", rl78_sau_update_inclk, s, ClockUpdate);
+
+    qdev_init_gpio_out_named(dev, s->irq, "irq", RL78_SAU_CHANNEL_NUM);
+    qdev_init_gpio_out_named(dev, s->irq_err, "irq-err", RL78_SAU_CHANNEL_NUM);
 
     for (int ch = 0; ch < RL78_SAU_CHANNEL_NUM; ch++) {
         notifier_list_init(&s->tx_notify[ch]);

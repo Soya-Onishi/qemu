@@ -1,4 +1,5 @@
 #include "qemu/osdep.h"
+#include "qemu/log.h"
 #include "qemu/host-utils.h"
 #include "qemu/bitops.h"
 #include "hw/core/sysbus.h"
@@ -843,6 +844,7 @@ static void rl78_irq_recv_irq(void *opaque, int irq, int level)
 {
     RL78IRQControllerState *s = RL78_IRQ_CONTROLLER(opaque);
 
+    qemu_log("rl78_irq_recv_irq: irq=%d, level=%d\n", irq, level);
     s->irq_flag |= 1ULL << irq;
 
     rl78_irq_set_irq(s);

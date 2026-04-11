@@ -99,6 +99,23 @@ static void rl78g23_register_sau(RL78G23McuState *s, uint8_t unit)
     sysbus_mmio_map(sau, 0, 0xFFF10);
     sysbus_mmio_map(sau, 1, 0xFFF44);
     sysbus_mmio_map(sau, 2, 0xF0100);
+
+    const RL78CPUIRQ irq_types[RL78_SAU_CHANNEL_NUM] = {
+        RL78_CPU_IRQ_INTST0,
+        RL78_CPU_IRQ_INTSR0,
+        RL78_CPU_IRQ_INTST1,
+        RL78_CPU_IRQ_INTSR1,
+    };
+
+    for(int i = 0; i < RL78_SAU_CHANNEL_NUM; i++) {
+        qemu_irq irq = qdev_get_gpio_in_named(DEVICE(&s->irq), "irq-in", irq_types[i]);
+        qdev_connect_gpio_out_named(DEVICE(&s->sau), "irq", i, irq);
+    }
+
+    qemu_irq irq_sre0 = qdev_get_gpio_in_named(DEVICE(&s->irq), "irq-in", RL78_CPU_IRQ_INTSRE0);
+    qdev_connect_gpio_out_named(DEVICE(&s->sau), "irq-err", 0, irq_sre0);
+    qemu_irq irq_sre1 = qdev_get_gpio_in_named(DEVICE(&s->irq), "irq-in", RL78_CPU_IRQ_INTSRE1);
+    qdev_connect_gpio_out_named(DEVICE(&s->sau), "irq-err", 1, irq_sre1);
 }
 
 static void rl78g23_register_tau(RL78G23McuState *s, uint8_t unit)

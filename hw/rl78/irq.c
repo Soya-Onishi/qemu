@@ -151,7 +151,7 @@ static void rl78_irq_set_irq(RL78IRQControllerState *s)
 static void rl78_irq_update_iflag_lo_byte(RL78IRQControllerState *s,
                                           uint8_t offset, uint8_t value)
 {
-    const uint8_t bit_offset = offset * 8;
+    const uint8_t bit_offset = offset * 16;
 
     s->irq_flag = deposit64(s->irq_flag, bit_offset, 8, value);
 
@@ -161,7 +161,7 @@ static void rl78_irq_update_iflag_lo_byte(RL78IRQControllerState *s,
 static void rl78_irq_update_iflag_hi_byte(RL78IRQControllerState *s,
                                           uint8_t offset, uint8_t value)
 {
-    const uint8_t bit_offset = offset * 8 + 8;
+    const uint8_t bit_offset = offset * 16 + 8;
 
     s->irq_flag = deposit64(s->irq_flag, bit_offset, 8, value);
 
@@ -171,7 +171,7 @@ static void rl78_irq_update_iflag_hi_byte(RL78IRQControllerState *s,
 static void rl78_irq_update_iflag_word(RL78IRQControllerState *s,
                                        uint8_t head_offset, uint16_t value)
 {
-    const uint8_t bit_offset = head_offset * 8;
+    const uint8_t bit_offset = head_offset * 16;
 
     s->irq_flag = deposit64(s->irq_flag, bit_offset, 16, value);
 
@@ -181,7 +181,7 @@ static void rl78_irq_update_iflag_word(RL78IRQControllerState *s,
 static void rl78_irq_update_mask_lo_byte(RL78IRQControllerState *s,
                                          uint8_t offset, uint8_t value)
 {
-    const uint8_t bit_offset = offset * 8;
+    const uint8_t bit_offset = offset * 16;
 
     s->irq_mask = deposit64(s->irq_mask, bit_offset, 8, value);
 
@@ -191,7 +191,7 @@ static void rl78_irq_update_mask_lo_byte(RL78IRQControllerState *s,
 static void rl78_irq_update_mask_hi_byte(RL78IRQControllerState *s,
                                          uint8_t offset, uint8_t value)
 {
-    const uint8_t bit_offset = offset * 8 + 8;
+    const uint8_t bit_offset = offset * 16 + 8;
 
     s->irq_mask = deposit64(s->irq_mask, bit_offset, 8, value);
 
@@ -201,7 +201,7 @@ static void rl78_irq_update_mask_hi_byte(RL78IRQControllerState *s,
 static void rl78_irq_update_mask_word(RL78IRQControllerState *s,
                                       uint8_t head_offset, uint16_t value)
 {
-    const uint8_t bit_offset = head_offset * 8;
+    const uint8_t bit_offset = head_offset * 16;
 
     s->irq_mask = deposit64(s->irq_mask, bit_offset, 16, value);
 

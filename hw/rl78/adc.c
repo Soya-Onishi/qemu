@@ -1242,6 +1242,8 @@ static void rl78_adc_init(Object *obj)
         object_property_add(obj, name, "double", property_get_double_ptr, property_set_double_ptr, NULL, &s->adc_results[i]);
         g_free(name);
     } 
+
+    qdev_init_gpio_out_named(dev, &s->irq, "irq-out", 1);
 }
 
 static void rl78_adc_class_init(ObjectClass *klass, const void *data)

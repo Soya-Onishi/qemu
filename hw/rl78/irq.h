@@ -1,0 +1,129 @@
+#ifndef TARGET_RL78_IRQ_H
+#define TARGET_RL78_IRQ_H
+
+#include "hw/core/sysbus.h"
+#include "hw/core/irq.h"
+
+typedef enum {
+    RL78_CPU_IRQ_INTWDTI   = 0,
+    RL78_CPU_IRQ_INTLVI    = 1,
+    RL78_CPU_IRQ_INTP0     = 2,
+    RL78_CPU_IRQ_INTP1     = 3,
+    RL78_CPU_IRQ_INTP2     = 4,
+    RL78_CPU_IRQ_INTP3     = 5,
+    RL78_CPU_IRQ_INTP4     = 6,
+    RL78_CPU_IRQ_INTP5     = 7,
+    RL78_CPU_IRQ_INTST2    = 8,
+    RL78_CPU_IRQ_INTCSI20  = 8,
+    RL78_CPU_IRQ_INTIIC20  = 8,
+    RL78_CPU_IRQ_INTSR2    = 9,
+    RL78_CPU_IRQ_INTCSI21  = 9,
+    RL78_CPU_IRQ_INTIIC21  = 9,
+    RL78_CPU_IRQ_INTSRE2   = 10,
+    RL78_CPU_IRQ_INTTM11H  = 10,
+    RL78_CPU_IRQ_INTELCL   = 11,
+    RL78_CPU_IRQ_INTSMSE   = 12,
+    RL78_CPU_IRQ_INTST0    = 13,
+    RL78_CPU_IRQ_INTCSI00  = 13,
+    RL78_CPU_IRQ_INTIIC00  = 13,
+    RL78_CPU_IRQ_INTTM00   = 14,
+    RL78_CPU_IRQ_INTSRE0   = 15,
+    RL78_CPU_IRQ_INTTM01H  = 15,
+    RL78_CPU_IRQ_INTST1    = 16,
+    RL78_CPU_IRQ_INTCSI10  = 16,
+    RL78_CPU_IRQ_INTIIC10  = 16,
+    RL78_CPU_IRQ_INTSR1    = 17,
+    RL78_CPU_IRQ_INTCSI11  = 17,
+    RL78_CPU_IRQ_INTIIC11  = 17,
+    RL78_CPU_IRQ_INTSRE1   = 18,
+    RL78_CPU_IRQ_INTTM03H  = 18,
+    RL78_CPU_IRQ_INTIICA0  = 19,
+    RL78_CPU_IRQ_INTSR0    = 20,
+    RL78_CPU_IRQ_INTCSI01  = 20,
+    RL78_CPU_IRQ_INTIIC01  = 20,
+    RL78_CPU_IRQ_INTTM01   = 21,
+    RL78_CPU_IRQ_INTTM02   = 22,
+    RL78_CPU_IRQ_INTTM03   = 23,
+    RL78_CPU_IRQ_INTAD     = 24,
+    RL78_CPU_IRQ_INTRTC    = 25,
+    RL78_CPU_IRQ_INTITL    = 26,
+    RL78_CPU_IRQ_INTKR     = 27,
+    RL78_CPU_IRQ_INTST3    = 28,
+    RL78_CPU_IRQ_INTCSI30  = 28,
+    RL78_CPU_IRQ_INTIIC30  = 28,
+    RL78_CPU_IRQ_INTSR3    = 29,
+    RL78_CPU_IRQ_INTCSI31  = 29,
+    RL78_CPU_IRQ_INTIIC31  = 29,
+    RL78_CPU_IRQ_INTTM13   = 30,
+    RL78_CPU_IRQ_INTTM04   = 31,
+    RL78_CPU_IRQ_INTTM05   = 32,
+    RL78_CPU_IRQ_INTTM06   = 33,
+    RL78_CPU_IRQ_INTTM07   = 34,
+    RL78_CPU_IRQ_INTP6     = 35,
+    RL78_CPU_IRQ_INTP7     = 36,
+    RL78_CPU_IRQ_INTP8     = 37,
+    RL78_CPU_IRQ_INTP9     = 38,
+    RL78_CPU_IRQ_INTFL     = 39,
+    RL78_CPU_IRQ_INTP10    = 40,
+    RL78_CPU_IRQ_INTCMP0   = 40,
+    RL78_CPU_IRQ_INTP11    = 41,
+    RL78_CPU_IRQ_INTCMP1   = 41,
+    RL78_CPU_IRQ_INTURE0   = 42,
+    RL78_CPU_IRQ_INTTM10   = 42,
+    RL78_CPU_IRQ_INTURE1   = 43,
+    RL78_CPU_IRQ_INTTM11   = 43,
+    RL78_CPU_IRQ_INTTM12   = 44,
+    RL78_CPU_IRQ_INTSRE3   = 45,
+    RL78_CPU_IRQ_INTTM13H  = 45,
+    RL78_CPU_IRQ_INTCTSUWR = 46,
+    RL78_CPU_IRQ_INTIICA1  = 47,
+    RL78_CPU_IRQ_INTCTSURD = 48,
+    RL78_CPU_IRQ_INTCTSUFN = 49,
+    RL78_CPU_IRQ_INTREMC   = 50,
+    RL78_CPU_IRQ_INTUT0    = 51,
+    RL78_CPU_IRQ_INTUR0    = 52,
+    RL78_CPU_IRQ_INTUT1    = 53,
+    RL78_CPU_IRQ_INTUR1    = 54,
+    RL78_CPU_IRQ_INTTM14   = 55,
+    RL78_CPU_IRQ_INTTM15   = 56,
+    RL78_CPU_IRQ_INTTM16   = 57,
+    RL78_CPU_IRQ_INTTM17   = 58,
+    RL78_CPU_IRQ_NUM,
+} RL78CPUIRQ;
+
+typedef enum {
+    RL78_IRQ_EXTINT_EDGE_TYPE_FORBIDDEN = 0,
+    RL78_IRQ_EXTINT_EDGE_TYPE_FALLING = 1,
+    RL78_IRQ_EXTINT_EDGE_TYPE_RISING = 2,
+    RL78_IRQ_EXTINT_EDGE_TYPE_BOTH = 3,
+} RL78_IRQ_EXTINT_EDGE_TYPE;
+
+#define RL78_IRQ_EXTERNAL_PIN_NUM (12)
+#define RL78_IRQ_PRIORITY_NUM (4)
+
+struct RL78IRQControllerState {
+    /* private */
+    SysBusDevice parent_obj;
+
+    /* public */
+    MemoryRegion mmio[3];
+
+    // To/From CPU Signals
+    qemu_irq irq_req;
+
+    uint64_t irq_flag;
+    uint64_t irq_mask;
+    uint8_t irq_priority[RL78_CPU_IRQ_NUM];
+
+    RL78_IRQ_EXTINT_EDGE_TYPE edge_types[RL78_IRQ_EXTERNAL_PIN_NUM];
+};
+typedef struct RL78IRQControllerState RL78IRQControllerState;
+
+#define TYPE_RL78_IRQ_CONTROLLER "rl78-intc"
+DECLARE_INSTANCE_CHECKER(RL78IRQControllerState, RL78_IRQ_CONTROLLER, TYPE_RL78_IRQ_CONTROLLER)
+
+
+int rl78_irq_pack_irqlevel(uint8_t index, uint8_t priority, uint8_t enable);
+void rl78_irq_unpack_irqlevel(int level, uint8_t *irq_index, uint8_t *priority, uint8_t *enable);
+
+#endif

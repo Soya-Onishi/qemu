@@ -74,6 +74,11 @@ typedef struct CPUArchState {
     /* Skip Instruction Control */
     uint32_t skip_en;
     uint32_t skip_req;
+
+    /* IRQ */
+    qemu_irq irq_ack;
+    int32_t irq_index;
+    uint8_t irq_priority;
 } CPURL78State;
 
 struct ArchCPU {

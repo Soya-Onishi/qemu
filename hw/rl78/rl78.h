@@ -8,6 +8,7 @@
 #include "hw/rl78/sau.h"
 #include "hw/rl78/tau.h"
 #include "hw/rl78/adc.h"
+#include "hw/rl78/irq.h"
 
 #define TYPE_RL78G23_MCU "RL78G23"
 #define TYPE_R7F100GXL_MCU "R7F100GxL"
@@ -25,6 +26,7 @@ struct RL78G23McuState {
     RL78SAUState sau;
     RL78TAUState tau;
     RL78ADCState adc;
+    RL78IRQControllerState irq;
 
     MemoryRegion code_flash;
     MemoryRegion data_flash;

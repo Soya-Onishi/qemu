@@ -12,6 +12,7 @@
 #include "hw/core/qdev-properties.h"
 #include "hw/core/loader.h"
 #include "hw/core/cpu.h"
+#include "hw/rl78/irq.h"
 
 enum RL78TBFlags {
     TB_FLAG_SKIP = 1 << 0,
@@ -150,9 +151,38 @@ static bool rl78_cpu_tlb_fill(CPUState *cs, vaddr addr, int size,
     return true;
 }
 
+static void rl78_cpu_irq_req(void *opaque, int irq, int level)
+{
+    RL78CPU *cpu = RL78_CPU(opaque);
+    CPURL78State *env = &cpu->env;
+    CPUState *cs = CPU(cpu);
+
+    uint8_t irq_index;
+    uint8_t priority;
+    uint8_t enable;
+
+    rl78_irq_unpack_irqlevel(irq, &irq_index, &priority, &enable);
+    
+    assert(irq_index < RL78_CPU_IRQ_NUM);
+
+    if(enable) {
+        env->irq_index = irq_index;
+        env->irq_priority = priority;
+        cpu_interrupt(cs, CPU_INTERRUPT_HARD);
+    } else {
+        cs->exception_index = -1;
+        env->irq_index = -1;
+        env->irq_priority = -1;
+        cpu_reset_interrupt(cs, CPU_INTERRUPT_HARD);
+    }
+}
+
 static void rl78_cpu_init(Object *obj)
 {
-    // nothing to do
+    RL78CPU *cpu = RL78_CPU(obj);
+
+    qdev_init_gpio_in_named(DEVICE(cpu), rl78_cpu_irq_req, "irq-in", 1);
+    qdev_init_gpio_out_named(DEVICE(cpu), &cpu->env.irq_ack, "irq-ack", 1);
 }
 
 #include "hw/core/sysemu-cpu-ops.h"

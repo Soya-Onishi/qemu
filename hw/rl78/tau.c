@@ -230,7 +230,7 @@ static void rl78_tau_start_timer(RL78TAUState *s, const uint8_t channel,
                   qemu_clock_get_ns(QEMU_CLOCK_VIRTUAL) + timer_ns);
 
         if(s->tmr[channel].timer_behavior == 1) {
-            qemu_set_irq(s->channel[channel].irq_high, 1);
+            qemu_set_irq(s->high_irqs[channel], 1);
         }
     } else {
         const uint64_t count    = s->tmr[channel].use_split
@@ -242,7 +242,7 @@ static void rl78_tau_start_timer(RL78TAUState *s, const uint8_t channel,
                   qemu_clock_get_ns(QEMU_CLOCK_VIRTUAL) + timer_ns);
 
         if(s->tmr[channel].timer_behavior == 1) {
-            qemu_set_irq(s->channel[channel].irq, 1);
+            qemu_set_irq(s->irqs[channel], 1);
         }
     }
 }
@@ -959,7 +959,7 @@ static void rl78_tau_txend(RL78TAUState *s, const uint8_t channel)
                                       : s->channel[channel].tdr.word;
 
     rl78_tau_txend_interval_timer(&s->channel[channel].timer,
-                                  s->channel[channel].irq, count,
+                                  s->irqs[channel], count,
                                   clock_duration);
 }
 
@@ -970,7 +970,7 @@ static void rl78_tau_txend_high(RL78TAUState *s, const uint8_t channel)
     const uint16_t count        = s->channel[channel].tdr.bytes[1];
 
     rl78_tau_txend_interval_timer(&s->channel[channel].high_timer,
-                                  s->channel[channel].irq_high, count,
+                                  s->high_irqs[channel], count,
                                   clock_duration);
 }
 
@@ -1079,16 +1079,15 @@ static void rl78_tau_init(Object *obj)
     sysbus_init_mmio(sys, &s->mmio[2]);
     sysbus_init_mmio(sys, &s->mmio[3]);
 
-    for (int i = 0; i < RL78_TAU_CHANNEL_NUM; i++) {
-        sysbus_init_irq(sys, &s->channel[i].irq);
-        timer_init_ns(&s->channel[i].timer, QEMU_CLOCK_VIRTUAL,
-                      rl78_tau_txend_callbacks[i], s);
-    }
+    qdev_init_gpio_out_named(DEVICE(s), s->irqs, "irq-out", RL78_TAU_CHANNEL_NUM);
+    qdev_init_gpio_out_named(DEVICE(s), s->high_irqs, "irq-out-high", RL78_TAU_CHANNEL_NUM);
 
     for (int i = 0; i < RL78_TAU_CHANNEL_NUM; i++) {
-        sysbus_init_irq(sys, &s->channel[i].irq_high);
+        timer_init_ns(&s->channel[i].timer, QEMU_CLOCK_VIRTUAL,
+                      rl78_tau_txend_callbacks[i], s);
         timer_init_ns(&s->channel[i].high_timer, QEMU_CLOCK_VIRTUAL,
                       rl78_tau_txend_callbacks_high[i], s);
+
     }
 }
 

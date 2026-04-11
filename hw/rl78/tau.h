@@ -83,9 +83,6 @@ struct RL78TAUChannelState {
     QEMUTimer high_timer;
 
     RL78TAUTimerInput input_type;
-
-    qemu_irq irq;
-    qemu_irq irq_high;
 };
 
 typedef struct RL78TAUChannelState RL78TAUChannelState;
@@ -101,6 +98,8 @@ struct RL78TAUState {
     uint32_t clk_divider[4];
 
     RL78TAUChannelState channel[RL78_TAU_CHANNEL_NUM];
+    qemu_irq irqs[RL78_TAU_CHANNEL_NUM];
+    qemu_irq high_irqs[RL78_TAU_CHANNEL_NUM];
 
     uint16_t tps;
     RL78TAUTimerModeRegister tmr[RL78_TAU_CHANNEL_NUM];

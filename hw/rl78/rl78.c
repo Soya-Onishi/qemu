@@ -64,6 +64,26 @@ static void rl78g23_register_clock(RL78G23McuState *s)
     sysbus_mmio_map(clock, 3, 0xF0212);
 }
 
+static void rl78g23_register_irq(RL78G23McuState *s)
+{
+    SysBusDevice *irq;
+
+    object_initialize_child(OBJECT(s), "irq", &s->irq, TYPE_RL78_IRQ_CONTROLLER);
+
+    irq = SYS_BUS_DEVICE(&s->irq);
+    sysbus_realize(irq, &error_abort);
+
+    sysbus_mmio_map(irq, 0, 0xFFFE0);
+    sysbus_mmio_map(irq, 1, 0xFFFD0);
+    sysbus_mmio_map(irq, 2, 0xFFF38);
+
+    qemu_irq irq_ack = qdev_get_gpio_in_named(DEVICE(&s->irq), "irq-ack", 0);
+    qdev_connect_gpio_out_named(DEVICE(&s->cpu), "irq-ack", 0, irq_ack);
+
+    qemu_irq irq_req = qdev_get_gpio_in_named(DEVICE(&s->cpu), "irq-in", 0);
+    qdev_connect_gpio_out_named(DEVICE(&s->irq), "irq-req", 0, irq_req);
+}
+
 static void rl78g23_register_sau(RL78G23McuState *s, uint8_t unit)
 {
     SysBusDevice *sau;
@@ -99,7 +119,26 @@ static void rl78g23_register_tau(RL78G23McuState *s, uint8_t unit)
         sysbus_mmio_map(tau, 3, 0xF0074);
     }
 
-    // TODO: connect irq to MCU core
+    const RL78CPUIRQ irq_types[RL78_TAU_CHANNEL_NUM] = {
+        RL78_CPU_IRQ_INTTM00,
+        RL78_CPU_IRQ_INTTM01,
+        RL78_CPU_IRQ_INTTM02,
+        RL78_CPU_IRQ_INTTM03,
+        RL78_CPU_IRQ_INTTM04,
+        RL78_CPU_IRQ_INTTM05,
+        RL78_CPU_IRQ_INTTM06,
+        RL78_CPU_IRQ_INTTM07,
+    };
+
+    for(int i = 0; i < RL78_TAU_CHANNEL_NUM; i++) {
+        qemu_irq irq = qdev_get_gpio_in_named(DEVICE(&s->irq), "irq-in", irq_types[i]);
+        qdev_connect_gpio_out_named(DEVICE(&s->tau), "irq-out", i, irq);
+    }
+
+    qemu_irq high_irq_01 = qdev_get_gpio_in_named(DEVICE(&s->irq), "irq-in", RL78_CPU_IRQ_INTTM01H);
+    qemu_irq high_irq_03 = qdev_get_gpio_in_named(DEVICE(&s->irq), "irq-in", RL78_CPU_IRQ_INTTM03H);
+    qdev_connect_gpio_out_named(DEVICE(&s->tau), "irq-out-high", 1, high_irq_01);
+    qdev_connect_gpio_out_named(DEVICE(&s->tau), "irq-out-high", 3, high_irq_03);
 }
 
 static void rl78g23_register_adc(RL78G23McuState *s)
@@ -116,7 +155,8 @@ static void rl78g23_register_adc(RL78G23McuState *s)
     sysbus_mmio_map(adc, 1, 0xFFF30);
     sysbus_mmio_map(adc, 2, 0xF0010);
 
-    // TODO: connect irq to MCU core
+    qemu_irq irq = qdev_get_gpio_in_named(DEVICE(&s->irq), "irq-in", RL78_CPU_IRQ_INTAD);
+    qdev_connect_gpio_out_named(DEVICE(adc), "irq-out", 0, irq);
 }
 
 static void rl78g23_realize(DeviceState *dev, Error **errp)
@@ -161,6 +201,7 @@ static void rl78g23_realize(DeviceState *dev, Error **errp)
 
     // register peripherals
     rl78g23_register_clock(s);
+    rl78g23_register_irq(s);
     rl78g23_register_sau(s, 0);
     rl78g23_register_tau(s, 0);
     rl78g23_register_adc(s);

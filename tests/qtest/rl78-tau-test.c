@@ -19,6 +19,7 @@
 #define TAU_TOL (0xF01BC)
 #define TAU_TOM (0xF01BE)
 
+
 static void setup_interval_timer(QTestState *s, const uint8_t channel)
 {
     qtest_writew(s, TAU_TOE, 0x0000);
@@ -28,12 +29,91 @@ static void setup_interval_timer(QTestState *s, const uint8_t channel)
     qtest_writeb(s, TAU_TIS1, 0x00);
 }
 
+static bool get_tmr_iflag(QTestState *s, const uint8_t channel)
+{
+    switch(channel) {
+        case 0:
+            return !!(qtest_readw(s, 0xFFFE0) & 0x4000);
+        case 1:
+            return !!(qtest_readw(s, 0xFFFE2) & 0x0020);
+        case 2:
+            return !!(qtest_readw(s, 0xFFFE2) & 0x0040);
+        case 3:
+            return !!(qtest_readw(s, 0xFFFE2) & 0x0080);
+        default:
+            g_assert_not_reached();
+            return false;
+    }
+}
+
+static bool get_high_tmr_iflag(QTestState *s, const uint8_t channel)
+{
+    switch(channel) {
+        case 1:
+            return !!(qtest_readw(s, 0xFFFE0) & 0x8000);
+        case 3:
+            return !!(qtest_readw(s, 0xFFFE2) & 0x0004);
+        default:
+            g_assert_not_reached();
+            return false;
+    }
+}
+
+static void set_tmr_iflag(QTestState *s, const uint8_t channel, const bool bit)
+{
+    uint16_t value = 0;
+
+    switch(channel) {
+        case 0:
+            value = qtest_readw(s, 0xFFFE0);
+            value = deposit32(value, 14, 1, bit);
+            qtest_writew(s, 0xFFFE0, value);
+            break;
+        case 1:
+            value = qtest_readw(s, 0xFFFE2);
+            value = deposit32(value, 5, 1, bit);
+            qtest_writew(s, 0xFFFE2, value);
+            break;
+        case 2:
+            value = qtest_readw(s, 0xFFFE2);
+            value = deposit32(value, 6, 1, bit);
+            qtest_writew(s, 0xFFFE2, value);
+            break;
+        case 3:
+            value = qtest_readw(s, 0xFFFE2);
+            value = deposit32(value, 7, 1, bit);
+            qtest_writew(s, 0xFFFE2, value);
+            break;
+        default:
+            g_assert_not_reached();
+    }
+}
+
+static void set_high_tmr_iflag(QTestState *s, const uint8_t channel, const bool bit)
+{
+    uint16_t value = 0;
+
+    switch(channel) {
+        case 1:
+            value = qtest_readw(s, 0xFFFE0);
+            value = deposit32(value, 15, 1, bit);
+            qtest_writew(s, 0xFFFE0, value);
+            break;
+        case 3:
+            value = qtest_readw(s, 0xFFFE2);
+            value = deposit32(value, 2, 1, bit);
+            qtest_writew(s, 0xFFFE2, value);
+            break;
+        default:
+            g_assert_not_reached();
+    }
+}
+
 static void test_rl78_tau_interval_timer_basic_usage(void)
 {
     QTestState *s = qtest_init("-M virt -nographic");
 
     qtest_system_reset(s);
-    qtest_irq_intercept_out_named(s, "/machine/mcu/tau[0]", SYSBUS_DEVICE_GPIO_IRQ);
 
     setup_interval_timer(s, 0);
 
@@ -49,12 +129,15 @@ static void test_rl78_tau_interval_timer_basic_usage(void)
     // step 50us
     qtest_clock_step(s, 50*1000);
     g_assert_cmpuint(qtest_readw(s, TAU_TCR(0)), ==, 1599);
-    g_assert_cmpuint(qtest_get_irq(s, 0), ==, 0);
+
+    g_assert_cmpuint(get_tmr_iflag(s, 0), ==, 0);
+    set_tmr_iflag(s, 0, false);
 
     // step 50us(interval timer should be up)
     qtest_clock_step(s, 50*1000);
     g_assert_cmpuint(qtest_readw(s, TAU_TCR(0)), ==, 3199);
-    g_assert_cmpuint(qtest_get_irq(s, 0), ==, 1);
+    g_assert_cmpuint(get_tmr_iflag(s, 0), ==, 1);
+    set_tmr_iflag(s, 0, false);
 
     // step 50us
     qtest_clock_step(s, 50*1000);
@@ -66,7 +149,6 @@ static void test_rl78_tau_interval_timer_using_divider(void)
     QTestState *s = qtest_init("-M virt -nographic");
 
     qtest_system_reset(s);
-    qtest_irq_intercept_out_named(s, "/machine/mcu/tau[0]", SYSBUS_DEVICE_GPIO_IRQ);
 
     setup_interval_timer(s, 0);
 
@@ -82,12 +164,14 @@ static void test_rl78_tau_interval_timer_using_divider(void)
     // step 100us
     qtest_clock_step(s, 100*1000);
     g_assert_cmpuint(qtest_readw(s, TAU_TCR(0)), ==, 1599);
-    g_assert_cmpuint(qtest_get_irq(s, 0), ==, 0);
+    g_assert_cmpuint(get_tmr_iflag(s, 0), ==, 0);
+    set_tmr_iflag(s, 0, false);
 
     // step 100us(interval timer should be up)
     qtest_clock_step(s, 100*1000);
     g_assert_cmpuint(qtest_readw(s, TAU_TCR(0)), ==, 3199);
-    g_assert_cmpuint(qtest_get_irq(s, 0), ==, 1);
+    g_assert_cmpuint(get_tmr_iflag(s, 0), ==, 1);
+    set_tmr_iflag(s, 0, false);
 
     // step 100us
     qtest_clock_step(s, 100*1000);
@@ -99,7 +183,6 @@ static void rl78_tau_interval_timer_using_ck2(const uint16_t tps, const uint32_t
     QTestState *s = qtest_init("-M virt -nographic");
 
     qtest_system_reset(s);
-    qtest_irq_intercept_out_named(s, "/machine/mcu/tau[0]", SYSBUS_DEVICE_GPIO_IRQ);
 
     setup_interval_timer(s, 0);
 
@@ -113,11 +196,11 @@ static void rl78_tau_interval_timer_using_ck2(const uint16_t tps, const uint32_t
  
     qtest_clock_step(s, interval / 2);
     g_assert_cmpuint(qtest_readw(s, TAU_TCR(1)), ==, 1599);
-    g_assert_cmpuint(qtest_get_irq(s, 1), ==, 0);
+    g_assert_cmpuint(get_tmr_iflag(s, 1), ==, 0);
 
     qtest_clock_step(s, interval / 2);
     g_assert_cmpuint(qtest_readw(s, TAU_TCR(1)), ==, 3199);
-    g_assert_cmpuint(qtest_get_irq(s, 1), ==, 1);
+    g_assert_cmpuint(get_tmr_iflag(s, 1), ==, 1);
 }
 
 static void test_rl78_tau_interval_timer_using_ck2_0(void)
@@ -145,7 +228,6 @@ static void rl78_tau_interval_timer_using_ck3(const uint16_t tps, const uint32_t
     QTestState *s = qtest_init("-M virt -nographic");
 
     qtest_system_reset(s);
-    qtest_irq_intercept_out_named(s, "/machine/mcu/tau[0]", SYSBUS_DEVICE_GPIO_IRQ);
 
     setup_interval_timer(s, 0);
 
@@ -159,11 +241,11 @@ static void rl78_tau_interval_timer_using_ck3(const uint16_t tps, const uint32_t
  
     qtest_clock_step(s, interval / 2);
     g_assert_cmpuint(qtest_readw(s, TAU_TCR(1)), ==, 1599);
-    g_assert_cmpuint(qtest_get_irq(s, 1), ==, 0);
+    g_assert_cmpuint(get_tmr_iflag(s, 1), ==, 0);
 
     qtest_clock_step(s, interval / 2);
     g_assert_cmpuint(qtest_readw(s, TAU_TCR(1)), ==, 3199);
-    g_assert_cmpuint(qtest_get_irq(s, 1), ==, 1);
+    g_assert_cmpuint(get_tmr_iflag(s, 1), ==, 1);
 }
 
 static void test_rl78_tau_interval_timer_using_ck3_0(void)
@@ -191,7 +273,6 @@ static void test_rl78_tau_interval_timer_stop_timer(void)
     QTestState *s = qtest_init("-M virt -nographic");
 
     qtest_system_reset(s);
-    qtest_irq_intercept_out_named(s, "/machine/mcu/tau[0]", SYSBUS_DEVICE_GPIO_IRQ);
 
     setup_interval_timer(s, 0);
 
@@ -215,17 +296,17 @@ static void test_rl78_tau_interval_timer_stop_timer(void)
     // step 50us
     qtest_clock_step(s, 50*1000);
     g_assert_cmpuint(qtest_readw(s, TAU_TCR(0)), ==, 1599);
-    g_assert_cmpuint(qtest_get_irq(s, 0), ==, 0);
+    g_assert_cmpuint(get_tmr_iflag(s, 0), ==, 0);
 
     // restart timer
     qtest_writew(s, TAU_TS, 0x0001);
     qtest_clock_step(s, 1);
     g_assert_cmpuint(qtest_readw(s, TAU_TCR(0)), ==, 3199);
-    g_assert_cmpuint(qtest_get_irq(s, 0), ==, 0);
+    g_assert_cmpuint(get_tmr_iflag(s, 0), ==, 0);
 
     qtest_clock_step(s, 50*1000);
     g_assert_cmpuint(qtest_readw(s, TAU_TCR(0)), ==, 1599);
-    g_assert_cmpuint(qtest_get_irq(s, 0), ==, 0);
+    g_assert_cmpuint(get_tmr_iflag(s, 0), ==, 0);
 }
 
 static uint16_t tcr_8bit(const uint8_t hi, const uint8_t lo) 
@@ -238,7 +319,6 @@ static void test_rl78_tau_interval_timer_8bit_timer_ch1_loside(void)
     QTestState *s = qtest_init("-M virt -nographic");
 
     qtest_system_reset(s);
-    qtest_irq_intercept_out_named(s, "/machine/mcu/tau[0]", SYSBUS_DEVICE_GPIO_IRQ);
 
     setup_interval_timer(s, 0);
 
@@ -252,13 +332,15 @@ static void test_rl78_tau_interval_timer_8bit_timer_ch1_loside(void)
 
     qtest_clock_step(s, 50*1000);
     g_assert_cmpuint(qtest_readw(s, TAU_TCR(1)), ==, tcr_8bit(0xFF, 50-1)); 
-    g_assert_cmpuint(qtest_get_irq(s, 1), ==, 0);
-    g_assert_cmpuint(qtest_get_irq(s, 9), ==, 0);
+    g_assert_cmpuint(get_tmr_iflag(s, 1), ==, false);
+    g_assert_cmpuint(get_high_tmr_iflag(s, 1), ==, false);
+    set_tmr_iflag(s, 1, false);
+    set_high_tmr_iflag(s, 1, false);
 
     qtest_clock_step(s, 50*1000);
     g_assert_cmpuint(qtest_readw(s, TAU_TCR(1)), ==, tcr_8bit(0xFF, 100-1)); 
-    g_assert_cmpuint(qtest_get_irq(s, 1), ==, 1);
-    g_assert_cmpuint(qtest_get_irq(s, 9), ==, 0);
+    g_assert_cmpuint(get_tmr_iflag(s, 1), ==, true);
+    g_assert_cmpuint(get_high_tmr_iflag(s, 1), ==, false);
 }
 
 static void test_rl78_tau_interval_timer_8bit_timer_ch1_hiside(void)
@@ -266,7 +348,6 @@ static void test_rl78_tau_interval_timer_8bit_timer_ch1_hiside(void)
     QTestState *s = qtest_init("-M virt -nographic");
 
     qtest_system_reset(s);
-    qtest_irq_intercept_out_named(s, "/machine/mcu/tau[0]", SYSBUS_DEVICE_GPIO_IRQ);
 
     setup_interval_timer(s, 0);
 
@@ -280,13 +361,13 @@ static void test_rl78_tau_interval_timer_8bit_timer_ch1_hiside(void)
 
     qtest_clock_step(s, 100*1000);
     g_assert_cmpuint(qtest_readw(s, TAU_TCR(1)), ==, tcr_8bit(100-1, 0xFF)); 
-    g_assert_cmpuint(qtest_get_irq(s, 1), ==, 0);
-    g_assert_cmpuint(qtest_get_irq(s, 9), ==, 0);
+    g_assert_cmpuint(get_tmr_iflag(s, 1), ==, false);
+    g_assert_cmpuint(get_high_tmr_iflag(s, 1), ==, false);
 
     qtest_clock_step(s, 100*1000);
     g_assert_cmpuint(qtest_readw(s, TAU_TCR(1)), ==, tcr_8bit(200-1, 0xFF)); 
-    g_assert_cmpuint(qtest_get_irq(s, 1), ==, 0);
-    g_assert_cmpuint(qtest_get_irq(s, 9), ==, 1);
+    g_assert_cmpuint(get_tmr_iflag(s, 1), ==, false);
+    g_assert_cmpuint(get_high_tmr_iflag(s, 1), ==, true);
 }
 
 static void test_rl78_tau_interval_timer_8bit_timer_ch1_bothside(void)
@@ -294,7 +375,6 @@ static void test_rl78_tau_interval_timer_8bit_timer_ch1_bothside(void)
     QTestState *s = qtest_init("-M virt -nographic");
 
     qtest_system_reset(s);
-    qtest_irq_intercept_out_named(s, "/machine/mcu/tau[0]", SYSBUS_DEVICE_GPIO_IRQ);
 
     setup_interval_timer(s, 0);
 
@@ -308,29 +388,29 @@ static void test_rl78_tau_interval_timer_8bit_timer_ch1_bothside(void)
 
     qtest_clock_step(s, 50*1000);
     g_assert_cmpuint(qtest_readw(s, TAU_TCR(1)), ==, tcr_8bit(150-1, 0xFF)); 
-    g_assert_cmpuint(qtest_get_irq(s, 1), ==, 0);
-    g_assert_cmpuint(qtest_get_irq(s, 9), ==, 0);
+    g_assert_cmpuint(get_tmr_iflag(s, 1), ==, false);
+    g_assert_cmpuint(get_high_tmr_iflag(s, 1), ==, false);
 
     qtest_writew(s, TAU_TS, 0x0002);
     qtest_clock_step(s, 1);
     g_assert_cmpuint(qtest_readw(s, TAU_TCR(1)), ==, tcr_8bit(150-1, 100-1)); 
-    g_assert_cmpuint(qtest_get_irq(s, 1), ==, 0);
-    g_assert_cmpuint(qtest_get_irq(s, 9), ==, 0);
+    g_assert_cmpuint(get_tmr_iflag(s, 1), ==, false);
+    g_assert_cmpuint(get_high_tmr_iflag(s, 1), ==, false);
 
     qtest_clock_step(s, 50*1000);
     g_assert_cmpuint(qtest_readw(s, TAU_TCR(1)), ==, tcr_8bit(100-1, 50-1)); 
-    g_assert_cmpuint(qtest_get_irq(s, 1), ==, 0);
-    g_assert_cmpuint(qtest_get_irq(s, 9), ==, 0);
+    g_assert_cmpuint(get_tmr_iflag(s, 1), ==, false);
+    g_assert_cmpuint(get_high_tmr_iflag(s, 1), ==, false);
 
     qtest_clock_step(s, 50*1000);
     g_assert_cmpuint(qtest_readw(s, TAU_TCR(1)), ==, tcr_8bit(50-1, 100-1)); 
-    g_assert_cmpuint(qtest_get_irq(s, 1), ==, 1);
-    g_assert_cmpuint(qtest_get_irq(s, 9), ==, 0);
+    g_assert_cmpuint(get_tmr_iflag(s, 1), ==, true);
+    g_assert_cmpuint(get_high_tmr_iflag(s, 1), ==, false);
 
     qtest_clock_step(s, 50*1000);
     g_assert_cmpuint(qtest_readw(s, TAU_TCR(1)), ==, tcr_8bit(200-1, 50-1)); 
-    g_assert_cmpuint(qtest_get_irq(s, 1), ==, 1);
-    g_assert_cmpuint(qtest_get_irq(s, 9), ==, 1);
+    g_assert_cmpuint(get_tmr_iflag(s, 1), ==, true);
+    g_assert_cmpuint(get_high_tmr_iflag(s, 1), ==, true);
 }
 
 static void test_rl78_tau_interval_timer_8bit_timer_ch1_start_interrupt_loside(void)
@@ -338,7 +418,6 @@ static void test_rl78_tau_interval_timer_8bit_timer_ch1_start_interrupt_loside(v
     QTestState *s = qtest_init("-M virt -nographic");
 
     qtest_system_reset(s);
-    qtest_irq_intercept_out_named(s, "/machine/mcu/tau[0]", SYSBUS_DEVICE_GPIO_IRQ);
 
     setup_interval_timer(s, 0);
 
@@ -347,8 +426,8 @@ static void test_rl78_tau_interval_timer_8bit_timer_ch1_start_interrupt_loside(v
     qtest_writew(s, TAU_TMR(1), 0x0801);
 
     qtest_writew(s, TAU_TS, 0x0002);
-    g_assert_cmpuint(qtest_get_irq(s, 1), ==, 1);
-    g_assert_cmpuint(qtest_get_irq(s, 9), ==, 0);
+    g_assert_cmpuint(get_tmr_iflag(s, 1), ==, 1);
+    g_assert_cmpuint(get_high_tmr_iflag(s, 1), ==, 0);
 }
 
 static void test_rl78_tau_interval_timer_8bit_timer_ch1_start_interrupt_hiside(void)
@@ -356,7 +435,6 @@ static void test_rl78_tau_interval_timer_8bit_timer_ch1_start_interrupt_hiside(v
     QTestState *s = qtest_init("-M virt -nographic");
 
     qtest_system_reset(s);
-    qtest_irq_intercept_out_named(s, "/machine/mcu/tau[0]", SYSBUS_DEVICE_GPIO_IRQ);
 
     setup_interval_timer(s, 0);
 
@@ -365,8 +443,8 @@ static void test_rl78_tau_interval_timer_8bit_timer_ch1_start_interrupt_hiside(v
     qtest_writew(s, TAU_TMR(1), 0x0801);
 
     qtest_writew(s, TAU_TS, 0x0200);
-    g_assert_cmpuint(qtest_get_irq(s, 1), ==, 0);
-    g_assert_cmpuint(qtest_get_irq(s, 9), ==, 1);
+    g_assert_cmpuint(get_tmr_iflag(s, 1), ==, 0);
+    g_assert_cmpuint(get_high_tmr_iflag(s, 1), ==, 1);
 }
 
 static void test_rl78_tau_interval_timer_start_interrupt(void)
@@ -374,7 +452,6 @@ static void test_rl78_tau_interval_timer_start_interrupt(void)
     QTestState *s = qtest_init("-M virt -nographic");
 
     qtest_system_reset(s);
-    qtest_irq_intercept_out_named(s, "/machine/mcu/tau[0]", SYSBUS_DEVICE_GPIO_IRQ);
 
     setup_interval_timer(s, 0);
 
@@ -383,7 +460,8 @@ static void test_rl78_tau_interval_timer_start_interrupt(void)
     qtest_writew(s, TAU_TMR(1), 0x0001);
 
     qtest_writew(s, TAU_TS, 0x0002);
-    g_assert_cmpuint(qtest_get_irq(s, 1), ==, 1);
+    g_assert_cmpuint(get_tmr_iflag(s, 1), ==, 1);
+    g_assert_cmpuint(get_high_tmr_iflag(s, 1), ==, 0);
 }
 
 int main(int argc, char **argv)

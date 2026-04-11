@@ -304,14 +304,14 @@ static void rl78_irq_update_egn(RL78IRQControllerState *s, uint8_t head_index,
 static uint16_t rl78_irq_read_iflag(RL78IRQControllerState *s,
                                     uint8_t head_offset)
 {
-    const uint8_t bit_offset = head_offset * 8;
+    const uint8_t bit_offset = head_offset * 16;
     return (s->irq_flag >> bit_offset) & 0xFFFF;
 }
 
 static uint16_t rl78_irq_read_mask(RL78IRQControllerState *s,
                                    uint8_t head_offset)
 {
-    const uint8_t bit_offset = head_offset * 8;
+    const uint8_t bit_offset = head_offset * 16;
     return (s->irq_mask >> bit_offset) & 0xFFFF;
 }
 
@@ -321,7 +321,7 @@ static uint16_t rl78_irq_read_priority_low(RL78IRQControllerState *s,
     uint16_t bits = 0;
 
     for (int i = 0; i < sizeof(bits); i++) {
-        const uint8_t index = (head_index * 8) + i;
+        const uint8_t index = (head_index * 16) + i;
         const uint8_t bit   = s->irq_priority[index] & 0x01 ? 1 : 0;
 
         bits |= bit << i;
@@ -335,7 +335,7 @@ static uint16_t rl78_irq_read_priority_high(RL78IRQControllerState *s,
 {
     uint16_t bits = 0;
     for (int i = 0; i < sizeof(bits); i++) {
-        const uint8_t index = (head_index * 8) + i;
+        const uint8_t index = (head_index * 16) + i;
         const uint8_t bit   = s->irq_priority[index] & 0x02 ? 1 : 0;
 
         bits |= bit << i;

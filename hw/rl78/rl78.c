@@ -36,7 +36,6 @@ typedef struct RL78G23McuClass RL78G23McuClass;
 
 DECLARE_CLASS_CHECKERS(RL78G23McuClass, RL78G23_MCU, TYPE_RL78G23_MCU)
 
-
 void rl78g23_set_adc_result(RL78G23McuState *s, uint8_t index, double result)
 {
     rl78_adc_set_adc_result(&s->adc, index, result);
@@ -82,6 +81,23 @@ static void rl78g23_register_irq(RL78G23McuState *s)
 
     qemu_irq irq_req = qdev_get_gpio_in_named(DEVICE(&s->cpu), "irq-in", 0);
     qdev_connect_gpio_out_named(DEVICE(&s->irq), "irq-req", 0, irq_req);
+}
+
+static void rl78g23_register_gpio(RL78G23McuState *s)
+{
+    SysBusDevice *gpio;
+
+    object_initialize_child(OBJECT(s), "gpio", &s->gpio, TYPE_RL78_GPIO);
+
+    gpio = SYS_BUS_DEVICE(&s->gpio);
+    sysbus_realize(gpio, &error_abort);
+
+    sysbus_mmio_map(gpio, 0, 0xFFF00);
+    sysbus_mmio_map(gpio, 1, 0xFFF20);
+    sysbus_mmio_map(gpio, 2, 0xF0077);
+    sysbus_mmio_map(gpio, 3, 0xF007D);
+    sysbus_mmio_map(gpio, 4, 0xF0030);
+    sysbus_mmio_map(gpio, 5, 0xF0260);
 }
 
 static void rl78g23_register_sau(RL78G23McuState *s, uint8_t unit)
@@ -219,6 +235,7 @@ static void rl78g23_realize(DeviceState *dev, Error **errp)
     // register peripherals
     rl78g23_register_clock(s);
     rl78g23_register_irq(s);
+    rl78g23_register_gpio(s);
     rl78g23_register_sau(s, 0);
     rl78g23_register_tau(s, 0);
     rl78g23_register_adc(s);

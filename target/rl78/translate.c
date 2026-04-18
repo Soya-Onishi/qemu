@@ -404,8 +404,10 @@ static void store_paddr(DisasContext *ctx, const uint32_t paddr, TCGv_i32 data, 
     switch((memop & MO_SIZE)) {
         case MO_8:
             store_byte_paddr(ctx, paddr, data, memop);
+            break;
         case MO_16:
             store_word_paddr(ctx, paddr, data, memop);
+            break;
         default:
             g_assert_not_reached();
     }

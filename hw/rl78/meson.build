@@ -11,6 +11,7 @@ rl78_ss.add(files(
     'adc.c',
     'irq.c',
     'gpio.c',
+    'intercomm.c',
 ))
 
 hw_arch += { 'rl78': rl78_ss }

@@ -1,4 +1,5 @@
 #include "qemu/osdep.h"
+#include "qemu/compiler.h"
 #include "qemu/timer.h"
 #include "qemu/log.h"
 #include "qom/object.h"
@@ -10,7 +11,6 @@
 #include "hw/core/qdev-clock.h"
 #include "hw/core/resettable.h"
 #include "hw/core/qdev-properties.h"
-#include <stdint.h>
 #include "hw/rl78/adc.h"
 
 struct RL78ADCClass {
@@ -1213,6 +1213,13 @@ static void property_set_double_ptr(Object *obj, Visitor *v, const char *name,
     *field = value;
 }
 
+static void rl78_adc_notify_adc_result(Notifier *notifier, void *data) {
+    IOCReceiver *channel = container_of(notifier, IOCReceiver, notify);
+    RL78ADCState *s = channel->opaque;
+
+    s->adc_results[channel->index] = *(double *)data;
+}
+
 static void rl78_adc_init(Object *obj)
 {
     DeviceState *dev  = DEVICE(obj);
@@ -1237,9 +1244,14 @@ static void rl78_adc_init(Object *obj)
 
     for (int i = 0; i < ARRAY_SIZE(s->adc_results); i++) { 
         s->adc_results[i] = 0.0;
+        s->adc_result_channels[i].index = i;
+        s->adc_result_channels[i].opaque = s;
+        s->adc_result_channels[i].notify.notify = rl78_adc_notify_adc_result;
 
         char* name = g_strdup_printf("adc-result[%d]", i);
         object_property_add(obj, name, "double", property_get_double_ptr, property_set_double_ptr, NULL, &s->adc_results[i]);
+        register_rx_property(obj, &s->adc_result_channels[i], name);
+
         g_free(name);
     } 
 
@@ -1253,11 +1265,6 @@ static void rl78_adc_class_init(ObjectClass *klass, const void *data)
 
     resettable_class_set_parent_phases(rc, NULL, rl78_adc_reset_hold, NULL,
                                        &ac->parent_phases); 
-}
-
-void rl78_adc_set_adc_result(RL78ADCState *s, uint8_t index, double result)
-{
-    s->adc_results[index] = result;
 }
 
 static const TypeInfo rl78_adc_info = {

@@ -32,14 +32,6 @@ typedef struct RL78VirtMachineState RL78VirtMachineState;
 DECLARE_OBJ_CHECKERS(RL78VirtMachineState, RL78VirtMachineClass,
                      RL78_VIRT_MACHINE, TYPE_RL78_VIRT_MACHINE)
 
-static Notifier rl78_sau_tx_notifier[RL78_SAU_CHANNEL_NUM];
-
-static void rl78_sau_tx_notifier_callback(Notifier *notifier, void *data)
-{
-    uint16_t txdata = *(uint16_t *)data;
-    qemu_log_mask(LOG_TRACE, "TX data: %02x\n", txdata);
-}
-
 static void rl78_virt_init(MachineState *machine)
 {
     RL78VirtMachineState *s   = RL78_VIRT_MACHINE(machine);
@@ -54,9 +46,6 @@ static void rl78_virt_init(MachineState *machine)
             exit(1);
         }
     }
-
-    rl78_sau_tx_notifier[0].notify = rl78_sau_tx_notifier_callback;
-    notifier_list_add(&s->mcu.sau.tx_notify[0], &rl78_sau_tx_notifier[0]);
 }
 
 static void rl78_virt_class_init(ObjectClass *oc, const void *data)

@@ -36,11 +36,6 @@ typedef struct RL78G23McuClass RL78G23McuClass;
 
 DECLARE_CLASS_CHECKERS(RL78G23McuClass, RL78G23_MCU, TYPE_RL78G23_MCU)
 
-void rl78g23_set_adc_result(RL78G23McuState *s, uint8_t index, double result)
-{
-    rl78_adc_set_adc_result(&s->adc, index, result);
-}
-
 static void rl78g23_reset_hold(Object *obj, ResetType type)
 {
     RL78G23McuState *s = RL78G23_MCU(obj);
@@ -67,7 +62,8 @@ static void rl78g23_register_irq(RL78G23McuState *s)
 {
     SysBusDevice *irq;
 
-    object_initialize_child(OBJECT(s), "irq", &s->irq, TYPE_RL78_IRQ_CONTROLLER);
+    object_initialize_child(OBJECT(s), "irq", &s->irq,
+                            TYPE_RL78_IRQ_CONTROLLER);
 
     irq = SYS_BUS_DEVICE(&s->irq);
     sysbus_realize(irq, &error_abort);
@@ -123,15 +119,35 @@ static void rl78g23_register_sau(RL78G23McuState *s, uint8_t unit)
         RL78_CPU_IRQ_INTSR1,
     };
 
-    for(int i = 0; i < RL78_SAU_CHANNEL_NUM; i++) {
-        qemu_irq irq = qdev_get_gpio_in_named(DEVICE(&s->irq), "irq-in", irq_types[i]);
+    for (int i = 0; i < RL78_SAU_CHANNEL_NUM; i++) {
+        qemu_irq irq =
+            qdev_get_gpio_in_named(DEVICE(&s->irq), "irq-in", irq_types[i]);
         qdev_connect_gpio_out_named(DEVICE(&s->sau), "irq", i, irq);
     }
 
-    qemu_irq irq_sre0 = qdev_get_gpio_in_named(DEVICE(&s->irq), "irq-in", RL78_CPU_IRQ_INTSRE0);
+    qemu_irq irq_sre0 =
+        qdev_get_gpio_in_named(DEVICE(&s->irq), "irq-in", RL78_CPU_IRQ_INTSRE0);
     qdev_connect_gpio_out_named(DEVICE(&s->sau), "irq-err", 0, irq_sre0);
-    qemu_irq irq_sre1 = qdev_get_gpio_in_named(DEVICE(&s->irq), "irq-in", RL78_CPU_IRQ_INTSRE1);
+    qemu_irq irq_sre1 =
+        qdev_get_gpio_in_named(DEVICE(&s->irq), "irq-in", RL78_CPU_IRQ_INTSRE1);
     qdev_connect_gpio_out_named(DEVICE(&s->sau), "irq-err", 1, irq_sre1);
+
+    for (int i = 0; i < RL78_SAU_CHANNEL_NUM; i++) {
+        char *sau_rx_name = g_strdup_printf("rx[%d]_rx-notifier", i);
+        char *rx_name     = g_strdup_printf("sau-rx[%d]_rx-notifier", i);
+        char *sau_tx_name = g_strdup_printf("tx[%d]_tx-notifierlist", i);
+        char *tx_name     = g_strdup_printf("sau-tx[%d]_tx-notifierlist", i);
+
+        object_property_add_alias(OBJECT(s), rx_name, OBJECT(&s->sau),
+                                  sau_rx_name);
+        object_property_add_alias(OBJECT(s), tx_name, OBJECT(&s->sau),
+                                  sau_tx_name);
+
+        g_free(sau_rx_name);
+        g_free(rx_name);
+        g_free(sau_tx_name);
+        g_free(tx_name);
+    }
 }
 
 static void rl78g23_register_tau(RL78G23McuState *s, uint8_t unit)
@@ -147,31 +163,31 @@ static void rl78g23_register_tau(RL78G23McuState *s, uint8_t unit)
     sysbus_mmio_map(tau, 0, 0xFFF18);
     sysbus_mmio_map(tau, 1, 0xFFF64);
     sysbus_mmio_map(tau, 2, 0xF0180);
-    if(unit == 0) {
+    if (unit == 0) {
         // TIS registers are supported only for TAU unit 0
         sysbus_mmio_map(tau, 3, 0xF0074);
     }
 
     const RL78CPUIRQ irq_types[RL78_TAU_CHANNEL_NUM] = {
-        RL78_CPU_IRQ_INTTM00,
-        RL78_CPU_IRQ_INTTM01,
-        RL78_CPU_IRQ_INTTM02,
-        RL78_CPU_IRQ_INTTM03,
-        RL78_CPU_IRQ_INTTM04,
-        RL78_CPU_IRQ_INTTM05,
-        RL78_CPU_IRQ_INTTM06,
-        RL78_CPU_IRQ_INTTM07,
+        RL78_CPU_IRQ_INTTM00, RL78_CPU_IRQ_INTTM01, RL78_CPU_IRQ_INTTM02,
+        RL78_CPU_IRQ_INTTM03, RL78_CPU_IRQ_INTTM04, RL78_CPU_IRQ_INTTM05,
+        RL78_CPU_IRQ_INTTM06, RL78_CPU_IRQ_INTTM07,
     };
 
-    for(int i = 0; i < RL78_TAU_CHANNEL_NUM; i++) {
-        qemu_irq irq = qdev_get_gpio_in_named(DEVICE(&s->irq), "irq-in", irq_types[i]);
+    for (int i = 0; i < RL78_TAU_CHANNEL_NUM; i++) {
+        qemu_irq irq =
+            qdev_get_gpio_in_named(DEVICE(&s->irq), "irq-in", irq_types[i]);
         qdev_connect_gpio_out_named(DEVICE(&s->tau), "irq-out", i, irq);
     }
 
-    qemu_irq high_irq_01 = qdev_get_gpio_in_named(DEVICE(&s->irq), "irq-in", RL78_CPU_IRQ_INTTM01H);
-    qemu_irq high_irq_03 = qdev_get_gpio_in_named(DEVICE(&s->irq), "irq-in", RL78_CPU_IRQ_INTTM03H);
-    qdev_connect_gpio_out_named(DEVICE(&s->tau), "irq-out-high", 1, high_irq_01);
-    qdev_connect_gpio_out_named(DEVICE(&s->tau), "irq-out-high", 3, high_irq_03);
+    qemu_irq high_irq_01 = qdev_get_gpio_in_named(DEVICE(&s->irq), "irq-in",
+                                                  RL78_CPU_IRQ_INTTM01H);
+    qemu_irq high_irq_03 = qdev_get_gpio_in_named(DEVICE(&s->irq), "irq-in",
+                                                  RL78_CPU_IRQ_INTTM03H);
+    qdev_connect_gpio_out_named(DEVICE(&s->tau), "irq-out-high", 1,
+                                high_irq_01);
+    qdev_connect_gpio_out_named(DEVICE(&s->tau), "irq-out-high", 3,
+                                high_irq_03);
 }
 
 static void rl78g23_register_adc(RL78G23McuState *s)
@@ -188,8 +204,14 @@ static void rl78g23_register_adc(RL78G23McuState *s)
     sysbus_mmio_map(adc, 1, 0xFFF30);
     sysbus_mmio_map(adc, 2, 0xF0010);
 
-    qemu_irq irq = qdev_get_gpio_in_named(DEVICE(&s->irq), "irq-in", RL78_CPU_IRQ_INTAD);
+    qemu_irq irq =
+        qdev_get_gpio_in_named(DEVICE(&s->irq), "irq-in", RL78_CPU_IRQ_INTAD);
     qdev_connect_gpio_out_named(DEVICE(adc), "irq-out", 0, irq);
+
+    for (int i = 0; i < RL78_ADC_SOURCE_NUM; i++) {
+        char *name = g_strdup_printf("adc-result[%d]_rx-notifier", i);
+        object_property_add_alias(OBJECT(s), name, OBJECT(&s->adc), name);
+    }
 }
 
 static void rl78g23_realize(DeviceState *dev, Error **errp)
@@ -205,8 +227,8 @@ static void rl78g23_realize(DeviceState *dev, Error **errp)
     const hwaddr first_size =
         ROUND_UP(rlc->ram.base, TARGET_PAGE_SIZE) - rlc->ram.base;
     if (first_size) {
-        memory_region_init_ram(&s->ram_first, OBJECT(dev), "ram_first", first_size,
-                               &error_abort);
+        memory_region_init_ram(&s->ram_first, OBJECT(dev), "ram_first",
+                               first_size, &error_abort);
         memory_region_add_subregion(get_system_memory(), rlc->ram.base,
                                     &s->ram_first);
     }
@@ -222,9 +244,9 @@ static void rl78g23_realize(DeviceState *dev, Error **errp)
                                 &s->data_flash);
 
     memory_region_init_alias(&s->mirror, OBJECT(dev), "mirror", &s->code_flash,
-                             0x00000, rlc->mirror.size);
-    memory_region_add_subregion_overlap(get_system_memory(), rlc->mirror.base,
-                                        &s->mirror, 1);
+                             0x3000, rlc->mirror.size);
+    memory_region_add_subregion(get_system_memory(), rlc->mirror.base,
+                                &s->mirror);
 
     object_initialize_child(OBJECT(s), "cpu", &s->cpu, TYPE_RL78_CPU);
 
@@ -243,9 +265,9 @@ static void rl78g23_realize(DeviceState *dev, Error **errp)
 
 static void rl78g23_class_init(ObjectClass *oc, const void *data)
 {
-    DeviceClass *dc = DEVICE_CLASS(oc);
+    DeviceClass *dc      = DEVICE_CLASS(oc);
     RL78G23McuClass *rlc = RL78G23_MCU_CLASS(oc);
-    ResettableClass *rc = RESETTABLE_CLASS(oc);
+    ResettableClass *rc  = RESETTABLE_CLASS(oc);
 
     resettable_class_set_parent_phases(rc, NULL, rl78g23_reset_hold, NULL,
                                        &rlc->parent_phases);

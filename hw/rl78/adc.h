@@ -3,6 +3,7 @@
 
 #include "hw/core/sysbus.h"
 #include "hw/core/clock.h"
+#include "hw/rl78/intercomm.h"
 #include "qemu/timer.h"
 
 enum RL78ADCConvertMode {
@@ -133,21 +134,12 @@ struct RL78ADCState {
 
     RL78ADCTestTarget test_target; // ADTES bits
 
-    NotifierList adc_results_rx_notifier[RL78_ADC_SOURCE_NUM];
     double adc_results[RL78_ADC_SOURCE_NUM];
+    IOCReceiver adc_result_channels[RL78_ADC_SOURCE_NUM];
 };
 typedef struct RL78ADCState RL78ADCState;
 
-struct NotifierData {
-    void* state;
-    uint32_t index;
-    void* data;
-};
-typedef struct NotifierData NotifierData;
-
 #define TYPE_RL78_ADC "rl78-adc"
 DECLARE_INSTANCE_CHECKER(RL78ADCState, RL78_ADC, TYPE_RL78_ADC)
-
-void rl78_adc_set_adc_result(RL78ADCState *s, uint8_t index, double result);
 
 #endif

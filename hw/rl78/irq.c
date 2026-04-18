@@ -127,6 +127,7 @@ void rl78_irq_unpack_irqlevel(int level, uint8_t *irq_index, uint8_t *priority,
 
 static void rl78_irq_set_irq(RL78IRQControllerState *s)
 {
+    int irqlevel = 0;
     for (int priority = 0; priority < RL78_IRQ_PRIORITY_NUM; priority++) {
         uint64_t priority_mask = 0;
         for (int i = 0; i < RL78_CPU_IRQ_NUM; i++) {
@@ -138,15 +139,12 @@ static void rl78_irq_set_irq(RL78IRQControllerState *s)
         const uint64_t irq_reqs = s->irq_flag & mask & priority_mask;
         if (irq_reqs) {
             const uint8_t irq_index = ctz64(irq_reqs);
-            const int irqlevel = rl78_irq_pack_irqlevel(irq_index, priority, 1);
-            qemu_set_irq(s->irq_req, irqlevel);
-            return;
-        } else {
-            qemu_set_irq(s->irq_req, 0);
+            irqlevel = rl78_irq_pack_irqlevel(irq_index, priority, 1);
+            break;
         }
     }
 
-    qemu_set_irq(s->irq_req, 0);
+    qemu_set_irq(s->irq_req, irqlevel);
 }
 
 static void rl78_irq_update_iflag_lo_byte(RL78IRQControllerState *s,
@@ -791,8 +789,8 @@ static const MemoryRegionOps rl78_irq_ops0 = {
     .read                  = rl78_irq_read0,
     .valid.max_access_size = 2,
     .valid.min_access_size = 1,
-    .impl.min_access_size  = 2,
-    .impl.max_access_size  = 1,
+    .impl.max_access_size  = 2,
+    .impl.min_access_size  = 1,
 };
 
 static const MemoryRegionOps rl78_irq_ops1 = {
@@ -800,8 +798,8 @@ static const MemoryRegionOps rl78_irq_ops1 = {
     .read                  = rl78_irq_read1,
     .valid.max_access_size = 2,
     .valid.min_access_size = 1,
-    .impl.min_access_size  = 2,
-    .impl.max_access_size  = 1,
+    .impl.max_access_size  = 2,
+    .impl.min_access_size  = 1,
 };
 
 static const MemoryRegionOps rl78_irq_ops2 = {
@@ -809,8 +807,8 @@ static const MemoryRegionOps rl78_irq_ops2 = {
     .read                  = rl78_irq_read2,
     .valid.max_access_size = 1,
     .valid.min_access_size = 1,
-    .impl.min_access_size  = 1,
     .impl.max_access_size  = 1,
+    .impl.min_access_size  = 1,
 };
 
 static void rl78_irq_reset_hold(Object *obj, ResetType type)
@@ -844,7 +842,6 @@ static void rl78_irq_recv_irq(void *opaque, int irq, int level)
 {
     RL78IRQControllerState *s = RL78_IRQ_CONTROLLER(opaque);
 
-    qemu_log("rl78_irq_recv_irq: irq=%d, level=%d\n", irq, level);
     s->irq_flag |= 1ULL << irq;
 
     rl78_irq_set_irq(s);

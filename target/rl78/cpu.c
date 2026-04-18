@@ -1,4 +1,5 @@
 #include "qemu/osdep.h"
+#include "qemu/log.h"
 #include "cpu.h"
 #include "exec/cpu-common.h"
 #include "exec/cpu-interrupt.h"
@@ -161,7 +162,7 @@ static void rl78_cpu_irq_req(void *opaque, int irq, int level)
     uint8_t priority;
     uint8_t enable;
 
-    rl78_irq_unpack_irqlevel(irq, &irq_index, &priority, &enable);
+    rl78_irq_unpack_irqlevel(level, &irq_index, &priority, &enable);
     
     assert(irq_index < RL78_CPU_IRQ_NUM);
 

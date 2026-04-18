@@ -10,6 +10,7 @@
 #include "exec/translator.h"
 #include "exec/translation-block.h"
 #include "tcg/tcg.h"
+#include <complex.h>
 
 #define HELPER_H "helper.h"
 #include "exec/helper-info.c.inc"
@@ -281,18 +282,146 @@ static void store_sp(TCGv_i32 sp)
     tcg_gen_mov_i32(cpu_sp, tmp);
 }
 
+static TCGv_i32 load_byte_paddr(DisasContext *ctx, const uint32_t paddr, const MemOp memop)
+{
+    switch(paddr) {
+        case 0xFFFF8: {
+            TCGv_i32 ret = tcg_temp_new_i32();
+            tcg_gen_extract_i32(ret, load_sp(), 0, 8);
+            return ret;
+        }
+        case 0xFFFF9: {
+            TCGv_i32 ret = tcg_temp_new_i32();
+            tcg_gen_extract_i32(ret, load_sp(), 8, 8);
+            return ret;
+        }
+        case 0xFFFFA:
+            return load_psw();
+        case 0xFFFFC: {
+            TCGv_i32 ret = tcg_temp_new_i32();
+            tcg_gen_mov_i32(ret, cpu_cs);
+            return ret;
+        }
+        case 0xFFFFD: {
+            TCGv_i32 ret = tcg_temp_new_i32();
+            tcg_gen_mov_i32(ret, cpu_es);
+            return ret;
+        }            
+        default:
+            return rl78_gen_load(ctx, tcg_constant_i32(paddr), memop);
+    }
+}
+
+static TCGv_i32 load_word_paddr(DisasContext *ctx, const uint32_t paddr, const MemOp memop)
+{
+    // TODO: check actual MCU implementation
+    switch(paddr) {
+        case 0xFFFF8:
+            return load_sp();
+        default:
+            return rl78_gen_load(ctx, tcg_constant_i32(paddr), memop);
+    }
+}
+
+static TCGv_i32 load_paddr(DisasContext *ctx, const uint32_t paddr, const MemOp memop)
+{
+    switch((memop & MO_SIZE)) {
+        case MO_8:
+            return load_byte_paddr(ctx, paddr, memop);
+        case MO_16:
+            return load_word_paddr(ctx, paddr, memop);
+        default:
+            g_assert_not_reached();
+    } 
+}
+
 static TCGv_i32 load_abs16(DisasContext *ctx, const uint32_t addr,
                            const MemOp memop)
 {
-    TCGv_i32 a = rl78_gen_addr(ctx, tcg_constant_i32(addr));
-    return rl78_gen_load(ctx, a, memop);
+    if(ctx->use_es) {
+        TCGv_i32 a = rl78_gen_addr(ctx, tcg_constant_i32(addr));
+        return rl78_gen_load(ctx, a, memop);
+    } else {
+        const uint32_t paddr = addr | 0xF0000;
+        return load_paddr(ctx, paddr, memop);
+    }
+}
+
+static void store_byte_paddr(DisasContext *ctx, const uint32_t paddr, TCGv_i32 data, const MemOp memop) 
+{
+    switch(paddr) {
+        case 0xFFFF8: {
+            TCGv_i32 spl = tcg_temp_new_i32();
+            TCGv_i32 sp = tcg_temp_new_i32();
+
+            tcg_gen_extract_i32(spl, data, 0, 8);
+            tcg_gen_deposit_i32(sp, cpu_sp, spl, 0, 8);
+            store_sp(sp);
+
+            break;
+        }
+        case 0xFFFF9: {
+            TCGv_i32 sph = tcg_temp_new_i32();
+            TCGv_i32 sp = tcg_temp_new_i32();
+
+            tcg_gen_extract_i32(sph, data, 0, 8);
+            tcg_gen_deposit_i32(sp, cpu_sp, data, 8, 8);
+            store_sp(sp);
+
+            break;
+        }
+        case 0xFFFFA:
+            store_psw(ctx, data);
+            break;
+        case 0xFFFFC:
+            tcg_gen_deposit_i32(cpu_cs, cpu_cs, data, 0, 4);
+            break;
+        case 0xFFFFD:
+            tcg_gen_deposit_i32(cpu_es, cpu_es, data, 0, 4);
+            break;
+        default:
+            rl78_gen_store(ctx, tcg_constant_i32(paddr), data, memop);
+            break;
+    }
+}
+
+
+static void store_word_paddr(DisasContext *ctx, const uint32_t paddr, TCGv_i32 data, const MemOp memop) 
+{
+    // TODO: check actual MCU implementation
+    switch(paddr) {
+        case 0xFFFF8:
+            store_sp(data);
+            break; 
+        default:
+            rl78_gen_store(ctx, tcg_constant_i32(paddr), data, memop);
+            break;
+    }
+}
+
+static void store_paddr(DisasContext *ctx, const uint32_t paddr, TCGv_i32 data, const MemOp memop)
+{
+    switch((memop & MO_SIZE)) {
+        case MO_8:
+            store_byte_paddr(ctx, paddr, data, memop);
+        case MO_16:
+            store_word_paddr(ctx, paddr, data, memop);
+        default:
+            g_assert_not_reached();
+    }
 }
 
 static void store_abs16(DisasContext *ctx, const uint32_t addr, TCGv_i32 data,
                         const MemOp memop)
 {
-    TCGv_i32 a = rl78_gen_addr(ctx, tcg_constant_i32(addr));
-    rl78_gen_store(ctx, a, data, memop);
+
+    if(ctx->use_es) {
+        TCGv_i32 a = rl78_gen_addr(ctx, tcg_constant_i32(addr));
+        rl78_gen_store(ctx, a, data, memop);
+    } else {
+        const uint32_t paddr = addr | 0xF0000; 
+        store_paddr(ctx, paddr, data, memop);
+    }
 }
 
 static TCGv_i32 load_saddr(DisasContext *ctx, const uint32_t saddr,
@@ -301,7 +430,7 @@ static TCGv_i32 load_saddr(DisasContext *ctx, const uint32_t saddr,
     const vaddr base        = saddr < 0x20 ? 0xFFF00 : 0xFFE00;
     const vaddr access_addr = base + saddr;
 
-    return rl78_gen_load(ctx, tcg_constant_i32(access_addr), memop);
+    return load_paddr(ctx, access_addr, memop);
 }
 
 static void store_saddr(DisasContext *ctx, const uint32_t saddr, TCGv_i32 data,
@@ -310,21 +439,21 @@ static void store_saddr(DisasContext *ctx, const uint32_t saddr, TCGv_i32 data,
     const vaddr base        = saddr < 0x20 ? 0xFFF00 : 0xFFE00;
     const vaddr access_addr = base + saddr;
 
-    rl78_gen_store(ctx, tcg_constant_i32(access_addr), data, memop);
+    store_paddr(ctx, access_addr, data, memop);
 }
 
 static TCGv_i32 load_sfr(DisasContext *ctx, const uint32_t sfr,
                          const MemOp memop)
 {
     const vaddr access_addr = 0xFFF00 + sfr;
-    return rl78_gen_load(ctx, tcg_constant_i32(access_addr), memop);
+    return load_paddr(ctx, access_addr, memop);
 }
 
 static void store_sfr(DisasContext *ctx, const uint32_t sfr, TCGv_i32 data,
                       const MemOp memop)
 {
     const vaddr access_addr = 0xFFF00 + sfr;
-    rl78_gen_store(ctx, tcg_constant_i32(access_addr), data, memop);
+    store_paddr(ctx, access_addr, data, memop);
 }
 
 static TCGv_i32 ind_reg(DisasContext *ctx, const RL78WordRegister base)
@@ -1958,6 +2087,7 @@ static void rl78_tr_tb_stop(DisasContextBase *dcbase, CPUState *cs)
     case DISAS_NEXT:
         break;
     case DISAS_EXIT:
+        tcg_gen_movi_i32(cpu_pc, ctx->base.pc_next);
         tcg_gen_exit_tb(NULL, 0);
         break;
     case DISAS_LOOKUP:

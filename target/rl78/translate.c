@@ -243,7 +243,7 @@ static TCGv_i32 load_psw(void)
     return ret;
 }
 
-static void store_psw(TCGv_i32 psw)
+static void store_psw(DisasContext *ctx, TCGv_i32 psw)
 {
     TCGv_i32 rbs0 = tcg_temp_new_i32();
     TCGv_i32 rbs1 = tcg_temp_new_i32();
@@ -259,6 +259,8 @@ static void store_psw(TCGv_i32 psw)
     tcg_gen_extract_i32(rbs1, psw, 5, 1);
     tcg_gen_deposit_i32(cpu_psw_rbs, cpu_psw_rbs, rbs0, 0, 1);
     tcg_gen_deposit_i32(cpu_psw_rbs, cpu_psw_rbs, rbs1, 1, 1);
+
+    ctx->base.is_jmp = DISAS_EXIT;
 }
 
 static TCGv_i32 load_sp(void)
@@ -549,7 +551,7 @@ static void rl78_gen_store_operand(DisasContext *ctx, const RL78Operand op,
         store_word_reg(op.word_reg, data);
         break;
     case RL78_OP_PSW:
-        store_psw(data);
+        store_psw(ctx, data);
         break;
     case RL78_OP_SP:
         store_sp(data);
@@ -1507,7 +1509,7 @@ static void rl78_gen_ret(DisasContext *ctx, bool restore_psw)
     tcg_gen_addi_i32(cpu_sp, cpu_sp, 1);
     if (restore_psw) {
         TCGv_i32 psw = rl78_gen_lb(ctx, rl78_gen_addr(ctx, cpu_sp));
-        store_psw(psw);
+        store_psw(ctx, psw);
     }
     tcg_gen_addi_i32(cpu_sp, cpu_sp, 1);
 
@@ -1520,6 +1522,7 @@ static void rl78_gen_ret(DisasContext *ctx, bool restore_psw)
 
     tcg_gen_mov_i32(cpu_pc, target);
     tcg_gen_lookup_and_goto_ptr();
+
     ctx->base.is_jmp = DISAS_LOOKUP;
 }
 
@@ -1575,7 +1578,7 @@ static bool trans_POP(DisasContext *ctx, RL78Instruction *insn)
             break;
         case RL78_OP_PSW:
             tcg_gen_shri_i32(data, data, 8);
-            store_psw(data);
+            store_psw(ctx, data);
             break;
         default:
             // TODO: raise implementation error assert
@@ -1953,8 +1956,13 @@ static void rl78_tr_tb_stop(DisasContextBase *dcbase, CPUState *cs)
 
     switch (ctx->base.is_jmp) {
     case DISAS_NEXT:
+        break;
     case DISAS_EXIT:
+        tcg_gen_exit_tb(NULL, 0);
+        break;
     case DISAS_LOOKUP:
+        tcg_gen_movi_i32(cpu_pc, ctx->base.pc_next);
+        tcg_gen_lookup_and_goto_ptr();
         break;
     case DISAS_NORETURN:
         rl78_gen_goto_tb(ctx, TB_EXIT_NOBRANCH, ctx->base.pc_next);

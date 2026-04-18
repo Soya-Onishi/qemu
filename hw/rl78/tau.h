@@ -81,6 +81,8 @@ struct RL78TAUChannelState {
 
     QEMUTimer timer;
     QEMUTimer high_timer;
+    uint64_t  last_timer_expire;
+    uint64_t  last_high_timer_expire;
 
     RL78TAUTimerInput input_type;
 };

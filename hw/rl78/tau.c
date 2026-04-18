@@ -225,11 +225,13 @@ static void rl78_tau_start_timer(RL78TAUState *s, const uint8_t channel,
     if (is_high) {
         const uint64_t count    = s->channel[channel].tdr.bytes[1];
         const uint64_t timer_ns = (uint64_t)(clock_ns * (count + 1));
+        const uint64_t expire_time =
+            qemu_clock_get_ns(QEMU_CLOCK_VIRTUAL) + timer_ns;
 
-        timer_mod(&s->channel[channel].high_timer,
-                  qemu_clock_get_ns(QEMU_CLOCK_VIRTUAL) + timer_ns);
+        s->channel[channel].last_high_timer_expire = expire_time;
+        timer_mod(&s->channel[channel].high_timer, expire_time);
 
-        if(s->tmr[channel].timer_behavior == 1) {
+        if (s->tmr[channel].timer_behavior == 1) {
             qemu_set_irq(s->high_irqs[channel], 1);
         }
     } else {
@@ -237,11 +239,13 @@ static void rl78_tau_start_timer(RL78TAUState *s, const uint8_t channel,
                                       ? s->channel[channel].tdr.bytes[0]
                                       : s->channel[channel].tdr.word;
         const uint64_t timer_ns = (uint64_t)(clock_ns * (count + 1));
+        const uint64_t expire_time =
+            qemu_clock_get_ns(QEMU_CLOCK_VIRTUAL) + timer_ns;
 
-        timer_mod(&s->channel[channel].timer,
-                  qemu_clock_get_ns(QEMU_CLOCK_VIRTUAL) + timer_ns);
+        s->channel[channel].last_timer_expire = expire_time;
+        timer_mod(&s->channel[channel].timer, expire_time);
 
-        if(s->tmr[channel].timer_behavior == 1) {
+        if (s->tmr[channel].timer_behavior == 1) {
             qemu_set_irq(s->irqs[channel], 1);
         }
     }
@@ -931,23 +935,27 @@ static const MemoryRegionOps rl78_tau_ops3 = {
     .impl.max_access_size  = 1,
 };
 
-static void rl78_tau_update_timer(QEMUTimer *timer, const uint16_t count,
+static void rl78_tau_update_timer(QEMUTimer *timer, uint64_t *last_expire_time,
+                                  const uint16_t count,
                                   const double clock_duration)
 {
     const double timer_duration = clock_duration * (count + 1);
     const uint64_t timer_ns = (uint64_t)(timer_duration * 1000 * 1000 * 1000);
-    const uint64_t expire_time =
-        qemu_clock_get_ns(QEMU_CLOCK_VIRTUAL) + timer_ns;
+    const uint64_t expire_time = *last_expire_time + timer_ns;
 
+
+    *last_expire_time = expire_time;
     timer_mod(timer, expire_time);
 }
 
-static void rl78_tau_txend_interval_timer(QEMUTimer *timer, const qemu_irq irq,
+static void rl78_tau_txend_interval_timer(QEMUTimer *timer,
+                                          uint64_t *last_expire_time,
+                                          const qemu_irq irq,
                                           const uint16_t count,
                                           const double clock_duration)
 {
     qemu_set_irq(irq, 1);
-    rl78_tau_update_timer(timer, count, clock_duration);
+    rl78_tau_update_timer(timer, last_expire_time, count, clock_duration);
 }
 
 static void rl78_tau_txend(RL78TAUState *s, const uint8_t channel)
@@ -957,10 +965,9 @@ static void rl78_tau_txend(RL78TAUState *s, const uint8_t channel)
     const uint16_t count        = s->tmr[channel].use_split
                                       ? s->channel[channel].tdr.bytes[0]
                                       : s->channel[channel].tdr.word;
-
     rl78_tau_txend_interval_timer(&s->channel[channel].timer,
-                                  s->irqs[channel], count,
-                                  clock_duration);
+                                  &s->channel[channel].last_timer_expire,
+                                  s->irqs[channel], count, clock_duration);
 }
 
 static void rl78_tau_txend_high(RL78TAUState *s, const uint8_t channel)
@@ -970,8 +977,8 @@ static void rl78_tau_txend_high(RL78TAUState *s, const uint8_t channel)
     const uint16_t count        = s->channel[channel].tdr.bytes[1];
 
     rl78_tau_txend_interval_timer(&s->channel[channel].high_timer,
-                                  s->high_irqs[channel], count,
-                                  clock_duration);
+                                  &s->channel[channel].last_high_timer_expire,
+                                  s->high_irqs[channel], count, clock_duration);
 }
 
 #define RL78_TAU_TXEND_CALLBACK(channel_num)                                   \
@@ -1079,15 +1086,16 @@ static void rl78_tau_init(Object *obj)
     sysbus_init_mmio(sys, &s->mmio[2]);
     sysbus_init_mmio(sys, &s->mmio[3]);
 
-    qdev_init_gpio_out_named(DEVICE(s), s->irqs, "irq-out", RL78_TAU_CHANNEL_NUM);
-    qdev_init_gpio_out_named(DEVICE(s), s->high_irqs, "irq-out-high", RL78_TAU_CHANNEL_NUM);
+    qdev_init_gpio_out_named(DEVICE(s), s->irqs, "irq-out",
+                             RL78_TAU_CHANNEL_NUM);
+    qdev_init_gpio_out_named(DEVICE(s), s->high_irqs, "irq-out-high",
+                             RL78_TAU_CHANNEL_NUM);
 
     for (int i = 0; i < RL78_TAU_CHANNEL_NUM; i++) {
         timer_init_ns(&s->channel[i].timer, QEMU_CLOCK_VIRTUAL,
                       rl78_tau_txend_callbacks[i], s);
         timer_init_ns(&s->channel[i].high_timer, QEMU_CLOCK_VIRTUAL,
                       rl78_tau_txend_callbacks_high[i], s);
-
     }
 }
 

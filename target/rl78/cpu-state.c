@@ -136,6 +136,10 @@ static void exec_mul_div(CPURL78State *env, uint8_t val)
 
 static void cpu_state_write_byte(CPURL78State *env, hwaddr offset,
                                  uint8_t val) {
+
+  RL78CPU *cpu = container_of(env, RL78CPU, env);
+  const uint8_t old_ie = env->psw.ie;
+
   switch (offset) {
   case 0x08:
     env->sp &= 0xFF00;
@@ -147,6 +151,10 @@ static void cpu_state_write_byte(CPURL78State *env, hwaddr offset,
     break;
   case 0x0A:
     env->psw = rl78_cpu_unpack_psw(val);
+    if(env->psw.ie && old_ie != env->psw.ie) {
+        cpu_exit(&cpu->parent_obj);
+    }
+
     break;
   case 0x0B:
     exec_mul_div(env, val);

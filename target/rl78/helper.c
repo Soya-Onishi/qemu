@@ -1,19 +1,28 @@
 #include "qemu/osdep.h"
+#include "qemu/log.h"
 #include "hw/core/cpu.h"
 #include "cpu.h"
 #include "accel/tcg/cpu-ldst.h"
 #include "hw/core/irq.h"
-#include "qemu/plugin.h"
 #include "exec/cpu-interrupt.h"
+#include "qemu/timer.h"
 
 void rl78_cpu_do_interrupt(CPUState *cs)
 {
     CPURL78State *env = cpu_env(cs);
     const uint32_t irq_index = env->irq_index;
+    const uint8_t psw = rl78_cpu_pack_psw(env->psw);
+
+    const uint8_t pc_l = (env->pc >>  0) & 0xFF;
+    const uint8_t pc_h = (env->pc >>  8) & 0xFF;
+    const uint8_t pc_s = (env->pc >> 16) & 0xFF;
 
     env->sp -= 4;
-    cpu_stl_le_data(env, env->sp, env->pc);
-    cpu_stb_data(env, env->sp + 3, rl78_cpu_pack_psw(env->psw));
+    const uint32_t stack_addr = 0xF0000 | env->sp;
+    cpu_stb_data(env, stack_addr + 0, pc_l);
+    cpu_stb_data(env, stack_addr + 1, pc_h);
+    cpu_stb_data(env, stack_addr + 2, pc_s);
+    cpu_stb_data(env, stack_addr + 3, psw);
 
     uint32_t vectbl_addr = cs->exception_index * 2 + 4;
     env->psw.ie = 0;

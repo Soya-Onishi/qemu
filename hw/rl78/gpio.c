@@ -319,7 +319,7 @@ static void rl78_gpio_write_other1(void *opaque, hwaddr offset, uint64_t data,
             rl78_gpio_write_function_output(s, 1, data);
             break;
         default:
-            qemu_log_mask(LOG_GUEST_ERROR, "unknown register: offset = %ld",
+            qemu_log_mask(LOG_GUEST_ERROR, "unknown register: offset = %ld\n",
                           offset);
             break;
         }
@@ -518,13 +518,13 @@ static uint64_t rl78_gpio_read_other1(void *opaque, hwaddr offset,
         case 0x0B:
             return rl78_gpio_read_function_output(s, 1);
         default:
-            qemu_log_mask(LOG_GUEST_ERROR, "unknown register: offset = %ld",
-                          offset);
+            qemu_log_mask(LOG_GUEST_ERROR, "unknown register: offset = %ld\n", offset);
             return 0;
         }
     }
     default:
-        g_assert_not_reached();
+        qemu_log_mask(LOG_GUEST_ERROR, "unknown register: offset = %ld\n", offset);
+        return 0;
     }
 }
 

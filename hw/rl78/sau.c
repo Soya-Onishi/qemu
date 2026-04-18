@@ -12,6 +12,7 @@
 #include "qemu/log.h"
 #include "qom/object.h"
 #include "hw/rl78/sau.h"
+#include "hw/rl78/intercomm.h"
 
 struct RL78SAUClass {
     /* private */
@@ -136,33 +137,35 @@ static uint32_t rl78_sau_send_bitlength(RL78SAUState *s, uint32_t channel)
 
 static void rl78_sau_send_byte(RL78SAUState *s, uint channel)
 {
-    const uint32_t clk_duration_ns  = (1000 * 1000 * 1000) / s->fTCLK_hz[channel];
+    const uint32_t clk_duration_ns =
+        (1000 * 1000 * 1000) / s->fTCLK_hz[channel];
     const uint32_t bitlength        = rl78_sau_send_bitlength(s, channel);
     const uint32_t send_duration_ns = bitlength * clk_duration_ns;
     uint16_t txdata                 = s->sdr[channel] & 0x01FF;
 
-    const bool is_se = !!(s->se & (1 << channel));
+    const bool is_se  = !!(s->se & (1 << channel));
     const bool is_soe = !!(s->soe & (1 << channel));
 
     // TODO: inspect actual MCU movement when incorrect usage.
     // TODO: Is SOE needed for sending data without clock like UART?
-    if(!is_se || !is_soe) {
+    if (!is_se || !is_soe) {
         // TODO: assertion
         return;
     }
 
+
     s->ssr[channel] = FIELD_DP16(s->ssr[channel], SSR, BFF, 0);
     s->ssr[channel] = FIELD_DP16(s->ssr[channel], SSR, TSF, 1);
-    qemu_log_mask(LOG_TRACE, "rl78_sau SSR update: %04x, ch: %d\n", s->ssr[channel], channel);
-    timer_mod(&s->tx_timer[channel],
-              qemu_clock_get_ns(QEMU_CLOCK_VIRTUAL) + send_duration_ns);
 
-    notifier_list_notify(&s->tx_notify[channel], &txdata);
+    const uint64_t expire_time = qemu_clock_get_ns(QEMU_CLOCK_VIRTUAL) + send_duration_ns;
+    timer_mod(&s->tx_timer[channel], expire_time);
+    notifier_list_notify(&s->tx_channels[channel].notifylist, &txdata);
 
     // TODO: check SO bit for checking valid initial signal status
 
-    if ((FIELD_EX16(s->smr[channel], SMR, MD) & 0x01) == 1) {
-        // TODO: raise TX interrupt
+    if ((FIELD_EX16(s->smr[channel], SMR, MD) & 0x01) == 1) { 
+        // SDR empty interrupt
+        qemu_set_irq(s->irq[channel], 1);
     }
 }
 
@@ -173,19 +176,20 @@ static void rl78_sau_update_fTCLK(RL78SAUState *s, int channel)
     const uint8_t prs0 = FIELD_EX16(s->sps, SPS, PRS0);
     const uint8_t prs1 = FIELD_EX16(s->sps, SPS, PRS1);
 
-    const uint32_t ck0 = clk / (1 << prs0);
-    const uint32_t ck1 = clk / (1 << prs1);
-    const uint32_t fMCK = FIELD_EX16(s->smr[channel], SMR, CKS) ? ck1 : ck0;
+    const uint32_t ck0   = clk / (1 << prs0);
+    const uint32_t ck1   = clk / (1 << prs1);
+    const uint32_t fMCK  = FIELD_EX16(s->smr[channel], SMR, CKS) ? ck1 : ck0;
     // TODO: support external clock source
     const uint32_t fTCLK = FIELD_EX16(s->smr[channel], SMR, CCS) ? 0 : fMCK;
 
     s->fTCLK_hz[channel] = fTCLK;
 }
 
-static void rl78_sau_update_inclk(void *opaque, ClockEvent event) {
+static void rl78_sau_update_inclk(void *opaque, ClockEvent event)
+{
     RL78SAUState *s = RL78_SAU(opaque);
 
-    for(int ch = 0; ch < RL78_SAU_CHANNEL_NUM; ch++) {
+    for (int ch = 0; ch < RL78_SAU_CHANNEL_NUM; ch++) {
         rl78_sau_update_fTCLK(s, ch);
     }
 }
@@ -198,8 +202,8 @@ static void rl78_sau_update_sps(RL78SAUState *s, uint16_t value)
 
     s->sps = FIELD_DP16(s->sps, SPS, PRS0, prs0);
     s->sps = FIELD_DP16(s->sps, SPS, PRS1, prs1);
-    
-    for(int ch = 0; ch < RL78_SAU_CHANNEL_NUM; ch++) {
+
+    for (int ch = 0; ch < RL78_SAU_CHANNEL_NUM; ch++) {
         rl78_sau_update_fTCLK(s, ch);
     }
 }
@@ -208,7 +212,7 @@ static void rl78_sau_update_smr(RL78SAUState *s, uint16_t value, uint channel)
 {
     // TODO: value assertion
 
-    if(s->se & (1 << channel)) {
+    if (s->se & (1 << channel)) {
         // TODO: assertion (forbid to update when SE bit = 1)
     }
 
@@ -226,7 +230,7 @@ static void rl78_sau_update_scr(RL78SAUState *s, uint16_t value, uint channel)
     // TODO: value assertion
     // TODO: support difference between MCU pin count
 
-    if(s->se & (1 << channel)) {
+    if (s->se & (1 << channel)) {
         // TODO: assertion (forbid to update when SE bit = 1)
     }
 
@@ -244,28 +248,29 @@ static void rl78_sau_update_sdr(RL78SAUState *s, uint16_t value, uint channel)
     // TODO: assert specific value assertion when UART mode and I2C mode
 
     const bool is_running = !!(s->se & (1 << channel));
-// not overwrite divisor setting when communication is running (SE bit = 1)
+
+    // not overwrite divisor setting when communication is running (SE bit = 1)
     if (is_running) {
         value &= 0x01FF;
         value |= s->sdr[channel] & 0xFE00;
     }
 
     const bool is_data_changed = (value & 0x01FF) != (s->sdr[channel] & 0x01FF);
-    if(!is_running && is_data_changed) {
+    if (!is_running && is_data_changed) {
         // TODO: assertion (forbid to overwrite data when not running)
     }
 
     s->sdr[channel] = value;
-    if(FIELD_EX16(s->ssr[channel], SSR, BFF)) {
+    if (FIELD_EX16(s->ssr[channel], SSR, BFF)) {
         // TODO: assertion
         s->ssr[channel] = FIELD_DP16(s->ssr[channel], SSR, OVF, 1);
     }
-    if(FIELD_EX16(s->scr[channel], SCR, TXE)) {
+    if (FIELD_EX16(s->scr[channel], SCR, TXE)) {
         s->ssr[channel] = FIELD_DP16(s->ssr[channel], SSR, BFF, 1);
     }
 
     const bool is_sending = !!FIELD_EX16(s->ssr[channel], SSR, TSF);
-    if(FIELD_EX16(s->scr[channel], SCR, TXE) && !is_sending) {
+    if (FIELD_EX16(s->scr[channel], SCR, TXE) && !is_sending) {
         rl78_sau_send_byte(s, channel);
     }
 }
@@ -294,8 +299,8 @@ static void rl78_sau_update_ss(RL78SAUState *s, uint16_t value)
     const uint16_t mask  = R_SS_SS_MASK;
     s->se               |= value & mask;
 
-   for(int ch = 0; ch < RL78_SAU_CHANNEL_NUM; ch++) {
-        if(value & (1 << ch)) {
+    for (int ch = 0; ch < RL78_SAU_CHANNEL_NUM; ch++) {
+        if (value & (1 << ch)) {
             s->ssr[ch] = FIELD_DP16(s->ssr[ch], SSR, TSF, 0);
             s->ssr[ch] = FIELD_DP16(s->ssr[ch], SSR, BFF, 0);
 
@@ -305,7 +310,7 @@ static void rl78_sau_update_ss(RL78SAUState *s, uint16_t value)
              */
             timer_del(&s->tx_timer[ch]);
         }
-    } 
+    }
 }
 
 static void rl78_sau_update_st(RL78SAUState *s, uint16_t value)
@@ -315,8 +320,8 @@ static void rl78_sau_update_st(RL78SAUState *s, uint16_t value)
     const uint16_t mask  = R_ST_ST_MASK;
     s->se               &= ~(value & mask);
 
-    for(int ch = 0; ch < RL78_SAU_CHANNEL_NUM; ch++) {
-        if(value & (1 << ch)) {
+    for (int ch = 0; ch < RL78_SAU_CHANNEL_NUM; ch++) {
+        if (value & (1 << ch)) {
             s->ssr[ch] = FIELD_DP16(s->ssr[ch], SSR, TSF, 0);
             s->ssr[ch] = FIELD_DP16(s->ssr[ch], SSR, BFF, 0);
             /**
@@ -404,7 +409,6 @@ static void rl78_sau_write1(void *opaque, hwaddr offset, uint64_t value,
 static void rl78_sau_write2(void *opaque, hwaddr offset, uint64_t value,
                             unsigned size)
 {
-    qemu_log_mask(LOG_TRACE, "rl78_sau_write2: offset = %04x, value = %04x, size = %d\n", (uint16_t)offset, (uint16_t)value, size);
     RL78SAUState *s = RL78_SAU(opaque);
     switch (offset) {
     case 0x00:
@@ -566,7 +570,6 @@ static uint64_t rl78_sau_read1(void *opaque, hwaddr offset, unsigned size)
 
 static uint64_t rl78_sau_read2(void *opaque, hwaddr offset, unsigned size)
 {
-    qemu_log_mask(LOG_TRACE, "rl78_sau_read2: offset = %04x, size = %d\n", (uint16_t)offset, size);
     RL78SAUState *s = RL78_SAU(opaque);
     switch (offset) {
     case 0x00:
@@ -624,8 +627,8 @@ static const MemoryRegionOps rl78_sau_ops0 = {
     .read                  = rl78_sau_read0,
     .valid.max_access_size = 2,
     .valid.min_access_size = 1,
-    .impl.min_access_size  = 2,
-    .impl.max_access_size  = 1,
+    .impl.max_access_size  = 2,
+    .impl.min_access_size  = 1,
 };
 
 static const MemoryRegionOps rl78_sau_ops1 = {
@@ -633,8 +636,8 @@ static const MemoryRegionOps rl78_sau_ops1 = {
     .read                  = rl78_sau_read1,
     .valid.max_access_size = 2,
     .valid.min_access_size = 1,
-    .impl.min_access_size  = 2,
-    .impl.max_access_size  = 1,
+    .impl.max_access_size  = 2,
+    .impl.min_access_size  = 1,
 };
 
 static const MemoryRegionOps rl78_sau_ops2 = {
@@ -642,8 +645,8 @@ static const MemoryRegionOps rl78_sau_ops2 = {
     .read                  = rl78_sau_read2,
     .valid.max_access_size = 2,
     .valid.min_access_size = 1,
-    .impl.min_access_size  = 2,
-    .impl.max_access_size  = 1,
+    .impl.max_access_size  = 2,
+    .impl.min_access_size  = 1,
 };
 
 static void rl78_sau_reset_hold(Object *obj, ResetType type)
@@ -666,10 +669,8 @@ static void rl78_sau_reset_hold(Object *obj, ResetType type)
 
 static void rl78_sau_tx_timer_up(RL78SAUState *s, int channel)
 {
-    const bool is_txen = !!FIELD_EX16(s->scr[channel], SCR, TXE);
+    const bool is_txen  = !!FIELD_EX16(s->scr[channel], SCR, TXE);
     const bool has_data = !!FIELD_EX16(s->ssr[channel], SSR, BFF);
-
-    qemu_log_mask(LOG_TRACE, "rl78_sau_tx_timer_up: channel = %d", channel);
 
     s->ssr[channel] = FIELD_DP16(s->ssr[channel], SSR, TSF, 0);
     if (is_txen && has_data) {
@@ -677,6 +678,7 @@ static void rl78_sau_tx_timer_up(RL78SAUState *s, int channel)
     }
 
     if ((FIELD_EX16(s->smr[channel], SMR, MD) & 0x01) == 0) {
+        // TX done interrupt
         qemu_irq_pulse(s->irq[channel]);
     }
 }
@@ -692,6 +694,15 @@ RL78SAU_TX_TIMER_UP_CALLBACK(0)
 RL78SAU_TX_TIMER_UP_CALLBACK(1)
 RL78SAU_TX_TIMER_UP_CALLBACK(2)
 RL78SAU_TX_TIMER_UP_CALLBACK(3)
+
+static void rl78_sau_rx_notify(Notifier *notifier, void *data)
+{
+    // TODO: implement here
+    // IOCReceiver *receiver = container_of(notifier, IOCReceiver, notify);
+    // RL78SAUState *s = receiver->opaque;
+
+    // TODO: receive data process
+}
 
 static void rl78_sau_init(Object *obj)
 {
@@ -723,8 +734,16 @@ static void rl78_sau_init(Object *obj)
     qdev_init_gpio_out_named(dev, s->irq_err, "irq-err", RL78_SAU_CHANNEL_NUM);
 
     for (int ch = 0; ch < RL78_SAU_CHANNEL_NUM; ch++) {
-        notifier_list_init(&s->tx_notify[ch]);
-        notifier_list_init(&s->rx_notify[ch]);
+        char *tx_name = g_strdup_printf("tx[%d]", ch);
+        char *rx_name = g_strdup_printf("rx[%d]", ch);
+        register_tx_property(obj, &s->tx_channels[ch], tx_name);
+        register_rx_property(obj, &s->rx_channels[ch], rx_name);
+        s->rx_channels[ch].index         = ch;
+        s->rx_channels[ch].opaque        = s;
+        s->rx_channels[ch].notify.notify = rl78_sau_rx_notify;
+        g_free(tx_name);
+        g_free(rx_name);
+
         timer_init_ns(&s->tx_timer[ch], QEMU_CLOCK_VIRTUAL,
                       tx_timer_up_callbacks[ch], s);
     }

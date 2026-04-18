@@ -4,6 +4,7 @@
 #include "hw/core/sysbus.h"
 #include "qemu/timer.h"
 #include "qemu/typedefs.h"
+#include "hw/rl78/intercomm.h"
 
 #define RL78_SAU_CHANNEL_NUM (4)
 
@@ -12,14 +13,15 @@ struct RL78SAUState {
     SysBusDevice parent_obj;
 
     /* <public> */
-    Clock* inclk;
+    Clock *inclk;
 
     qemu_irq irq[RL78_SAU_CHANNEL_NUM];
     qemu_irq irq_err[RL78_SAU_CHANNEL_NUM];
 
     QEMUTimer tx_timer[RL78_SAU_CHANNEL_NUM];
-    NotifierList tx_notify[RL78_SAU_CHANNEL_NUM];
-    NotifierList rx_notify[RL78_SAU_CHANNEL_NUM];
+
+    IOCTransmitter tx_channels[RL78_SAU_CHANNEL_NUM];
+    IOCReceiver rx_channels[RL78_SAU_CHANNEL_NUM];
 
     uint32_t fTCLK_hz[RL78_SAU_CHANNEL_NUM];
 
@@ -34,7 +36,7 @@ struct RL78SAUState {
     uint16_t soe;
     uint16_t so;
     uint16_t sol;
-    uint16_t ssc;   
+    uint16_t ssc;
 };
 typedef struct RL78SAUState RL78SAUState;
 

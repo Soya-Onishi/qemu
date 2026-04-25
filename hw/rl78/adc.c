@@ -1213,11 +1213,19 @@ static void property_set_double_ptr(Object *obj, Visitor *v, const char *name,
     *field = value;
 }
 
-static void rl78_adc_notify_adc_result(Notifier *notifier, void *data) {
-    IOCReceiver *channel = container_of(notifier, IOCReceiver, notify);
-    RL78ADCState *s = channel->opaque;
+static void rl78_adc_result_handler(Object *instance, uint64_t index, const void *payload)
+{
+    RL78ADCState *s = RL78_ADC(instance);
+    const WirePayload *p = (const WirePayload *)payload;
 
-    s->adc_results[channel->index] = *(double *)data;
+    assert(index < ARRAY_SIZE(s->adc_results));
+
+    if(p->type != WIRE_PAYLOAD_TYPE_ANALOG) {
+        qemu_log("invalid payload type, expected Analog Signal.\n");
+        return;
+    }
+
+    s->adc_results[index] = p->analog.voltage;
 }
 
 static void rl78_adc_init(Object *obj)
@@ -1244,16 +1252,13 @@ static void rl78_adc_init(Object *obj)
 
     for (int i = 0; i < ARRAY_SIZE(s->adc_results); i++) { 
         s->adc_results[i] = 0.0;
-        s->adc_result_channels[i].index = i;
-        s->adc_result_channels[i].opaque = s;
-        s->adc_result_channels[i].notify.notify = rl78_adc_notify_adc_result;
 
         char* name = g_strdup_printf("adc-result[%d]", i);
         object_property_add(obj, name, "double", property_get_double_ptr, property_set_double_ptr, NULL, &s->adc_results[i]);
-        register_rx_property(obj, &s->adc_result_channels[i], name);
 
         g_free(name);
     } 
+    receive_port_add(OBJECT(s), "in-voltage", rl78_adc_result_handler, ARRAY_SIZE(s->adc_results));
 
     qdev_init_gpio_out_named(dev, &s->irq, "irq-out", 1);
 }

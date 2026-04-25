@@ -2,87 +2,96 @@
 #define HW_RL78_INTERCOMM_H
 
 #include "qom/object.h"
-#include "qemu/notify.h"
 
-typedef enum IntercommDataType {
-    INTERCOMM_DATA_TYPE_DIGITAL,
-    INTERCOMM_DATA_TYPE_ANALOG,
-    INTERCOMM_DATA_TYPE_UART,
-} IntercommDataType;
+typedef void (*ReceivePayloadHandler)(Object *instance, uint64_t index,
+                                      const void *payload);
 
-typedef enum IntercommDataUARTParity {
-    INTERCOMM_DATA_UART_PARITY_NONE,
-    INTERCOMM_DATA_UART_PARITY_ODD,
-    INTERCOMM_DATA_UART_PARITY_EVEN,
-} IntercommDataUARTParity;
+struct ReceivePort {
+    Object parent_obj;
 
-struct IntercommDataDigital {
-    bool signal;
+    Object *instance;
+    uint64_t index;
+    ReceivePayloadHandler handler;
 };
+typedef struct ReceivePort ReceivePort;
+#define TYPE_RECEIVE_PORT "receive-port"
+DECLARE_INSTANCE_CHECKER(ReceivePort, RECEIVE_PORT, TYPE_RECEIVE_PORT)
 
-struct IntercommDataAnalog {
-    double signal;
+struct TransmitPort {
+    Object parent_obj;
+
+    GList *connections;
 };
+typedef struct TransmitPort TransmitPort;
+#define TYPE_TRANSMIT_PORT "transmit-port"
+DECLARE_INSTANCE_CHECKER(TransmitPort, TRANSMIT_PORT, TYPE_TRANSMIT_PORT)
 
-struct IntercommDataUART {
-    uint8_t *data;
-    uint32_t length;
-    uint8_t stopbit;
-    IntercommDataUARTParity parity;
-    bool is_reverse;
+typedef enum WirePayloadType {
+    WIRE_PAYLOAD_TYPE_DIGITAL,
+    WIRE_PAYLOAD_TYPE_ANALOG,
+    WIRE_PAYLOAD_TYPE_SERIAL,
+} WirePayloadType;
+
+struct DigitalPayload {
+    bool high;
 };
+typedef struct DigitalPayload DigitalPayload;
 
-typedef struct IntercommDataDigital IntercommDataDigital;
-typedef struct IntercommDataAnalog IntercommDataAnalog;
-typedef struct IntercommDataUART IntercommDataUART;
+struct AnalogPayload {
+    double voltage;
+};
+typedef struct AnalogPayload AnalogPayload;
 
-struct IntercommPayload {
-    uint32_t index;
-    IntercommDataType kind;
+typedef enum SerialPacketType {
+    SERIAL_PACKET_TYPE_UART,
+} SerialPacketType;
+
+typedef enum UartParity {
+    UART_PARITY_NONE,
+    UART_PARITY_ODD,
+    UART_PARITY_EVEN,
+} UartParity;
+
+struct UartPacket {
+    uint16_t payload;
+    uint8_t stopbits;
+    UartParity parity;
+};
+typedef struct UartPacket UartPacket;
+
+struct SerialPacket {
+    SerialPacketType type;
     union {
-        IntercommDataDigital digital;
-        IntercommDataAnalog analog;
-        IntercommDataUART uart;
+        UartPacket uart;
     };
 };
-typedef struct IntercommPayload IntercommPayload;
+typedef struct SerialPacket SerialPacket;
 
-struct IOCTransmitter {
-    NotifierList notifylist;
+struct WirePayload {
+    WirePayloadType type;
+    union {
+        DigitalPayload digital;
+        AnalogPayload analog;
+        SerialPacket serial;
+    };
 };
-typedef struct IOCTransmitter IOCTransmitter;
+typedef struct WirePayload WirePayload;
 
-struct IOCReceiver {
-    Notifier notify;
-    uint32_t index;
-    void *opaque;
-};
-typedef struct IOCReceiver IOCReceiver;
+void transmit_port_add(Object *parent, const char *name,
+                       TransmitPort *port_list, uint64_t port_num);
+void receive_port_add(Object *parent, const char *name,
+                      ReceivePayloadHandler handler, uint64_t port_num);
+void transmit_port_payload(TransmitPort *port, void *payload);
 
-void register_rx_property(Object *obj, IOCReceiver *receiver,
-                          const char *propname);
-void register_tx_property(Object *obj, IOCTransmitter *transmitter,
-                          const char *propname);
-
-inline static void get_intercomm_payload_digital(IntercommPayload *payload,
-                                                 IntercommDataDigital *data)
-{
-    assert(payload->kind == INTERCOMM_DATA_TYPE_DIGITAL);
-    *data = payload->digital;
-}
-
-inline static void get_intercomm_payload_analog(IntercommPayload *payload,
-                                                IntercommDataAnalog *data)
-{
-    assert(payload->kind == INTERCOMM_DATA_TYPE_ANALOG);
-    *data = payload->analog;
-}
-
-inline static void get_intercomm_payload_uart(IntercommPayload *payload,
-                                              IntercommDataUART *data)
-{
-    assert(payload->kind == INTERCOMM_DATA_TYPE_UART);
-    *data = payload->uart;
-}
+char* get_port_name(const char *name, uint64_t index);
+void connect_port(Object *source, const char *source_name,
+                  uint64_t source_index, Object *sink, const char *sink_name,
+                  uint64_t sink_index);
+void forward_transmit_port(Object *source, const char *source_port_name,
+                           uint64_t source_index, Object *self,
+                           const char *port_name, uint64_t port_index);
+void forward_receive_port(Object *sink, const char *sink_port_name,
+                          uint64_t sink_index, Object *self,
+                          const char *port_name, uint64_t port_index);
 
 #endif

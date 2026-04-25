@@ -135,7 +135,6 @@ struct RL78ADCState {
     RL78ADCTestTarget test_target; // ADTES bits
 
     double adc_results[RL78_ADC_SOURCE_NUM];
-    IOCReceiver adc_result_channels[RL78_ADC_SOURCE_NUM];
 };
 typedef struct RL78ADCState RL78ADCState;
 

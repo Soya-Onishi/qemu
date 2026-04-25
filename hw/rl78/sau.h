@@ -19,9 +19,7 @@ struct RL78SAUState {
     qemu_irq irq_err[RL78_SAU_CHANNEL_NUM];
 
     QEMUTimer tx_timer[RL78_SAU_CHANNEL_NUM];
-
-    IOCTransmitter tx_channels[RL78_SAU_CHANNEL_NUM];
-    IOCReceiver rx_channels[RL78_SAU_CHANNEL_NUM];
+    TransmitPort tx_ports[RL78_SAU_CHANNEL_NUM];
 
     uint32_t fTCLK_hz[RL78_SAU_CHANNEL_NUM];
 
@@ -37,6 +35,8 @@ struct RL78SAUState {
     uint16_t so;
     uint16_t sol;
     uint16_t ssc;
+
+    GQueue *rx_data_queue[RL78_SAU_CHANNEL_NUM];
 };
 typedef struct RL78SAUState RL78SAUState;
 

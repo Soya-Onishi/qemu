@@ -133,19 +133,13 @@ static void rl78g23_register_sau(RL78G23McuState *s, uint8_t unit)
     qdev_connect_gpio_out_named(DEVICE(&s->sau), "irq-err", 1, irq_sre1);
 
     for (int i = 0; i < RL78_SAU_CHANNEL_NUM; i++) {
-        char *sau_rx_name = g_strdup_printf("rx[%d]_rx-notifier", i);
-        char *rx_name     = g_strdup_printf("sau-rx[%d]_rx-notifier", i);
-        char *sau_tx_name = g_strdup_printf("tx[%d]_tx-notifierlist", i);
-        char *tx_name     = g_strdup_printf("sau-tx[%d]_tx-notifierlist", i);
+        char *rx_name = g_strdup_printf("sau[%d]_rx", unit);
+        char *tx_name = g_strdup_printf("sau[%d]_tx", unit);
 
-        object_property_add_alias(OBJECT(s), rx_name, OBJECT(&s->sau),
-                                  sau_rx_name);
-        object_property_add_alias(OBJECT(s), tx_name, OBJECT(&s->sau),
-                                  sau_tx_name);
+        forward_receive_port(OBJECT(&s->sau), "rx", i, OBJECT(s), rx_name, i);
+        forward_transmit_port(OBJECT(&s->sau), "tx", i, OBJECT(s), tx_name, i);
 
-        g_free(sau_rx_name);
         g_free(rx_name);
-        g_free(sau_tx_name);
         g_free(tx_name);
     }
 }
@@ -208,9 +202,8 @@ static void rl78g23_register_adc(RL78G23McuState *s)
         qdev_get_gpio_in_named(DEVICE(&s->irq), "irq-in", RL78_CPU_IRQ_INTAD);
     qdev_connect_gpio_out_named(DEVICE(adc), "irq-out", 0, irq);
 
-    for (int i = 0; i < RL78_ADC_SOURCE_NUM; i++) {
-        char *name = g_strdup_printf("adc-result[%d]_rx-notifier", i);
-        object_property_add_alias(OBJECT(s), name, OBJECT(&s->adc), name);
+    for(int i = 0; i < ARRAY_SIZE(s->adc.adc_results); i++) {
+        forward_receive_port(OBJECT(&s->adc), "in-voltage", i, OBJECT(s), "adc[0]_in-voltage", i); 
     }
 }
 

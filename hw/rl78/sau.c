@@ -153,13 +153,19 @@ static void rl78_sau_send_byte(RL78SAUState *s, uint channel)
         return;
     }
 
-
     s->ssr[channel] = FIELD_DP16(s->ssr[channel], SSR, BFF, 0);
     s->ssr[channel] = FIELD_DP16(s->ssr[channel], SSR, TSF, 1);
 
     const uint64_t expire_time = qemu_clock_get_ns(QEMU_CLOCK_VIRTUAL) + send_duration_ns;
     timer_mod(&s->tx_timer[channel], expire_time);
-    notifier_list_notify(&s->tx_channels[channel].notifylist, &txdata);
+
+    WirePayload payload;
+    payload.type = WIRE_PAYLOAD_TYPE_SERIAL;
+    payload.serial.type = SERIAL_PACKET_TYPE_UART;
+    payload.serial.uart.payload = txdata;
+    payload.serial.uart.stopbits = FIELD_EX16(s->scr[channel], SCR, SLC);
+    payload.serial.uart.parity = (UartParity)FIELD_EX16(s->scr[channel], SCR, PTC);
+    transmit_port_payload(&s->tx_ports[channel], &payload);
 
     // TODO: check SO bit for checking valid initial signal status
 
@@ -494,8 +500,22 @@ static uint16_t rl78_sau_read_scr(RL78SAUState *s, uint channel)
 static uint16_t rl78_sau_read_sdr(RL78SAUState *s, uint channel)
 {
     uint16_t sdr = s->sdr[channel];
-    if (s->se & (1 << channel)) {
+
+    const bool is_rx = FIELD_EX16(s->scr[channel], SCR, RXE) == 1;
+
+    if (s->se & (1 << channel) && is_rx) {
         sdr &= 0x01FF;
+        s->ssr[channel] = FIELD_DP16(s->ssr[channel], SSR, BFF, 0);
+
+        if(!g_queue_is_empty(s->rx_data_queue[channel])) {
+            uint16_t* data = g_queue_pop_head(s->rx_data_queue[channel]);
+
+            s->ssr[channel] = FIELD_DP16(s->ssr[channel], SSR, BFF, 1);
+            s->sdr[channel] = deposit32(s->sdr[channel], 0, 9, *data);
+            qemu_set_irq(s->irq[channel], 1);
+
+            g_free(data);
+        }
     }
 
     return sdr;
@@ -546,7 +566,7 @@ static uint64_t rl78_sau_read0(void *opaque, hwaddr offset, unsigned size)
     switch (offset) {
     case 0:
         return rl78_sau_read_sdr(s, 0);
-    case 1:
+    case 2:
         return rl78_sau_read_sdr(s, 1);
     default:
         // TODO: invalid access assertion
@@ -560,7 +580,7 @@ static uint64_t rl78_sau_read1(void *opaque, hwaddr offset, unsigned size)
     switch (offset) {
     case 0:
         return rl78_sau_read_sdr(s, 2);
-    case 1:
+    case 2:
         return rl78_sau_read_sdr(s, 3);
     default:
         // TODO: invalid access assertion
@@ -695,13 +715,46 @@ RL78SAU_TX_TIMER_UP_CALLBACK(1)
 RL78SAU_TX_TIMER_UP_CALLBACK(2)
 RL78SAU_TX_TIMER_UP_CALLBACK(3)
 
-static void rl78_sau_rx_notify(Notifier *notifier, void *data)
+static void rl78_sau_rx_irq(Object* instance, uint64_t index, const void* payload)
 {
-    // TODO: implement here
-    // IOCReceiver *receiver = container_of(notifier, IOCReceiver, notify);
-    // RL78SAUState *s = receiver->opaque;
+    RL78SAUState *s = RL78_SAU(instance);
 
-    // TODO: receive data process
+    const WirePayload *p = (const WirePayload *)payload;
+    // TODO: raise SRE interrupt if serial signal format is unmatched
+ 
+    const bool is_uart = extract16(s->smr[index], 1, 2) == 1;
+    if((index & 0x01) && is_uart) {
+        qemu_log_mask(LOG_GUEST_ERROR, "UART signal must be received on even channel.\n");
+    }
+
+    if(is_uart) {
+        index |= 0x01;
+    }
+
+    if(!(s->se & (1 << index))) { 
+        // If not enabled, ignore the received data
+        return;
+    }
+    
+    if(FIELD_EX16(s->scr[index], SCR, RXE) == 0) {
+        // If not RX enabled, ignore the received data
+        return;
+    }
+
+    // Actual MCU, TSF bit is asserted when receiving data, 
+    // but QEMU receives byte data at once, so TSF bit is not asserted.
+    
+    const uint16_t rxdata = p->serial.uart.payload;
+
+    if(FIELD_EX16(s->ssr[index], SSR, BFF)) {
+        uint16_t* data = g_new(uint16_t, 1);
+        *data = rxdata;
+        g_queue_push_tail(s->rx_data_queue[index], data);
+    } else { 
+        s->ssr[index] = FIELD_DP16(s->ssr[index], SSR, BFF, 1);
+        s->sdr[index] = deposit32(s->sdr[index], 0, 9, rxdata);
+        qemu_set_irq(s->irq[index], 1);
+    }
 }
 
 static void rl78_sau_init(Object *obj)
@@ -734,18 +787,15 @@ static void rl78_sau_init(Object *obj)
     qdev_init_gpio_out_named(dev, s->irq_err, "irq-err", RL78_SAU_CHANNEL_NUM);
 
     for (int ch = 0; ch < RL78_SAU_CHANNEL_NUM; ch++) {
-        char *tx_name = g_strdup_printf("tx[%d]", ch);
-        char *rx_name = g_strdup_printf("rx[%d]", ch);
-        register_tx_property(obj, &s->tx_channels[ch], tx_name);
-        register_rx_property(obj, &s->rx_channels[ch], rx_name);
-        s->rx_channels[ch].index         = ch;
-        s->rx_channels[ch].opaque        = s;
-        s->rx_channels[ch].notify.notify = rl78_sau_rx_notify;
-        g_free(tx_name);
-        g_free(rx_name);
-
         timer_init_ns(&s->tx_timer[ch], QEMU_CLOCK_VIRTUAL,
                       tx_timer_up_callbacks[ch], s);
+    }
+
+    transmit_port_add(obj, "tx", s->tx_ports, RL78_SAU_CHANNEL_NUM);
+    receive_port_add(obj, "rx", rl78_sau_rx_irq, RL78_SAU_CHANNEL_NUM);
+
+    for(int ch = 0; ch < RL78_SAU_CHANNEL_NUM; ch++) {
+        s->rx_data_queue[ch] = g_queue_new();
     }
 }
 

@@ -1,0 +1,133 @@
+# -*- Mode: Python -*-
+# vim: filetype=python
+#
+
+##
+# @MachineStructure:
+#
+# Machine structure.
+#
+# @mcu: MCU name.
+#
+# @circuits: Circuits in the machine.
+#
+# @connections: Connections in the machine.
+#
+# @outports: Outports in the machine.
+#
+# @inports: Inports in the machine.
+##
+{ 'struct': 'MachineStructure',
+  'data': {
+    'mcu': 'str',
+    'circuits': ['MachineCircuit'],
+    'connections': ['CircuitConnection'],
+    'outports': ['MachineOutport'],
+    'inports': ['MachineInport']
+  }
+}
+
+##
+# @MachinePin:
+#
+# Machine pin.
+#
+# @name: Pin name.
+#
+# @id: Pin id.
+##
+{ 'struct': 'MachinePin',
+  'data': {
+    'name': 'str',
+    'id': 'int'
+  }
+}
+
+##
+# @MachineCircuit:
+#
+# Machine circuit.
+#
+# @name: Circuit name.
+#
+# @type: Circuit type.
+##
+{ 'struct': 'MachineCircuit',
+  'data': {
+    'name': 'str',
+    'type': 'str'
+  }
+}
+
+##
+# @CircuitConnection:
+#
+# Circuit connection.
+#
+# @source-pin: Source pin.
+#
+# @sink-pin: Sink pin.
+##
+{ 'struct': 'CircuitConnection',
+  'data': {
+    'source-pin': 'CircuitPin',
+    'sink-pin': 'CircuitPin'
+  }
+}
+
+##
+# @CircuitPin:
+#
+# Circuit pin.
+#
+# @circuit-name: Circuit name.
+#
+# @pin-name: Pin name.
+#
+# @pin-index: Pin index.
+##
+{ 'struct': 'CircuitPin',
+  'data': {
+    'circuit-name': 'str',
+    'pin-name': 'str',
+    'pin-index': 'uint64'
+  }
+}
+
+##
+# @MachineOutport:
+#
+# Machine outport.
+#
+# @name: Outport name.
+#
+# @id: Outport id.
+#
+# @from: Circuit pins.
+##
+{ 'struct': 'MachineOutport',
+  'data': {
+    'name': 'str',
+    'id': 'uint64',
+    'from': ['CircuitPin']
+  }
+}
+
+##
+# @MachineInport:
+#
+# Machine inport.
+#
+# @name: Inport name.
+#
+# @id: Inport id.
+#
+# @to: Circuit pins.
+##
+{ 'struct': 'MachineInport',
+  'data': {
+    'name': 'str',
+    'id': 'uint64',
+    'to': ['CircuitPin']
+  }
+}

@@ -33,6 +33,7 @@ qapi_all_modules = [
   'crypto',
   'cxl',
   'dump',
+  'dyn-machine',
   'ebpf',
   'error',
   'introspect',

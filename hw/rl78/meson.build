@@ -12,7 +12,6 @@ rl78_ss.add(files(
     'irq.c',
     'gpio.c',
     'intercomm.c',
-    'master.c',
     'dynamic.c',
 ))
 

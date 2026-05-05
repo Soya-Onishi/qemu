@@ -27,27 +27,27 @@ typedef struct TransmitPort TransmitPort;
 DECLARE_INSTANCE_CHECKER(TransmitPort, TRANSMIT_PORT, TYPE_TRANSMIT_PORT)
 
 typedef enum WirePayloadType {
-    WIRE_PAYLOAD_TYPE_DIGITAL,
+    WIRE_PAYLOAD_TYPE_DIGITAL = 0,
     WIRE_PAYLOAD_TYPE_ANALOG,
     WIRE_PAYLOAD_TYPE_SERIAL,
 } WirePayloadType;
 
 struct DigitalPayload {
-    bool high;
-};
+    uint8_t high;
+}__attribute__((__packed__));
 typedef struct DigitalPayload DigitalPayload;
 
 struct AnalogPayload {
     double voltage;
-};
+}__attribute__((__packed__));
 typedef struct AnalogPayload AnalogPayload;
 
 typedef enum SerialPacketType {
-    SERIAL_PACKET_TYPE_UART,
+    SERIAL_PACKET_TYPE_UART = 0,
 } SerialPacketType;
 
 typedef enum UartParity {
-    UART_PARITY_NONE,
+    UART_PARITY_NONE = 0,
     UART_PARITY_ODD,
     UART_PARITY_EVEN,
 } UartParity;
@@ -55,26 +55,26 @@ typedef enum UartParity {
 struct UartPacket {
     uint16_t payload;
     uint8_t stopbits;
-    UartParity parity;
-};
+    uint8_t parity;
+}__attribute__((__packed__));
 typedef struct UartPacket UartPacket;
 
 struct SerialPacket {
-    SerialPacketType type;
+    uint8_t type;
     union {
         UartPacket uart;
     };
-};
+}__attribute__((__packed__));
 typedef struct SerialPacket SerialPacket;
 
 struct WirePayload {
-    WirePayloadType type;
+    uint8_t type;
     union {
         DigitalPayload digital;
         AnalogPayload analog;
         SerialPacket serial;
     };
-};
+}__attribute__((__packed__));
 typedef struct WirePayload WirePayload;
 
 void transmit_port_add(Object *parent, const char *name,

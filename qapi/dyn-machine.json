@@ -9,6 +9,8 @@
 #
 # @mcu: MCU name.
 #
+# @machine-id: Machine id.
+#
 # @circuits: Circuits in the machine.
 #
 # @connections: Connections in the machine.
@@ -20,6 +22,7 @@
 { 'struct': 'MachineStructure',
   'data': {
     'mcu': 'str',
+    'machine-id': 'uint32',
     'circuits': ['MachineCircuit'],
     'connections': ['CircuitConnection'],
     'outports': ['MachineOutport'],

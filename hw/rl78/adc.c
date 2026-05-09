@@ -1078,7 +1078,6 @@ static uint16_t rl78_adc_fetch_adc_result(RL78ADCState *s,
         break;
     }
 
-    qemu_log("[%p] adc_result[%d]: %lf(%lf V), int: %d, result: %d\n", s, index, adc_result, voltage, adc_result_int, result);
     return result;
 }
 
@@ -1258,7 +1257,7 @@ static void rl78_adc_init(Object *obj)
 
         g_free(name);
     } 
-    receive_port_add(OBJECT(s), "in-voltage", rl78_adc_result_handler, ARRAY_SIZE(s->adc_results));
+    receive_port_add(OBJECT(s), "in", rl78_adc_result_handler, ARRAY_SIZE(s->adc_results));
 
     qdev_init_gpio_out_named(dev, &s->irq, "irq-out", 1);
 }

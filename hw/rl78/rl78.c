@@ -88,12 +88,17 @@ static void rl78g23_register_gpio(RL78G23McuState *s)
     gpio = SYS_BUS_DEVICE(&s->gpio);
     sysbus_realize(gpio, &error_abort);
 
-    sysbus_mmio_map(gpio, 0, 0xFFF00);
-    sysbus_mmio_map(gpio, 1, 0xFFF20);
+    sysbus_mmio_map(gpio, 0, 0xFFF20);
+    sysbus_mmio_map(gpio, 1, 0xFFF00);
     sysbus_mmio_map(gpio, 2, 0xF0077);
     sysbus_mmio_map(gpio, 3, 0xF007D);
     sysbus_mmio_map(gpio, 4, 0xF0030);
     sysbus_mmio_map(gpio, 5, 0xF0260);
+
+    for(int i = 0; i < RL78_GPIO_PIN_NUM; i++) {
+        forward_transmit_port(OBJECT(&s->gpio), "out", i, OBJECT(s), "gpio_out", i);
+        forward_receive_port(OBJECT(&s->gpio), "in", i, OBJECT(s), "gpio_in", i);
+    }
 }
 
 static void rl78g23_register_sau(RL78G23McuState *s, uint8_t unit)
@@ -203,7 +208,7 @@ static void rl78g23_register_adc(RL78G23McuState *s)
     qdev_connect_gpio_out_named(DEVICE(adc), "irq-out", 0, irq);
 
     for(int i = 0; i < ARRAY_SIZE(s->adc.adc_results); i++) {
-        forward_receive_port(OBJECT(&s->adc), "in-voltage", i, OBJECT(s), "adc[0]_in-voltage", i); 
+        forward_receive_port(OBJECT(&s->adc), "in", i, OBJECT(s), "adc_in", i); 
     }
 }
 

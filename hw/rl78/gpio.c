@@ -97,7 +97,11 @@ static void rl78_gpio_write_level(void *opaque, hwaddr offset, uint64_t data,
         const uint8_t gpio_index = offset * 8 + i;
 
         if(old_bit != new_bit) {
-            qemu_set_irq(s->outputs[gpio_index], new_bit);
+            WirePayload payload;
+            payload.type = WIRE_PAYLOAD_TYPE_DIGITAL;
+            payload.digital.high = new_bit != 0;
+            
+            transmit_port_payload(&s->output_ports[gpio_index], &payload);
         }
     }
 }
@@ -582,18 +586,25 @@ static const MemoryRegionOps rl78_gpio_other1 = {
     .impl.max_access_size = 1,
 };
 
-static void rl78_gpio_recv_inputs(void *opaque, int irq, int level) {
-    RL78GPIOState *s = RL78_GPIO(opaque);
+static void rl78_gpio_recv_inputs(Object *instance, uint64_t index, const void *payload) {
+    RL78GPIOState *s = RL78_GPIO(instance);
 
-    const uint8_t index = (irq >> 4);
-    const uint8_t shamt = irq & 0x0F;
-    const uint8_t bit = !!level;
+    const WirePayload *p = (const WirePayload *)payload;
 
-    if(extract32(s->mode[index], shamt, 1) == RL78_GPIO_MODE_TYPE_INPUT) {
-        s->level[index] &= ~(1 << shamt);
-        s->level[index] |= bit << shamt;
+    if(p->type != WIRE_PAYLOAD_TYPE_DIGITAL) {
+        qemu_log("invalid payload type: %d", p->type);
+        return;
+    }
+
+    const uint8_t array_index = index / 8;
+    const uint8_t bit_index = index % 8;
+    const uint8_t bit = p->digital.high;
+
+    if(extract32(s->mode[array_index], bit_index, 1) == RL78_GPIO_MODE_TYPE_INPUT) {
+        s->level[array_index] &= ~(1 << bit_index);
+        s->level[array_index] |= bit << bit_index;
     } else {
-        qemu_log_mask(LOG_GUEST_ERROR, "input signal is received, but P%d is not assigned as input by PM register", irq);
+        qemu_log_mask(LOG_GUEST_ERROR, "input signal is received, but P%lu is not assigned as input by PM register", index);
     }
 }
 
@@ -618,8 +629,8 @@ static void rl78_gpio_init(Object *obj) {
     sysbus_init_mmio(SYS_BUS_DEVICE(obj), &s->mmio[4]);
     sysbus_init_mmio(SYS_BUS_DEVICE(obj), &s->mmio[5]);
 
-    qdev_init_gpio_out_named(DEVICE(obj), s->outputs, "gpio-out", RL78_GPIO_PIN_NUM);
-    qdev_init_gpio_in_named(DEVICE(obj), rl78_gpio_recv_inputs, "gpio-in", RL78_GPIO_PIN_NUM);
+    transmit_port_add(obj, "out", s->output_ports, RL78_GPIO_PIN_NUM);
+    receive_port_add(obj, "in", rl78_gpio_recv_inputs, RL78_GPIO_PIN_NUM);
 }
 
 static void rl78_gpio_reset_hold(Object *obj, ResetType type)

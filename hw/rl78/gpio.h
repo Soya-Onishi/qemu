@@ -2,6 +2,7 @@
 #define HW_RL78_GPIO_H
 
 #include "hw/core/sysbus.h"
+#include "hw/rl78/intercomm.h"
 
 #define RL78_GPIO_REG_NUM (16)
 
@@ -87,7 +88,7 @@ struct RL78GPIOState {
     /* public */
     MemoryRegion mmio[6];
 
-    qemu_irq outputs[RL78_GPIO_PIN_NUM];
+    TransmitPort output_ports[RL78_GPIO_PIN_NUM];
 
     uint8_t mode[RL78_GPIO_REG_NUM];
     uint8_t level[RL78_GPIO_REG_NUM];

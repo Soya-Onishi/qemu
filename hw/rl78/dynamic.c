@@ -184,7 +184,6 @@ static void rl78_dynamic_distribute_payloads(void *opaque) {
   s->inport_payloads = NULL;
   qemu_mutex_unlock(&s->inport_mutex);
 
-  qemu_log("Distributing payloads: %d, Latency: %lu\n", g_list_length(payloads), qemu_clock_get_ns(QEMU_CLOCK_HOST) - ((IPCSignalPayload*)payloads->data)->timestamp);
   while(g_list_first(payloads) != NULL) {
     GList* entry = g_list_first(payloads);
     IPCSignalPayload *payload = entry->data;
@@ -222,7 +221,6 @@ static void rl78_dynamic_distribute_payloads(void *opaque) {
         transmit_port_payload(&port, &payload->payload);
         s->inport_seq_table[port_index] = payload->sequence + 1;
 
-        qemu_log("Free payload: (%lu)%p\n", payload->sequence, payload);
         g_free(payload);
     }
   }
@@ -339,7 +337,6 @@ static void rl78_dynamic_init(MachineState *machine) {
 
   Chardev *machine_port = qemu_chr_find("machine-port");
   if (machine_port) {
-    qemu_log("Found machine-port chardev\n");
     qemu_chr_fe_init(&s->port_chardev, machine_port, &error_abort);
     qemu_chr_fe_set_handlers(&s->port_chardev, rl78_dynamic_port_can_receive,
                              rl78_dynamic_port_receive, NULL, NULL, s,
@@ -399,8 +396,6 @@ static void rl78_dynamic_init(MachineState *machine) {
     s->outport_key_table[outport_index] = mo->id;
     s->outport_seq_table[outport_index] = 0;
 
-    qemu_log("Outport: %lu, id: %lu\n", outport_index, mo->id);
-
     for (CircuitPinList *cpit = mo->from; cpit != NULL; cpit = cpit->next) {
       CircuitPin *cp = cpit->value;
       Object *circuit = object_property_get_link(
@@ -410,8 +405,6 @@ static void rl78_dynamic_init(MachineState *machine) {
         exit(1);
       }
 
-      qemu_log("Connecting outport: %lu, circuit: %s, pin: %s, index: %lu\n",
-               outport_index, cp->circuit_name, cp->pin_name, cp->pin_index);
       connect_port(circuit, cp->pin_name, cp->pin_index, OBJECT(machine),
                    "outport", outport_index);
     }
@@ -461,8 +454,6 @@ static void rl78_dynamic_init(MachineState *machine) {
       exit(1);
     }
   }
-
-  qemu_log("Dynamic machine initialized\n");
 }
 
 static void set_config_path(Object *o, const char *value, Error **errp) {

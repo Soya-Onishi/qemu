@@ -338,49 +338,60 @@ static void setup_ss(QTestState *s, uint8_t channel) {
     qtest_writew(s, A_SS0, 1 << channel);
 }
 
-static uint16_t get_payload(QTestState *s) {
+static uint16_t get_payload(QTestState *s, uint8_t channel) {
+    char* property = g_strdup_printf("sau-tx[%d].payload", channel);
+
     QDict *response = qtest_qmp(s, 
         "{ 'execute': 'qom-get', "
         "  'arguments': { "
         "    'path': '/machine', "
-        "    'property': 'sau-tx[0].payload' "
-        "}}"
+        "    'property': %s "
+        "}}",
+        property
     );
 
+    g_free(property);
     return qdict_get_int(response, "return");
 }
 
-static uint8_t get_stopbits(QTestState *s) {
+static uint8_t get_stopbits(QTestState *s, uint8_t channel) {
+    char* property = g_strdup_printf("sau-tx[%d].stopbits", channel);
+
     QDict *response = qtest_qmp(s, 
         "{ 'execute': 'qom-get', "
         "  'arguments': { "
         "    'path': '/machine', "
-        "    'property': 'sau-tx[0].stopbits' "
-        "}}"
+        "    'property': %s "
+        "}}",
+        property
     );
 
+    g_free(property);
     return qdict_get_int(response, "return");
 }
 
-static UartParity get_parity(QTestState *s) {
+static UartParity get_parity(QTestState *s, uint8_t channel) {
+    char* property = g_strdup_printf("sau-tx[%d].parity", channel);
+
     QDict *response = qtest_qmp(s, 
         "{ 'execute': 'qom-get', "
         "  'arguments': { "
         "    'path': '/machine', "
-        "    'property': 'sau-tx[0].parity' "
-        "}}"
+        "    'property': %s "
+        "}}",
+        property
     );
 
+    g_free(property);
     return (UartParity)qdict_get_int(response, "return");
 }
 
-static void validate_sau_tx(QTestState *s, uint16_t payload, uint8_t stopbits, UartParity parity) {
-    g_assert_cmpuint(get_payload(s), ==, payload);
-    g_assert_cmpuint(get_stopbits(s), ==, stopbits);
-    g_assert_cmpuint(get_parity(s), ==, parity);
+static void validate_sau_tx(QTestState *s, uint8_t channel, uint16_t payload, uint8_t stopbits, UartParity parity) {
+    g_assert_cmpuint(get_payload(s, channel), ==, payload);
+    g_assert_cmpuint(get_stopbits(s, channel), ==, stopbits);
+    g_assert_cmpuint(get_parity(s, channel), ==, parity);
 }
 
-G_GNUC_UNUSED
 static void test_rl78_sau_single_send_byte(void) 
 {
     QTestState *s = qtest_init("-M qtest -nographic");
@@ -398,10 +409,9 @@ static void test_rl78_sau_single_send_byte(void)
     uint16_t ssr = qtest_readw(s, A_SSR00);
     g_assert_cmpuint(FIELD_EX16(ssr, SSR, TSF), ==, 0);
 
-    validate_sau_tx(s, 'a', 1, UART_PARITY_NONE);
+    validate_sau_tx(s, 0, 'a', 1, UART_PARITY_NONE);
 }
 
-G_GNUC_UNUSED
 static void test_rl78_sau_continuous_send_byte(void)
 {
     QTestState *s = qtest_init("-M qtest -nographic");
@@ -418,14 +428,14 @@ static void test_rl78_sau_continuous_send_byte(void)
     uint16_t ssr0 = qtest_readw(s, A_SSR00);
     g_assert_cmpuint(FIELD_EX16(ssr0, SSR, BFF), ==, 0);
     g_assert_cmpuint(FIELD_EX16(ssr0, SSR, OVF), ==, 0);
-    validate_sau_tx(s, 'a', 1, UART_PARITY_NONE);
+    validate_sau_tx(s, 0, 'a', 1, UART_PARITY_NONE);
 
     qtest_writew(s, A_SDR00, 0x0000 | 'b');
     uint16_t ssr1 = qtest_readw(s, A_SSR00);
     g_assert_cmpuint(FIELD_EX16(ssr1, SSR, BFF), ==, 1);
     g_assert_cmpuint(FIELD_EX16(ssr1, SSR, OVF), ==, 0);
     // 'a' is still transmitted, so payload is 'a'
-    validate_sau_tx(s, 'a', 1, UART_PARITY_NONE);
+    validate_sau_tx(s, 0, 'a', 1, UART_PARITY_NONE);
 
     // Check for OVF bit to be asserted if SDR has valid data
     qtest_writew(s, A_SDR00, 0x0000 | 'c');
@@ -438,10 +448,9 @@ static void test_rl78_sau_continuous_send_byte(void)
     uint16_t ssr3 = qtest_readw(s, A_SSR00);
     g_assert_cmpuint(FIELD_EX16(ssr3, SSR, BFF), ==, 0);
     g_assert_cmpuint(FIELD_EX16(ssr3, SSR, OVF), ==, 1);
-    validate_sau_tx(s, 'c', 1, UART_PARITY_NONE);
+    validate_sau_tx(s, 0, 'c', 1, UART_PARITY_NONE);
 }
 
-G_GNUC_UNUSED
 static void test_rl78_sau_single_send_byte_irq(void)
 {
     QTestState *s = qtest_init("-M qtest -nographic");
@@ -468,7 +477,6 @@ static void test_rl78_sau_single_send_byte_irq(void)
     g_assert_cmpuint(get_irq_flag(s, IRQ_STIF0), ==, 1);
 }
 
-G_GNUC_UNUSED
 static void test_rl78_sau_continueous_send_byte_irq(void)
 {
     QTestState *s = qtest_init("-M qtest -nographic");
@@ -490,6 +498,8 @@ static void test_rl78_sau_continueous_send_byte_irq(void)
     qtest_clock_step_next(s);
     g_assert_cmpuint(get_irq_flag(s, IRQ_STIF0), ==, 1);
 }
+
+
 
 static void test_rl78_sau_receive_byte(void) 
 {
@@ -513,10 +523,10 @@ int main(int argc, char **argv)
     
     g_test_init(&argc, &argv, NULL);
 
-    // qtest_add_func("/rl78/sau/single_send_byte", test_rl78_sau_single_send_byte);
-    // qtest_add_func("/rl78/sau/continuous_send_byte", test_rl78_sau_continuous_send_byte);
-    // qtest_add_func("/rl78/sau/single_send_byte_irq", test_rl78_sau_single_send_byte_irq);
-    // qtest_add_func("/rl78/sau/continuous_send_byte_irq", test_rl78_sau_continueous_send_byte_irq);
+    qtest_add_func("/rl78/sau/single_send_byte", test_rl78_sau_single_send_byte);
+    qtest_add_func("/rl78/sau/continuous_send_byte", test_rl78_sau_continuous_send_byte);
+    qtest_add_func("/rl78/sau/single_send_byte_irq", test_rl78_sau_single_send_byte_irq);
+    qtest_add_func("/rl78/sau/continuous_send_byte_irq", test_rl78_sau_continueous_send_byte_irq);
 
     qtest_add_func("/rl78/sau/receive_byte", test_rl78_sau_receive_byte);
 

@@ -2,7 +2,7 @@
 #include "libqtest.h"
 #include "libqtest-single.h"
 #include "hw/core/registerfields.h"
-
+#include "hw/rl78/intercomm.h"
 
 #define SMR(INDEX)          \
     FIELD(SMR##INDEX, MD0, 0, 1)   \
@@ -162,10 +162,29 @@ FIELD(SO, SO3, 3, 1);
 FIELD(SOL, SOL0, 0, 1);
 FIELD(SOL, SOL2, 2, 1);
 
+// Interrupt Register
+REG16(IF0, 0xFFFE0)
+REG16(IF1, 0xFFFE2)
+REG16(IF2, 0xFFFD0)
+REG16(IF3, 0xFFFD2)
+
+typedef enum {
+    IRQ_STIF0,
+    IRQ_SRIF0,
+    IRQ_SREIF0,
+    IRQ_STIF1,
+    IRQ_SRIF1,
+    IRQ_SREIF1,
+    IRQ_STIF2,
+    IRQ_SRIF2,
+    IRQ_SREIF2,
+    IRQ_STIF3,
+    IRQ_SRIF3,
+    IRQ_SREIF3,
+} IRQSource;
+
 static void setup_sau(QTestState *s)
 {
-    qtest_system_reset(s);
-
     uint16_t sps = 0x0000;
     sps = FIELD_DP16(sps, SPS, PRS0, 8);
     sps = FIELD_DP16(sps, SPS, PRS1, 8);
@@ -177,36 +196,181 @@ static void setup_sau(QTestState *s)
     smr = FIELD_DP16(smr, SMR, STS, 0);
     smr = FIELD_DP16(smr, SMR, CCS, 0);
     smr = FIELD_DP16(smr, SMR, CKS, 0);
-
-    uint16_t scr = 0x0004;
-    scr = FIELD_DP16(scr, SCR, DLS, 3);
-    scr = FIELD_DP16(scr, SCR, SLC, 1);
-    scr = FIELD_DP16(scr, SCR, DIR, 1);
-    scr = FIELD_DP16(scr, SCR, PTC, 0);
-    scr = FIELD_DP16(scr, SCR, EOC, 0);
-    scr = FIELD_DP16(scr, SCR, CKP, 0);
-    scr = FIELD_DP16(scr, SCR, DAP, 0);
-    scr = FIELD_DP16(scr, SCR, RXE, 0);
-    scr = FIELD_DP16(scr, SCR, TXE, 1);
-
+    
     uint16_t soe = 0x0000;
     soe = FIELD_DP16(soe, SOE, SOE0, 1);
 
     qtest_writew(s, A_SPS0, sps);
-    qtest_writew(s, A_SMR00, smr);
-    qtest_writew(s, A_SCR00, scr);
     qtest_writew(s, A_SDR00, 51 << 9);
     qtest_writew(s, A_SOE0, soe);
 }
 
-static void test_rl78_sau_send_byte(void)
+
+static void setup_smr(QTestState *s, uint8_t ck, uint8_t irq_source) {
+    uint16_t smr = 0x0020;
+    smr = FIELD_DP16(smr, SMR, MD0, irq_source);
+    smr = FIELD_DP16(smr, SMR, MD1, 1);
+    smr = FIELD_DP16(smr, SMR, SIS, 0);
+    smr = FIELD_DP16(smr, SMR, STS, 0);
+    smr = FIELD_DP16(smr, SMR, CCS, 0);
+    smr = FIELD_DP16(smr, SMR, CKS, ck);
+
+    qtest_writew(s, A_SMR00, smr);
+}
+
+static void setup_scr(QTestState *s, bool is_tx, bool is_rx, uint8_t parity_type, uint8_t stopbits, uint8_t bitsize) {
+    uint16_t scr = 0x0004;
+
+    switch(bitsize) {
+        case 7:
+            scr = FIELD_DP16(scr, SCR, DLS, 2);
+            break;
+        case 8: 
+            scr = FIELD_DP16(scr, SCR, DLS, 3);
+            break;
+        case 9:
+            scr = FIELD_DP16(scr, SCR, DLS, 1);
+            break;
+        default:
+            g_assert_not_reached();
+    }
+
+    scr = FIELD_DP16(scr, SCR, SLC, stopbits);
+    scr = FIELD_DP16(scr, SCR, DIR, 1);
+    scr = FIELD_DP16(scr, SCR, PTC, parity_type);
+    scr = FIELD_DP16(scr, SCR, EOC, 0);
+    scr = FIELD_DP16(scr, SCR, CKP, 0);
+    scr = FIELD_DP16(scr, SCR, DAP, 0);
+    scr = FIELD_DP16(scr, SCR, RXE, is_rx ? 1 : 0);
+    scr = FIELD_DP16(scr, SCR, TXE, is_tx ? 1 : 0);
+
+    qtest_writew(s, A_SCR00, scr);
+}
+
+static bool get_irq_flag(QTestState *s, const IRQSource source) {
+    switch(source) {
+        case IRQ_STIF0:
+            return !!extract16(qtest_readw(s, A_IF0), 13, 1);
+        case IRQ_SRIF0:
+            return !!extract16(qtest_readw(s, A_IF1), 4, 1);
+        case IRQ_SREIF0:
+            return !!extract16(qtest_readw(s, A_IF0), 15, 1);
+        case IRQ_STIF1:
+            return !!extract16(qtest_readw(s, A_IF1), 0, 1);
+        case IRQ_SRIF1:
+            return !!extract16(qtest_readw(s, A_IF1), 1, 0);
+        case IRQ_SREIF1:
+            return !!extract16(qtest_readw(s, A_IF1), 2, 1);
+        case IRQ_STIF2:
+            return !!extract16(qtest_readw(s, A_IF0), 0, 1);
+        case IRQ_SRIF2:
+            return !!extract16(qtest_readw(s, A_IF0), 1, 1);
+        case IRQ_SREIF2:
+            return !!extract16(qtest_readw(s, A_IF0), 2, 1);
+        case IRQ_STIF3:
+            return !!extract16(qtest_readw(s, A_IF1), 12, 1);
+        case IRQ_SRIF3:
+            return !!extract16(qtest_readw(s, A_IF1), 13, 1);
+        case IRQ_SREIF3:
+            return !!extract16(qtest_readw(s, A_IF2), 13, 1);
+    }
+
+    return 0;
+}
+
+static void set_irq_flag_impl(QTestState *s, const uint32_t addr, const uint8_t flag, const uint8_t pos)
+{
+    uint16_t irq = qtest_readw(s, addr);
+    irq = deposit32(irq, pos, 1, flag);
+    qtest_writew(s, addr, irq);
+}
+
+static void set_irq_flag(QTestState *s, const IRQSource source, bool flag) {
+    uint8_t value = flag ? 0x0001 : 0x0000;
+
+    switch(source) {
+        case IRQ_STIF0:
+            set_irq_flag_impl(s, A_IF0, value, 13); break;
+        case IRQ_SRIF0:
+            set_irq_flag_impl(s, A_IF1, value, 4); break;
+        case IRQ_SREIF0:
+            set_irq_flag_impl(s, A_IF0, value, 15); break;
+        case IRQ_STIF1:
+            set_irq_flag_impl(s, A_IF1, value, 0); break;
+        case IRQ_SRIF1:
+            set_irq_flag_impl(s, A_IF1, value, 1); break;
+        case IRQ_SREIF1:
+            set_irq_flag_impl(s, A_IF1, value, 2); break;
+        case IRQ_STIF2:
+            set_irq_flag_impl(s, A_IF0, value, 0); break;
+        case IRQ_SRIF2:
+            set_irq_flag_impl(s, A_IF0, value, 1); break;
+        case IRQ_SREIF2:
+            set_irq_flag_impl(s, A_IF0, value, 2); break;
+        case IRQ_STIF3:
+            set_irq_flag_impl(s, A_IF1, value, 12); break;
+        case IRQ_SRIF3:
+            set_irq_flag_impl(s, A_IF1, value, 13); break;
+        case IRQ_SREIF3:
+            set_irq_flag_impl(s, A_IF2, value, 13); break;
+    }
+}
+
+static void setup_ss(QTestState *s, uint8_t channel) {
+    qtest_writew(s, A_SS0, 1 << channel);
+}
+
+static uint16_t get_payload(QTestState *s) {
+    QDict *response = qtest_qmp(s, 
+        "{ 'execute': 'qom-get', "
+        "  'arguments': { "
+        "    'path': '/machine', "
+        "    'property': 'sau-tx[0].payload' "
+        "}}"
+    );
+
+    return qdict_get_int(response, "return");
+}
+
+static uint8_t get_stopbits(QTestState *s) {
+    QDict *response = qtest_qmp(s, 
+        "{ 'execute': 'qom-get', "
+        "  'arguments': { "
+        "    'path': '/machine', "
+        "    'property': 'sau-tx[0].stopbits' "
+        "}}"
+    );
+
+    return qdict_get_int(response, "return");
+}
+
+static UartParity get_parity(QTestState *s) {
+    QDict *response = qtest_qmp(s, 
+        "{ 'execute': 'qom-get', "
+        "  'arguments': { "
+        "    'path': '/machine', "
+        "    'property': 'sau-tx[0].parity' "
+        "}}"
+    );
+
+    return (UartParity)qdict_get_int(response, "return");
+}
+
+static void validate_sau_tx(QTestState *s, uint16_t payload, uint8_t stopbits, UartParity parity) {
+    g_assert_cmpuint(get_payload(s), ==, payload);
+    g_assert_cmpuint(get_stopbits(s), ==, stopbits);
+    g_assert_cmpuint(get_parity(s), ==, parity);
+}
+
+static void test_rl78_sau_single_send_byte(void)
 {
     QTestState *s = qtest_init("-M qtest -nographic");
+    qtest_system_reset(s);
 
+    setup_smr(s, 0, 0);
+    setup_scr(s, true, false, 0, 1, 8);
     setup_sau(s);
-    uint16_t ss = 0x0000;
-    ss = FIELD_DP16(ss, SS, SS0, 1);
-    qtest_writew(s, A_SS0, ss);
+    setup_ss(s, 0);
  
     // send byte
     qtest_writew(s, A_SDR00, 'a');
@@ -215,17 +379,18 @@ static void test_rl78_sau_send_byte(void)
     uint16_t ssr = qtest_readw(s, A_SSR00);
     g_assert_cmpuint(FIELD_EX16(ssr, SSR, TSF), ==, 0);
 
-    // TODO: Check Transmit Data
+    validate_sau_tx(s, 'a', 1, UART_PARITY_NONE);
 }
 
 static void test_rl78_sau_continuous_send_byte(void)
 {
     QTestState *s = qtest_init("-M qtest -nographic");
+    qtest_system_reset(s);
 
+    setup_smr(s, 0, 1);
+    setup_scr(s, true, false, 0, 1, 8);
     setup_sau(s);
-    uint16_t ss = 0x0000;
-    ss = FIELD_DP16(ss, SS, SS0, 1);
-    qtest_writew(s, A_SS0, ss);
+    setup_ss(s, 0);
 
     // First byte is moved into a shift register immediately, so BFF bit is not asserted
     // Note: Actual MCU has delay to move data into a shift register, so BFF is asserted in a short period.
@@ -233,11 +398,14 @@ static void test_rl78_sau_continuous_send_byte(void)
     uint16_t ssr0 = qtest_readw(s, A_SSR00);
     g_assert_cmpuint(FIELD_EX16(ssr0, SSR, BFF), ==, 0);
     g_assert_cmpuint(FIELD_EX16(ssr0, SSR, OVF), ==, 0);
+    validate_sau_tx(s, 'a', 1, UART_PARITY_NONE);
 
     qtest_writew(s, A_SDR00, 0x0000 | 'b');
     uint16_t ssr1 = qtest_readw(s, A_SSR00);
     g_assert_cmpuint(FIELD_EX16(ssr1, SSR, BFF), ==, 1);
     g_assert_cmpuint(FIELD_EX16(ssr1, SSR, OVF), ==, 0);
+    // 'a' is still transmitted, so payload is 'a'
+    validate_sau_tx(s, 'a', 1, UART_PARITY_NONE);
 
     // Check for OVF bit to be asserted if SDR has valid data
     qtest_writew(s, A_SDR00, 0x0000 | 'c');
@@ -250,8 +418,55 @@ static void test_rl78_sau_continuous_send_byte(void)
     uint16_t ssr3 = qtest_readw(s, A_SSR00);
     g_assert_cmpuint(FIELD_EX16(ssr3, SSR, BFF), ==, 0);
     g_assert_cmpuint(FIELD_EX16(ssr3, SSR, OVF), ==, 1);
+    validate_sau_tx(s, 'c', 1, UART_PARITY_NONE);
+}
 
-    // TODO: Check Transmit Data
+static void test_rl78_sau_single_send_byte_irq(void)
+{
+    QTestState *s = qtest_init("-M qtest -nographic");
+
+    setup_smr(s, 1, 0);
+    setup_scr(s, true, false, 0, 1, 8);
+    setup_sau(s);
+    setup_ss(s, 0);
+ 
+    // send byte
+    qtest_writew(s, A_SDR00, 'a');
+
+    // IRQ is asserted after transmission period.
+    g_assert_cmpuint(get_irq_flag(s, IRQ_STIF0), ==, 0);
+    qtest_clock_step_next(s);
+    g_assert_cmpuint(get_irq_flag(s, IRQ_STIF0), ==, 1);
+
+    // Clear IRQ flag
+    set_irq_flag(s, IRQ_STIF0, false);
+    g_assert_cmpuint(get_irq_flag(s, IRQ_STIF0), ==, 0);
+
+    qtest_writew(s, A_SDR00, 'b');
+    qtest_clock_step_next(s);
+    g_assert_cmpuint(get_irq_flag(s, IRQ_STIF0), ==, 1);
+}
+
+static void test_rl78_sau_continueous_send_byte_irq(void)
+{
+    QTestState *s = qtest_init("-M qtest -nographic");
+    qtest_system_reset(s);
+
+    setup_smr(s, 1, 1);
+    setup_scr(s, true, false, 0, 1, 8);
+    setup_sau(s);
+    setup_ss(s, 0);
+
+    // In continuous mode, IRQ is asserted immediately if transmission is idle.
+    qtest_writew(s, A_SDR00, 'a');
+    g_assert_cmpuint(get_irq_flag(s, IRQ_STIF0), ==, 1);
+
+    set_irq_flag(s, IRQ_STIF0, false);
+    qtest_writew(s, A_SDR00, 'b');
+    g_assert_cmpuint(get_irq_flag(s, IRQ_STIF0), ==, 0);
+
+    qtest_clock_step_next(s);
+    g_assert_cmpuint(get_irq_flag(s, IRQ_STIF0), ==, 1);
 }
 
 int main(int argc, char **argv)
@@ -260,8 +475,10 @@ int main(int argc, char **argv)
     
     g_test_init(&argc, &argv, NULL);
 
-    qtest_add_func("/rl78/sau/send_byte", test_rl78_sau_send_byte);
+    qtest_add_func("/rl78/sau/single_send_byte", test_rl78_sau_single_send_byte);
     qtest_add_func("/rl78/sau/continuous_send_byte", test_rl78_sau_continuous_send_byte);
+    qtest_add_func("/rl78/sau/single_send_byte_irq", test_rl78_sau_single_send_byte_irq);
+    qtest_add_func("/rl78/sau/continuous_send_byte_irq", test_rl78_sau_continueous_send_byte_irq);
 
     ret = g_test_run();
 

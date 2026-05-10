@@ -138,11 +138,11 @@ static uint32_t rl78_sau_send_bitlength(RL78SAUState *s, uint32_t channel)
 
 static void rl78_sau_send_byte(RL78SAUState *s, uint channel)
 {
-    const uint32_t clk_duration_ns =
-        (1000 * 1000 * 1000) / s->fTCLK_hz[channel];
-    const uint32_t bitlength        = rl78_sau_send_bitlength(s, channel);
-    const uint32_t send_duration_ns = bitlength * clk_duration_ns;
+    const uint64_t clk_duration_ns  = CLOCK_PERIOD_FROM_HZ(s->fTCLK_hz[channel]);
+    const uint64_t bitlength        = rl78_sau_send_bitlength(s, channel);
+    const uint64_t send_duration_ns = (bitlength * clk_duration_ns) >> 32;
     uint16_t txdata                 = s->sdr[channel] & 0x01FF;
+
     switch(FIELD_EX16(s->scr[channel], SCR, DLS)) {
         default:
         case 3:
@@ -206,16 +206,18 @@ static void rl78_sau_send_byte(RL78SAUState *s, uint channel)
 
 static void rl78_sau_update_fTCLK(RL78SAUState *s, int channel)
 {
-    const uint32_t clk = clock_get_hz(s->inclk);
+    const uint64_t clk = clock_get_hz(s->inclk);
 
     const uint8_t prs0 = FIELD_EX16(s->sps, SPS, PRS0);
     const uint8_t prs1 = FIELD_EX16(s->sps, SPS, PRS1);
 
-    const uint32_t ck0   = clk / (1 << prs0);
-    const uint32_t ck1   = clk / (1 << prs1);
-    const uint32_t fMCK  = FIELD_EX16(s->smr[channel], SMR, CKS) ? ck1 : ck0;
+    const uint64_t ck0   = clk / (1 << prs0);
+    const uint64_t ck1   = clk / (1 << prs1);
+    const uint64_t fMCK  = FIELD_EX16(s->smr[channel], SMR, CKS) ? ck1 : ck0;
+    const uint64_t sdr = (s->sdr[channel] >> 9) & 0x7F;
+    const uint64_t fMCK_div = fMCK / (sdr + 1) / 2;
     // TODO: support external clock source
-    const uint32_t fTCLK = FIELD_EX16(s->smr[channel], SMR, CCS) ? 0 : fMCK;
+    const uint64_t fTCLK = FIELD_EX16(s->smr[channel], SMR, CCS) ? 0 : fMCK_div;
 
     s->fTCLK_hz[channel] = fTCLK;
 }
@@ -288,7 +290,7 @@ static void rl78_sau_update_sdr(RL78SAUState *s, uint16_t value, uint channel)
     if (is_running) {
         value &= 0x01FF;
         value |= s->sdr[channel] & 0xFE00;
-    }
+    } 
 
     const bool is_data_changed = (value & 0x01FF) != (s->sdr[channel] & 0x01FF);
     if (!is_running && is_data_changed) {
@@ -296,10 +298,16 @@ static void rl78_sau_update_sdr(RL78SAUState *s, uint16_t value, uint channel)
     }
 
     s->sdr[channel] = value;
+
+    if (!is_running) {
+        rl78_sau_update_fTCLK(s, channel);
+    }
+
     if (FIELD_EX16(s->ssr[channel], SSR, BFF)) {
         // TODO: assertion
         s->ssr[channel] = FIELD_DP16(s->ssr[channel], SSR, OVF, 1);
     }
+
     if (FIELD_EX16(s->scr[channel], SCR, TXE)) {
         s->ssr[channel] = FIELD_DP16(s->ssr[channel], SSR, BFF, 1);
     }

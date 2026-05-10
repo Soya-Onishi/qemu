@@ -566,6 +566,12 @@ static void test_rl78_sau_zero_parity_tx(void)
     // TODO: implement this test
 }
 
+G_GNUC_UNUSED
+static void test_rl78_sau_little_endian_tx(void)
+{
+    // TODO: implement this test
+}
+
 static void test_rl78_sau_receive_byte(void) 
 {
     QTestState *s = qtest_init("-M qtest -nographic");

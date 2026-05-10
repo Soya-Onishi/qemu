@@ -32,6 +32,11 @@ struct RL78QTestMachineState {
 
     // For ADC
     TransmitPort adc_input_ports[3];
+
+    // For SAU
+    uint16_t uart_payload[2][4];
+    uint8_t uart_stopbits[2][4];
+    UartParity uart_parity[2][4];
 };
 typedef struct RL78QTestMachineState RL78QTestMachineState;
 
@@ -40,7 +45,8 @@ typedef struct RL78QTestMachineState RL78QTestMachineState;
 DECLARE_OBJ_CHECKERS(RL78QTestMachineState, RL78QTestMachineClass,
                      RL78_QTEST_MACHINE, TYPE_RL78_QTEST_MACHINE)
 
-static void set_uint8(Object *obj, Visitor *v, const char *name, void *opaque,
+
+static void set_adc_in(Object *obj, Visitor *v, const char *name, void *opaque,
                       Error **errp)
 {
     TransmitPort *port = opaque;
@@ -56,6 +62,24 @@ static void set_uint8(Object *obj, Visitor *v, const char *name, void *opaque,
     transmit_port_payload(port, &payload);
 }
 
+static void get_sau_tx(Object *obj, uint64_t index, const void *payload)
+{
+    RL78QTestMachineState *s = RL78_QTEST_MACHINE(obj);
+    WirePayload *wire_payload = (WirePayload *)payload;
+
+    if(wire_payload->type != WIRE_PAYLOAD_TYPE_SERIAL) {
+        return;
+    }
+
+    if(wire_payload->serial.type != SERIAL_PACKET_TYPE_UART) {
+        return;
+    }
+
+    s->uart_payload[0][index] = wire_payload->serial.uart.payload;
+    s->uart_stopbits[0][index] = wire_payload->serial.uart.stopbits;
+    s->uart_parity[0][index] = wire_payload->serial.uart.parity;
+}
+
 static void rl78_qtest_init(MachineState *machine)
 {
     RL78QTestMachineState *s   = RL78_QTEST_MACHINE(machine);
@@ -68,10 +92,29 @@ static void rl78_qtest_init(MachineState *machine)
     transmit_port_add(OBJECT(machine), "adc-in-port", s->adc_input_ports, ARRAY_SIZE(s->adc_input_ports));
     for(int i = 0; i < ARRAY_SIZE(s->adc_input_ports); i++) {
         char* name = g_strdup_printf("adc-in[%d]", i);
-        object_property_add(OBJECT(machine), name, "double", NULL, set_uint8, NULL, &s->adc_input_ports[i]);
+        object_property_add(OBJECT(machine), name, "double", NULL, set_adc_in, NULL, &s->adc_input_ports[i]);
         g_free(name);
 
         connect_port(OBJECT(machine), "adc-in-port", i, OBJECT(&s->mcu), "adc_in", i);
+    }
+
+    receive_port_add(OBJECT(machine), "sau-tx-port", get_sau_tx, RL78_SAU_CHANNEL_NUM);
+    for(int i = 0; i < RL78_SAU_CHANNEL_NUM; i++) {
+        char* name = g_strdup_printf("sau-tx[%d]", i);
+        char* payload_name = g_strdup_printf("%s.payload", name);
+        char* stopbits_name = g_strdup_printf("%s.stopbits", name);
+        char* parity_name = g_strdup_printf("%s.parity", name);
+
+        object_property_add_uint16_ptr(OBJECT(machine), payload_name, &s->uart_payload[0][i], OBJ_PROP_FLAG_READ);
+        object_property_add_uint8_ptr(OBJECT(machine), stopbits_name, &s->uart_stopbits[0][i], OBJ_PROP_FLAG_READ);
+        object_property_add_uint8_ptr(OBJECT(machine), parity_name, (uint8_t*)&s->uart_parity[0][i], OBJ_PROP_FLAG_READ);
+
+        g_free(name);
+        g_free(payload_name);
+        g_free(stopbits_name);
+        g_free(parity_name);
+
+        connect_port(OBJECT(&s->mcu), "sau[0]_tx", i, OBJECT(machine), "sau-tx-port", i);
     }
 }
 

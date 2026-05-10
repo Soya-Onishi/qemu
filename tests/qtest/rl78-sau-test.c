@@ -572,6 +572,60 @@ static void test_rl78_sau_little_endian_tx(void)
     // TODO: implement this test
 }
 
+static void test_rl78_sau_7bit_data_tx(void)
+{
+    QTestState *s = qtest_init("-M qtest -nographic");
+    qtest_system_reset(s);
+
+    setup_smr(s, A_SMR00, 0, 1);
+    setup_scr(s, A_SCR00, true, false, 0, 1, 7);
+    setup_sau(s);
+    setup_ss(s, 0);
+
+    qtest_writew(s, A_SDR00, 0x0155);
+    validate_sau_tx(s, 0, 0x55, 1, UART_PARITY_NONE) ;
+
+    qtest_clock_step_next(s);
+    qtest_writew(s, A_SDR00, 0x01AA);
+    validate_sau_tx(s, 0, 0x2A, 1, UART_PARITY_NONE) ;
+}
+
+static void test_rl78_sau_8bit_data_tx(void)
+{
+    QTestState *s = qtest_init("-M qtest -nographic");
+    qtest_system_reset(s);
+
+    setup_smr(s, A_SMR00, 0, 1);
+    setup_scr(s, A_SCR00, true, false, 0, 1, 8);
+    setup_sau(s);
+    setup_ss(s, 0);
+
+    qtest_writew(s, A_SDR00, 0x0155);
+    validate_sau_tx(s, 0, 0x055, 1, UART_PARITY_NONE) ;
+
+    qtest_clock_step_next(s);
+    qtest_writew(s, A_SDR00, 0x01AA);
+    validate_sau_tx(s, 0, 0x0AA, 1, UART_PARITY_NONE) ;
+}
+
+static void test_rl78_sau_9bit_data_tx(void)
+{
+    QTestState *s = qtest_init("-M qtest -nographic");
+    qtest_system_reset(s);
+
+    setup_smr(s, A_SMR00, 0, 1);
+    setup_scr(s, A_SCR00, true, false, 0, 1, 9);
+    setup_sau(s);
+    setup_ss(s, 0);
+
+    qtest_writew(s, A_SDR00, 0x0155);
+    validate_sau_tx(s, 0, 0x155, 1, UART_PARITY_NONE) ;
+
+    qtest_clock_step_next(s);
+    qtest_writew(s, A_SDR00, 0x01AA);
+    validate_sau_tx(s, 0, 0x1AA, 1, UART_PARITY_NONE) ;
+}
+
 static void test_rl78_sau_receive_byte(void) 
 {
     QTestState *s = qtest_init("-M qtest -nographic");
@@ -601,6 +655,10 @@ int main(int argc, char **argv)
     qtest_add_func("/rl78/sau/2stopbit_tx", test_rl78_sau_2stopbit_tx);
     qtest_add_func("/rl78/sau/even_parity_tx", test_rl78_sau_even_parity_tx);
     qtest_add_func("/rl78/sau/odd_parity_tx", test_rl78_sau_odd_parity_tx);
+
+    qtest_add_func("/rl78/sau/7bit_data_tx", test_rl78_sau_7bit_data_tx);
+    qtest_add_func("/rl78/sau/8bit_data_tx", test_rl78_sau_8bit_data_tx);
+    qtest_add_func("/rl78/sau/9bit_data_tx", test_rl78_sau_9bit_data_tx);
 
     qtest_add_func("/rl78/sau/continuous_send_byte_irq", test_rl78_sau_continueous_send_byte_irq);
 

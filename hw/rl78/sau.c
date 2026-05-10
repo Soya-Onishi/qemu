@@ -143,6 +143,18 @@ static void rl78_sau_send_byte(RL78SAUState *s, uint channel)
     const uint32_t bitlength        = rl78_sau_send_bitlength(s, channel);
     const uint32_t send_duration_ns = bitlength * clk_duration_ns;
     uint16_t txdata                 = s->sdr[channel] & 0x01FF;
+    switch(FIELD_EX16(s->scr[channel], SCR, DLS)) {
+        default:
+        case 3:
+            txdata = txdata & 0x0FF;
+            break;
+        case 2:
+            txdata = txdata & 0x07F;
+            break;
+        case 1:
+            txdata = txdata & 0x1FF;
+            break;
+    }
 
     const bool is_se  = !!(s->se & (1 << channel));
     const bool is_soe = !!(s->soe & (1 << channel));

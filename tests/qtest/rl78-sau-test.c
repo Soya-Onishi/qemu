@@ -499,7 +499,72 @@ static void test_rl78_sau_continueous_send_byte_irq(void)
     g_assert_cmpuint(get_irq_flag(s, IRQ_STIF0), ==, 1);
 }
 
+G_GNUC_UNUSED
+static void test_rl78_sau_0stopbit_tx(void) 
+{
+    // TODO: implement this test
+}
 
+static void test_rl78_sau_2stopbit_tx(void) 
+{
+    QTestState *s = qtest_init("-M qtest -nographic");
+    qtest_system_reset(s);
+
+    setup_smr(s, A_SMR00, 0, 1);
+    setup_scr(s, A_SCR00, true, false, 0, 2, 8);
+    setup_sau(s);
+    setup_ss(s, 0);
+
+    qtest_writew(s, A_SDR00, 'a');
+    validate_sau_tx(s, 0, 'a', 2, UART_PARITY_NONE) ;
+
+    qtest_clock_step_next(s);
+    qtest_writew(s, A_SDR00, 'b');
+    validate_sau_tx(s, 0, 'b', 2, UART_PARITY_NONE) ;
+
+}
+
+static void test_rl78_sau_even_parity_tx(void) 
+{
+    QTestState *s = qtest_init("-M qtest -nographic");
+    qtest_system_reset(s);
+
+    setup_smr(s, A_SMR00, 0, 1);
+    setup_scr(s, A_SCR00, true, false, 2, 1, 8);
+    setup_sau(s);
+    setup_ss(s, 0);
+
+    qtest_writew(s, A_SDR00, 'a');
+    validate_sau_tx(s, 0, 'a', 1, UART_PARITY_EVEN) ;
+
+    qtest_clock_step_next(s);
+    qtest_writew(s, A_SDR00, 'b');
+    validate_sau_tx(s, 0, 'b', 1, UART_PARITY_EVEN) ;
+}
+
+static void test_rl78_sau_odd_parity_tx(void)
+{
+    QTestState *s = qtest_init("-M qtest -nographic");
+    qtest_system_reset(s);
+
+    setup_smr(s, A_SMR00, 0, 1);
+    setup_scr(s, A_SCR00, true, false, 3, 1, 8);
+    setup_sau(s);
+    setup_ss(s, 0);
+
+    qtest_writew(s, A_SDR00, 'a');
+    validate_sau_tx(s, 0, 'a', 1, UART_PARITY_ODD) ;
+
+    qtest_clock_step_next(s);
+    qtest_writew(s, A_SDR00, 'b');
+    validate_sau_tx(s, 0, 'b', 1, UART_PARITY_ODD) ;
+}
+
+G_GNUC_UNUSED
+static void test_rl78_sau_zero_parity_tx(void)
+{
+    // TODO: implement this test
+}
 
 static void test_rl78_sau_receive_byte(void) 
 {
@@ -526,6 +591,11 @@ int main(int argc, char **argv)
     qtest_add_func("/rl78/sau/single_send_byte", test_rl78_sau_single_send_byte);
     qtest_add_func("/rl78/sau/continuous_send_byte", test_rl78_sau_continuous_send_byte);
     qtest_add_func("/rl78/sau/single_send_byte_irq", test_rl78_sau_single_send_byte_irq);
+
+    qtest_add_func("/rl78/sau/2stopbit_tx", test_rl78_sau_2stopbit_tx);
+    qtest_add_func("/rl78/sau/even_parity_tx", test_rl78_sau_even_parity_tx);
+    qtest_add_func("/rl78/sau/odd_parity_tx", test_rl78_sau_odd_parity_tx);
+
     qtest_add_func("/rl78/sau/continuous_send_byte_irq", test_rl78_sau_continueous_send_byte_irq);
 
     qtest_add_func("/rl78/sau/receive_byte", test_rl78_sau_receive_byte);

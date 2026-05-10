@@ -6,6 +6,7 @@
 #include "hw/core/qdev-properties-system.h"
 #include "hw/core/qdev-clock.h"
 #include "hw/core/irq.h"
+#include "qemu/error-report.h"
 #include "qemu/notify.h"
 #include "chardev/char.h"
 #include "qemu/rcu.h"
@@ -735,11 +736,17 @@ static void rl78_sau_rx_irq(Object* instance, uint64_t index, const void* payloa
         // If not enabled, ignore the received data
         return;
     }
+
+    if(is_uart && extract16(s->scr[index], 1, 2) == 1) {
+        qemu_log_mask(LOG_GUEST_ERROR, "When using UART mode, SMRm%lu and SMRm%lu must be UART", index - 1, index);
+        // only report error, and continue processing
+    }
     
     if(FIELD_EX16(s->scr[index], SCR, RXE) == 0) {
         // If not RX enabled, ignore the received data
+        qemu_log_mask(LOG_GUEST_ERROR, "SCRm%lu is not RX enabled.\n", index);
         return;
-    }
+    } 
 
     // Actual MCU, TSF bit is asserted when receiving data, 
     // but QEMU receives byte data at once, so TSF bit is not asserted.

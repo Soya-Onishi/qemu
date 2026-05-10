@@ -1,6 +1,7 @@
 #include "qemu/osdep.h"
 #include "libqtest.h"
 #include "libqtest-single.h"
+#include "hw/core/clock.h"
 #include "hw/core/registerfields.h"
 #include "hw/rl78/intercomm.h"
 
@@ -634,6 +635,78 @@ static void test_rl78_sau_9bit_ignored(void)
     // TODO: implement this test
 }
 
+static void test_rl78_sau_clock_38400bps(void)
+{
+    // TODO: Currently, fCLK is expected as 32MHz.
+    // If this frequency is changed or arbitrary, fix here.
+
+    QTestState *s = qtest_init("-M qtest -nographic");
+    qtest_system_reset(s);
+
+    setup_scr(s, A_SCR00, true, false, 0, 1, 8);
+    setup_sau(s);
+   
+    // SPS: CK00 = 8MHz, CK01 = 4MHz
+    uint16_t sps = 0x0000;
+    sps = FIELD_DP16(sps, SPS, PRS0, 2);
+    sps = FIELD_DP16(sps, SPS, PRS1, 3);
+    qtest_writew(s, A_SPS0, sps);
+
+    // Use CK00
+    // 38400bps = 8Mhz / (SDR[15:9] + 1) / 2
+    // SDR[15:9] = (8 * 1000 * 1000) / 38400 / 2 - 1 = 103.xxxx = 103
+    setup_smr(s, A_SMR00, 0, 0);
+    qtest_writew(s, A_SDR00, 103 << 9);
+    setup_ss(s, 0);
+
+    set_irq_flag(s, IRQ_STIF0, false);
+    qtest_writew(s, A_SDR00, 0x0155);
+
+    // 8MHz / (103 + 1) / 2 = 38461bps
+    const uint64_t period = (CLOCK_PERIOD_FROM_HZ(38461) * 10) >> 32;
+    qtest_clock_step(s, period - 1);
+    g_assert_cmpuint(get_irq_flag(s, IRQ_STIF0), ==, 0);
+
+    qtest_clock_step(s, 1);
+    g_assert_cmpuint(get_irq_flag(s, IRQ_STIF0), ==, 1);
+}
+
+static void test_rl78_sau_clock_57600bps(void)
+{
+    // TODO: Currently, fCLK is expected as 32MHz.
+    // If this frequency is changed or arbitrary, fix here.
+
+    QTestState *s = qtest_init("-M qtest -nographic");
+    qtest_system_reset(s);
+
+    setup_scr(s, A_SCR00, true, false, 0, 1, 8);
+    setup_sau(s);
+   
+    // SPS: CK00 = 8MHz, CK01 = 16MHz
+    uint16_t sps = 0x0000;
+    sps = FIELD_DP16(sps, SPS, PRS0, 2);
+    sps = FIELD_DP16(sps, SPS, PRS1, 1);
+    qtest_writew(s, A_SPS0, sps);
+
+    // Use CK01
+    // 115200bps = 16Mhz / (SDR[15:9] + 1) / 2
+    // SDR[15:9] = (16 * 1000 * 1000) / 115200 / 2 - 1 = 68.xxxx = 68
+    setup_smr(s, A_SMR00, 1, 0);
+    qtest_writew(s, A_SDR00, 68 << 9);
+    setup_ss(s, 0);
+
+    set_irq_flag(s, IRQ_STIF0, false);
+    qtest_writew(s, A_SDR00, 0x0155);
+
+    // 16MHz / (68 + 1) / 2 = 115942bps
+    const uint64_t period = (CLOCK_PERIOD_FROM_HZ(115942) * 10) >> 32;
+    qtest_clock_step(s, period - 1);
+    g_assert_cmpuint(get_irq_flag(s, IRQ_STIF0), ==, 0);
+
+    qtest_clock_step(s, 1);
+    g_assert_cmpuint(get_irq_flag(s, IRQ_STIF0), ==, 1);
+}
+
 static void test_rl78_sau_receive_byte(void) 
 {
     QTestState *s = qtest_init("-M qtest -nographic");
@@ -668,10 +741,12 @@ int main(int argc, char **argv)
     qtest_add_func("/rl78/sau/8bit_data_tx", test_rl78_sau_8bit_data_tx);
     qtest_add_func("/rl78/sau/9bit_data_tx", test_rl78_sau_9bit_data_tx);
 
+    qtest_add_func("/rl78/sau/clock_38400bps", test_rl78_sau_clock_38400bps);
+    qtest_add_func("/rl78/sau/clock_57600bps", test_rl78_sau_clock_57600bps);
+
     qtest_add_func("/rl78/sau/continuous_send_byte_irq", test_rl78_sau_continueous_send_byte_irq);
 
     qtest_add_func("/rl78/sau/receive_byte", test_rl78_sau_receive_byte);
-
     ret = g_test_run();
 
     qtest_end();

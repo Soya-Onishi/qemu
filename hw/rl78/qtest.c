@@ -34,9 +34,13 @@ struct RL78QTestMachineState {
     TransmitPort adc_input_ports[3];
 
     // For SAU
-    uint16_t uart_payload[2][4];
-    uint8_t uart_stopbits[2][4];
-    UartParity uart_parity[2][4];
+    uint16_t tx_uart_payload[2][4];
+    uint8_t tx_uart_stopbits[2][4];
+    UartParity tx_uart_parity[2][4];
+    
+    TransmitPort sau_rx_ports[2][4];
+    uint8_t rx_uart_stopbits;
+    UartParity rx_uart_parity;
 };
 typedef struct RL78QTestMachineState RL78QTestMachineState;
 
@@ -75,9 +79,33 @@ static void get_sau_tx(Object *obj, uint64_t index, const void *payload)
         return;
     }
 
-    s->uart_payload[0][index] = wire_payload->serial.uart.payload;
-    s->uart_stopbits[0][index] = wire_payload->serial.uart.stopbits;
-    s->uart_parity[0][index] = wire_payload->serial.uart.parity;
+    s->tx_uart_payload[0][index] = wire_payload->serial.uart.payload;
+    s->tx_uart_stopbits[0][index] = wire_payload->serial.uart.stopbits;
+    s->tx_uart_parity[0][index] = wire_payload->serial.uart.parity;
+}
+
+static void set_sau_rx(Object *obj, Visitor *v, const char *name, void *opaque,
+                      Error **errp)
+{
+    TransmitPort *port = opaque;
+    RL78QTestMachineState *s = RL78_QTEST_MACHINE(obj);
+    uint16_t value;
+
+    visit_type_uint16(v, name, &value, errp);
+    WirePayload payload = {
+        .type = WIRE_PAYLOAD_TYPE_SERIAL,
+        .serial = {
+            .type = SERIAL_PACKET_TYPE_UART,
+            .uart = {
+                .payload = value,
+                .stopbits = s->rx_uart_stopbits,
+                .parity = s->rx_uart_parity,
+            },
+        },
+    };
+
+    qemu_log("set_sau_rx: payload: %d, stopbits: %d, parity: %d\n", value, s->rx_uart_stopbits, s->rx_uart_parity);
+    transmit_port_payload(port, &payload);
 }
 
 static void rl78_qtest_init(MachineState *machine)
@@ -99,22 +127,37 @@ static void rl78_qtest_init(MachineState *machine)
     }
 
     receive_port_add(OBJECT(machine), "sau-tx-port", get_sau_tx, RL78_SAU_CHANNEL_NUM);
+    transmit_port_add(OBJECT(machine), "sau-rx-port", s->sau_rx_ports[0], RL78_SAU_CHANNEL_NUM);
     for(int i = 0; i < RL78_SAU_CHANNEL_NUM; i++) {
-        char* name = g_strdup_printf("sau-tx[%d]", i);
-        char* payload_name = g_strdup_printf("%s.payload", name);
-        char* stopbits_name = g_strdup_printf("%s.stopbits", name);
-        char* parity_name = g_strdup_printf("%s.parity", name);
+        char* tx_name = g_strdup_printf("sau-tx[%d]", i);
+        char* tx_payload_name = g_strdup_printf("%s.payload", tx_name);
+        char* tx_stopbits_name = g_strdup_printf("%s.stopbits", tx_name);
+        char* tx_parity_name = g_strdup_printf("%s.parity", tx_name);
 
-        object_property_add_uint16_ptr(OBJECT(machine), payload_name, &s->uart_payload[0][i], OBJ_PROP_FLAG_READ);
-        object_property_add_uint8_ptr(OBJECT(machine), stopbits_name, &s->uart_stopbits[0][i], OBJ_PROP_FLAG_READ);
-        object_property_add_uint8_ptr(OBJECT(machine), parity_name, (uint8_t*)&s->uart_parity[0][i], OBJ_PROP_FLAG_READ);
+        object_property_add_uint16_ptr(OBJECT(machine), tx_payload_name, &s->tx_uart_payload[0][i], OBJ_PROP_FLAG_READWRITE);
+        object_property_add_uint8_ptr(OBJECT(machine), tx_stopbits_name, &s->tx_uart_stopbits[0][i], OBJ_PROP_FLAG_READWRITE);
+        object_property_add_uint8_ptr(OBJECT(machine), tx_parity_name, (uint8_t*)&s->tx_uart_parity[0][i], OBJ_PROP_FLAG_READWRITE);
 
-        g_free(name);
-        g_free(payload_name);
-        g_free(stopbits_name);
-        g_free(parity_name);
+        char* rx_name = g_strdup_printf("sau-rx[%d]", i);
+        char* rx_payload_name = g_strdup_printf("%s.payload", rx_name);
+        char* rx_stopbits_name = g_strdup_printf("%s.stopbits", rx_name);
+        char* rx_parity_name = g_strdup_printf("%s.parity", rx_name);
+
+        object_property_add(OBJECT(machine), rx_payload_name, "uint16", NULL, set_sau_rx, NULL, &s->sau_rx_ports[0][i]);
+        object_property_add_uint8_ptr(OBJECT(machine), rx_stopbits_name, &s->rx_uart_stopbits, OBJ_PROP_FLAG_WRITE);
+        object_property_add_uint8_ptr(OBJECT(machine), rx_parity_name, (uint8_t*)&s->rx_uart_parity, OBJ_PROP_FLAG_WRITE);
+
+        g_free(tx_name);
+        g_free(tx_payload_name);
+        g_free(tx_stopbits_name);
+        g_free(tx_parity_name);
+        g_free(rx_name);
+        g_free(rx_payload_name);
+        g_free(rx_stopbits_name);
+        g_free(rx_parity_name);
 
         connect_port(OBJECT(&s->mcu), "sau[0]_tx", i, OBJECT(machine), "sau-tx-port", i);
+        connect_port(OBJECT(machine), "sau-rx-port", i, OBJECT(&s->mcu), "sau[0]_rx", i);
     }
 }
 

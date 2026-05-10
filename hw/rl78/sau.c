@@ -165,7 +165,23 @@ static void rl78_sau_send_byte(RL78SAUState *s, uint channel)
     payload.serial.type = SERIAL_PACKET_TYPE_UART;
     payload.serial.uart.payload = txdata;
     payload.serial.uart.stopbits = FIELD_EX16(s->scr[channel], SCR, SLC);
-    payload.serial.uart.parity = (UartParity)FIELD_EX16(s->scr[channel], SCR, PTC);
+
+    switch(FIELD_EX16(s->scr[channel], SCR, PTC)) {
+        default:
+        case 0:
+            payload.serial.uart.parity = UART_PARITY_NONE;
+            break;
+        case 1:
+            qemu_log_mask(LOG_UNIMP, "Zero Parity is not supported.");
+            exit(1);
+        case 2:
+            payload.serial.uart.parity = UART_PARITY_EVEN;
+            break;
+        case 3:
+            payload.serial.uart.parity = UART_PARITY_ODD;
+            break;
+    }
+
     transmit_port_payload(&s->tx_ports[channel], &payload);
 
     // TODO: check SO bit for checking valid initial signal status

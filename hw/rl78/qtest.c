@@ -29,6 +29,9 @@ struct RL78QTestMachineState {
 
     /*< public >*/
     RL78G23McuState mcu;
+
+    // For ADC
+    TransmitPort adc_input_ports[3];
 };
 typedef struct RL78QTestMachineState RL78QTestMachineState;
 
@@ -36,6 +39,22 @@ typedef struct RL78QTestMachineState RL78QTestMachineState;
 
 DECLARE_OBJ_CHECKERS(RL78QTestMachineState, RL78QTestMachineClass,
                      RL78_QTEST_MACHINE, TYPE_RL78_QTEST_MACHINE)
+
+static void set_uint8(Object *obj, Visitor *v, const char *name, void *opaque,
+                      Error **errp)
+{
+    TransmitPort *port = opaque;
+    double value;
+
+    visit_type_number(v, name, &value, errp);
+    WirePayload payload = {
+        .type = WIRE_PAYLOAD_TYPE_ANALOG,
+        .analog = {
+            .voltage = value,
+        },
+    };
+    transmit_port_payload(port, &payload);
+}
 
 static void rl78_qtest_init(MachineState *machine)
 {
@@ -45,6 +64,15 @@ static void rl78_qtest_init(MachineState *machine)
     object_initialize_child(OBJECT(machine), "mcu", &s->mcu, rlc->mcu_type);
 
     sysbus_realize(SYS_BUS_DEVICE(&s->mcu), &error_abort);
+
+    transmit_port_add(OBJECT(machine), "adc-in-port", s->adc_input_ports, ARRAY_SIZE(s->adc_input_ports));
+    for(int i = 0; i < ARRAY_SIZE(s->adc_input_ports); i++) {
+        char* name = g_strdup_printf("adc-in[%d]", i);
+        object_property_add(OBJECT(machine), name, "double", NULL, set_uint8, NULL, &s->adc_input_ports[i]);
+        g_free(name);
+
+        connect_port(OBJECT(machine), "adc-in-port", i, OBJECT(&s->mcu), "adc_in", i);
+    }
 }
 
 static void rl78_qtest_class_init(ObjectClass *oc, const void *data)

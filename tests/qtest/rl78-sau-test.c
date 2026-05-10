@@ -626,6 +626,14 @@ static void test_rl78_sau_9bit_data_tx(void)
     validate_sau_tx(s, 0, 0x1AA, 1, UART_PARITY_NONE) ;
 }
 
+
+G_GNUC_UNUSED
+static void test_rl78_sau_9bit_ignored(void)
+{
+    // DLSmn1 in SCR02/SCR03 is always 1. Test here.
+    // TODO: implement this test
+}
+
 static void test_rl78_sau_receive_byte(void) 
 {
     QTestState *s = qtest_init("-M qtest -nographic");

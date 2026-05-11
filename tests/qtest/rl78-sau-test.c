@@ -635,6 +635,85 @@ static void test_rl78_sau_9bit_ignored(void)
     // TODO: implement this test
 }
 
+static void test_rl78_sau_ssr_single_mode_tx(void)
+{
+    uint16_t ssr;
+
+    QTestState *s = qtest_init("-M qtest -nographic");
+    qtest_system_reset(s);
+
+    setup_smr(s, A_SMR00, 0, 0);
+    setup_scr(s, A_SCR00, true, false, 0, 1, 8);
+    setup_sau(s);
+    setup_ss(s, 0);
+
+    qtest_writew(s, A_SDR00, 'a');
+
+    ssr = qtest_readw(s, A_SSR00);
+    g_assert_cmpuint(FIELD_EX16(ssr, SSR, TSF), ==, 1);
+    g_assert_cmpuint(FIELD_EX16(ssr, SSR, BFF), ==, 0);
+    g_assert_cmpuint(FIELD_EX16(ssr, SSR, OVF), ==, 0);
+
+    qtest_clock_step_next(s);
+    ssr = qtest_readw(s, A_SSR00);
+    g_assert_cmpuint(FIELD_EX16(ssr, SSR, TSF), ==, 0);
+    g_assert_cmpuint(FIELD_EX16(ssr, SSR, BFF), ==, 0);
+    g_assert_cmpuint(FIELD_EX16(ssr, SSR, OVF), ==, 0);
+
+    // Even if transmittion is busy, BFF and OVF is not asserted in single mode.
+    qtest_writew(s, A_SDR00, 'b');
+    qtest_writew(s, A_SDR00, 'c');
+    ssr = qtest_readw(s, A_SSR00);
+    g_assert_cmpuint(FIELD_EX16(ssr, SSR, TSF), ==, 1);
+    g_assert_cmpuint(FIELD_EX16(ssr, SSR, BFF), ==, 0);
+    g_assert_cmpuint(FIELD_EX16(ssr, SSR, OVF), ==, 0);
+
+    qtest_writew(s, A_SDR00, 'd');
+    ssr = qtest_readw(s, A_SSR00);
+    g_assert_cmpuint(FIELD_EX16(ssr, SSR, TSF), ==, 1);
+    g_assert_cmpuint(FIELD_EX16(ssr, SSR, BFF), ==, 0);
+    g_assert_cmpuint(FIELD_EX16(ssr, SSR, OVF), ==, 0);
+}
+
+static void test_rl78_sau_ssr_continuous_mode_tx(void)
+{
+    uint16_t ssr;
+
+    QTestState *s = qtest_init("-M qtest -nographic");
+    qtest_system_reset(s);
+
+    setup_smr(s, A_SMR00, 0, 1);
+    setup_scr(s, A_SCR00, true, false, 0, 1, 8);
+    setup_sau(s);
+    setup_ss(s, 0);
+
+    qtest_writew(s, A_SDR00, 'a');
+
+    ssr = qtest_readw(s, A_SSR00);
+    g_assert_cmpuint(FIELD_EX16(ssr, SSR, TSF), ==, 1);
+    g_assert_cmpuint(FIELD_EX16(ssr, SSR, BFF), ==, 0);
+    g_assert_cmpuint(FIELD_EX16(ssr, SSR, OVF), ==, 0);
+
+    qtest_clock_step_next(s);
+    ssr = qtest_readw(s, A_SSR00);
+    g_assert_cmpuint(FIELD_EX16(ssr, SSR, TSF), ==, 0);
+    g_assert_cmpuint(FIELD_EX16(ssr, SSR, BFF), ==, 0);
+    g_assert_cmpuint(FIELD_EX16(ssr, SSR, OVF), ==, 0);
+
+    qtest_writew(s, A_SDR00, 'b');
+    qtest_writew(s, A_SDR00, 'c');
+    ssr = qtest_readw(s, A_SSR00);
+    g_assert_cmpuint(FIELD_EX16(ssr, SSR, TSF), ==, 1);
+    g_assert_cmpuint(FIELD_EX16(ssr, SSR, BFF), ==, 1);
+    g_assert_cmpuint(FIELD_EX16(ssr, SSR, OVF), ==, 0);
+
+    qtest_writew(s, A_SDR00, 'd');
+    ssr = qtest_readw(s, A_SSR00);
+    g_assert_cmpuint(FIELD_EX16(ssr, SSR, TSF), ==, 1);
+    g_assert_cmpuint(FIELD_EX16(ssr, SSR, BFF), ==, 1);
+    g_assert_cmpuint(FIELD_EX16(ssr, SSR, OVF), ==, 1);
+}
+
 static void test_rl78_sau_clock_38400bps(void)
 {
     // TODO: Currently, fCLK is expected as 32MHz.
@@ -723,6 +802,11 @@ static void test_rl78_sau_receive_byte(void)
     g_assert_cmpuint(qtest_readb(s, A_SDR01), ==, 'a');
 }
 
+static void test_rl78_sau_ssr_rx(void)
+{
+    // TODO: implement this test
+}
+
 int main(int argc, char **argv)
 {
     int ret;
@@ -743,6 +827,9 @@ int main(int argc, char **argv)
 
     qtest_add_func("/rl78/sau/clock_38400bps", test_rl78_sau_clock_38400bps);
     qtest_add_func("/rl78/sau/clock_57600bps", test_rl78_sau_clock_57600bps);
+
+    qtest_add_func("/rl78/sau/ssr_single_mode_tx", test_rl78_sau_ssr_single_mode_tx);
+    qtest_add_func("/rl78/sau/ssr_continuous_mode_tx", test_rl78_sau_ssr_continuous_mode_tx);
 
     qtest_add_func("/rl78/sau/continuous_send_byte_irq", test_rl78_sau_continueous_send_byte_irq);
 

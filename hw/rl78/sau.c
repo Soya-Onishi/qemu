@@ -308,7 +308,7 @@ static void rl78_sau_update_sdr(RL78SAUState *s, uint16_t value, uint channel)
         s->ssr[channel] = FIELD_DP16(s->ssr[channel], SSR, OVF, 1);
     }
 
-    if (FIELD_EX16(s->scr[channel], SCR, TXE)) {
+    if (FIELD_EX16(s->scr[channel], SCR, TXE) && (FIELD_EX16(s->smr[channel], SMR, MD) & 1) == 1) {
         s->ssr[channel] = FIELD_DP16(s->ssr[channel], SSR, BFF, 1);
     }
 

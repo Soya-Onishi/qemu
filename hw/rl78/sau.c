@@ -1048,7 +1048,7 @@ static void rl78_sau_rx_irq(Object* instance, uint64_t index, const void* payloa
     }
 
     RL78SAUChannel *ch1 = &s->channels[index];
-    if(!(ch1->enabled & (1 << index))) { 
+    if(!ch1->enabled) { 
         // If not enabled, ignore the received data
         return;
     }
@@ -1069,11 +1069,14 @@ static void rl78_sau_rx_irq(Object* instance, uint64_t index, const void* payloa
     
     const uint16_t rxdata = p->serial.uart.payload;
 
+    qemu_log("rxdata: %d\n", rxdata);
     if(ch1->status.is_sdr_dirty) {
+        qemu_log("RX data buffer is dirty\n");
         uint16_t* data = g_new(uint16_t, 1);
         *data = rxdata;
         g_queue_push_tail(ch1->rx_data_queue, data);
     } else { 
+        qemu_log("RX data is transmitted to SDR\n");
         ch1->status.is_sdr_dirty = true;
         ch1->data = rxdata;
         qemu_set_irq(s->irqs[index], 1);

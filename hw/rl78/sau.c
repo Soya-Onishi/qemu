@@ -137,8 +137,6 @@ static void rl78_sau_send_byte(RL78SAUChannel *ch, TransmitPort *txport, qemu_ir
     const uint64_t send_duration_ns = (bitlength * clk_duration_ns) >> 32;
     uint16_t txdata;
 
-    qemu_log(" clock_hz: %lu, bitlength: %lu, send_duration_ns: %lu\n", ch->clock.fTCLK_hz, bitlength, send_duration_ns);
-
     switch(ch->databits) {
         default:
         case RL78_SAU_DATABITS_8:
@@ -1013,7 +1011,6 @@ static void rl78_sau_tx_timer_up(RL78SAUState *s, int channel)
 
     if (ch->tx_inttype == RL78_SAU_TX_INTTYPE_TX_DONE) {
         // TX done interrupt
-        qemu_log("TX done interrupt\n");
         qemu_set_irq(s->irqs[channel], 1);
     }
 }
@@ -1069,14 +1066,11 @@ static void rl78_sau_rx_irq(Object* instance, uint64_t index, const void* payloa
     
     const uint16_t rxdata = p->serial.uart.payload;
 
-    qemu_log("rxdata: %d\n", rxdata);
     if(ch1->status.is_sdr_dirty) {
-        qemu_log("RX data buffer is dirty\n");
         uint16_t* data = g_new(uint16_t, 1);
         *data = rxdata;
         g_queue_push_tail(ch1->rx_data_queue, data);
     } else { 
-        qemu_log("RX data is transmitted to SDR\n");
         ch1->status.is_sdr_dirty = true;
         ch1->data = rxdata;
         qemu_set_irq(s->irqs[index], 1);

@@ -802,6 +802,7 @@ static void test_rl78_sau_receive_byte(void)
     g_assert_cmpuint(qtest_readb(s, A_SDR01), ==, 'a');
 }
 
+G_GNUC_UNUSED
 static void test_rl78_sau_ssr_rx(void)
 {
     // TODO: implement this test

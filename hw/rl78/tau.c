@@ -952,7 +952,9 @@ static void rl78_tau_update_timer(QEMUTimer *timer, uint64_t *last_expire_time,
 
     const uint64_t expire_time_diff = expire_time - *last_expire_time;
     const uint64_t squezed_timerup_count = expire_time_diff / timer_ns;
-    qemu_log("before: %lu, after: %lu, diff: %lu, squezed_timerup_count: %lu\n", *last_expire_time, expire_time, expire_time_diff, squezed_timerup_count);
+    if(squezed_timerup_count > 2) {
+        qemu_log("before: %lu, after: %lu, diff: %lu, squezed_timerup_count: %lu\n", *last_expire_time, expire_time, expire_time_diff, squezed_timerup_count);
+    }
 
     *last_expire_time = expire_time;
     timer_mod(timer, expire_time);

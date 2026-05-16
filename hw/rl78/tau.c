@@ -241,24 +241,20 @@ static void rl78_tau_start_timer(RL78TAUState *s, const uint8_t channel,
         const uint64_t timer_ns = (uint64_t)(clock_ns * (count + 1));
         const uint64_t expire_time =
             qemu_clock_get_ns(QEMU_CLOCK_VIRTUAL) + timer_ns;
-        static uint64_t before_expire_time = 0;
 
+        const uint64_t expire_time_diff = expire_time - s->channel[channel].last_timer_expire;
+        const uint64_t squezed_timerup_count = expire_time_diff / timer_ns;
+        qemu_log("before: %lu, after: %lu, diff: %lu, squezed_timerup_count: %lu\n", s->channel[channel].last_timer_expire, expire_time, expire_time_diff, squezed_timerup_count);
+        
         s->channel[channel].last_timer_expire = expire_time;
-        const uint64_t after_expire_time = expire_time;
-        const uint64_t expire_time_diff = after_expire_time - before_expire_time;
-        const uint64_t squezed_timerup_count = expire_time_diff / clock_ns;
 
-        if(before_expire_time > 0 && squezed_timerup_count > 2) {
-            qemu_log("before: %lu, after: %lu, diff: %lu, squezed_timerup_count: %lu\n", before_expire_time, after_expire_time, expire_time_diff, squezed_timerup_count);
-        }
+        
 
         timer_mod(&s->channel[channel].timer, expire_time);
 
         if (s->tmr[channel].timer_behavior == 1) {
             qemu_set_irq(s->irqs[channel], 1);
         }
-
-        before_expire_time = expire_time;
     }
 }
 

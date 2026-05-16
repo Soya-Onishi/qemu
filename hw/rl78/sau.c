@@ -137,6 +137,8 @@ static void rl78_sau_send_byte(RL78SAUChannel *ch, TransmitPort *txport, qemu_ir
     const uint64_t send_duration_ns = (bitlength * clk_duration_ns) >> 32;
     uint16_t txdata;
 
+    qemu_log(" clock_hz: %lu, bitlength: %lu, send_duration_ns: %lu\n", ch->clock.fTCLK_hz, bitlength, send_duration_ns);
+
     switch(ch->databits) {
         default:
         case RL78_SAU_DATABITS_8:
@@ -260,10 +262,10 @@ static void rl78_sau_update_smr(RL78SAUState *s, uint16_t value, uint channel)
         default:
             qemu_log_mask(LOG_GUEST_ERROR, "%02X is not allowed in SMR.MD1-2 bits. treated as UART.\n", mode);
             /* fall-through */
-        case 0:
+        case 1:
             ch->communication_mode = RL78_SAU_COMMUNICATION_MODE_UART;
             break;
-        case 1:
+        case 0:
             ch->communication_mode = RL78_SAU_COMMUNICATION_MODE_SPI;
             break;
         case 2:
@@ -1000,11 +1002,18 @@ static void rl78_sau_tx_timer_up(RL78SAUState *s, int channel)
     RL78SAUChannel *ch = &s->channels[channel];
 
     ch->status.is_busy = false; 
-    if(ch->tx_enabled && ch->status.is_sdr_dirty)
+
+    if(!ch->tx_enabled) {
+        return;
+    }
+
+    if(ch->status.is_sdr_dirty) {
         rl78_sau_send_byte(ch, &s->tx_ports[channel], s->irqs[channel]);
+    }
 
     if (ch->tx_inttype == RL78_SAU_TX_INTTYPE_TX_DONE) {
         // TX done interrupt
+        qemu_log("TX done interrupt\n");
         qemu_set_irq(s->irqs[channel], 1);
     }
 }

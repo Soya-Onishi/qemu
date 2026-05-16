@@ -243,6 +243,15 @@ static void rl78_tau_start_timer(RL78TAUState *s, const uint8_t channel,
             qemu_clock_get_ns(QEMU_CLOCK_VIRTUAL) + timer_ns;
 
         s->channel[channel].last_timer_expire = expire_time;
+        const uint64_t before_expire_time = timer_expire_time_ns(&s->channel[channel].timer);
+        const uint64_t after_expire_time = expire_time;
+        const uint64_t expire_time_diff = after_expire_time - before_expire_time;
+        const uint64_t squezed_timerup_count = expire_time_diff / clock_ns;
+
+        if(squezed_timerup_count > 2) {
+            qemu_log("before: %lu, after: %lu, diff: %lu, squezed_timerup_count: %lu\n", before_expire_time, after_expire_time, expire_time_diff, squezed_timerup_count);
+        }
+
         timer_mod(&s->channel[channel].timer, expire_time);
 
         if (s->tmr[channel].timer_behavior == 1) {

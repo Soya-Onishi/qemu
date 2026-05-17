@@ -1017,15 +1017,25 @@ static void rl78_sau_rx_timer_up(RL78SAUState *s, int channel)
         return;
     }
 
-    uint16_t* data = g_queue_pop_head(ch->rx_data_queue);
-    ch->data = *data;
+    SerialPacket* data = g_queue_pop_head(ch->rx_data_queue);
+    ch->data = data->uart.payload;
+    if(ch->stopbits != data->uart.stopbits) {
+        qemu_log_mask(LOG_GUEST_ERROR, "Stopbits mismatch: expected %d, but got %d\n", ch->stopbits, data->uart.stopbits);
+        ch->status.has_framing_error = true;
+    }
+
+    if(ch->parity != data->uart.parity) {
+        qemu_log_mask(LOG_GUEST_ERROR, "Parity mismatch: expected %d, but got %d\n", ch->parity, data->uart.parity);
+        ch->status.has_parity_error = true;
+    }
+
     g_free(data);
 
     qemu_set_irq(s->irqs[channel], 1); 
     if(ch->status.is_sdr_dirty) {
         ch->status.has_overflow_error = true;
     }
-    ch->status.is_sdr_dirty = true; 
+    ch->status.is_sdr_dirty = true;  
 
     timer_mod(&ch->interval_rx_timer, expire_time);
     ch->status.is_busy = false; 
@@ -1062,6 +1072,10 @@ static void rl78_sau_rx_irq(Object* instance, uint64_t index, const void* payloa
 
     const WirePayload *p = (const WirePayload *)payload;
     // TODO: raise SRE interrupt if serial signal format is unmatched
+    if(p->type != WIRE_PAYLOAD_TYPE_SERIAL) {
+        qemu_log_mask(LOG_GUEST_ERROR, "Received payload type is not serial: %d\n", p->type);
+        return;
+    }
  
     const bool is_uart = ch0->communication_mode == RL78_SAU_COMMUNICATION_MODE_UART;
     if((index & 0x01) && is_uart) {
@@ -1091,8 +1105,8 @@ static void rl78_sau_rx_irq(Object* instance, uint64_t index, const void* payloa
 
     // Actual MCU, TSF bit is asserted when receiving data, 
     // but QEMU receives byte data at once, so TSF bit is not asserted.
-    uint16_t* data = g_new(uint16_t, 1); 
-    *data = p->serial.uart.payload;
+    SerialPacket* data = g_new(SerialPacket, 1); 
+    *data = p->serial;
     g_queue_push_tail(ch1->rx_data_queue, data);
 
     ch1->status.is_busy = true;

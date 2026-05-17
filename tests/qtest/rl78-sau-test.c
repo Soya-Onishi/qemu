@@ -874,11 +874,99 @@ static void test_rl78_sau_receive_multiple_bytes(void)
     g_assert_cmpuint(FIELD_EX16(qtest_readb(s, A_SSR01), SSR, OVF), ==, 1);
 }
 
-
-G_GNUC_UNUSED
-static void test_rl78_sau_ssr_rx(void)
+static void test_rl78_sau_ssr_rx_stopbit_test(uint8_t expect, uint8_t actual, uint8_t fef) 
 {
-    // TODO: implement this test
+    QTestState *s = qtest_init("-M qtest -nographic");
+    qtest_system_reset(s);
+
+    setup_smr(s, A_SMR00, 0, 0);
+    setup_smr(s, A_SMR01, 0, 0);
+    setup_scr(s, A_SCR01, false, true, 0, expect, 8);
+    setup_sau(s);
+    setup_ss(s, 1);
+
+    // SPS: CK00 = 8MHz, CK01 = 16MHz
+    uint16_t sps = 0x0000;
+    sps = FIELD_DP16(sps, SPS, PRS0, 2);
+    sps = FIELD_DP16(sps, SPS, PRS1, 1);
+    qtest_writew(s, A_SPS0, sps);
+
+    // Use CK00
+    // 38400bps = 8Mhz / (SDR[15:9] + 1) / 2
+    // SDR[15:9] = (8 * 1000 * 1000) / 38400 / 2 - 1 = 103.xxxx = 103
+    qtest_writew(s, A_SDR00, 103 << 9);
+    qtest_writew(s, A_SDR01, 103 << 9);
+    setup_ss(s, 0);
+    setup_ss(s, 1);
+
+    send_byte(s, 0, 0, actual, 'a');
+    g_assert_cmpuint(FIELD_EX16(qtest_readb(s, A_SSR01), SSR, FEF), ==, fef);
+    g_assert_cmpuint(FIELD_EX16(qtest_readb(s, A_SSR01), SSR, PEF), ==, 0);
+
+}
+
+static void test_rl78_sau_ssr_rx_paritybit_test(uint8_t expect, uint8_t actual, uint8_t pef) 
+{
+    QTestState *s = qtest_init("-M qtest -nographic");
+    qtest_system_reset(s);
+
+    setup_smr(s, A_SMR00, 0, 0);
+    setup_smr(s, A_SMR01, 0, 0);
+    setup_scr(s, A_SCR01, false, true, expect, 1, 8);
+    setup_sau(s);
+    setup_ss(s, 1);
+
+    // SPS: CK00 = 8MHz, CK01 = 16MHz
+    uint16_t sps = 0x0000;
+    sps = FIELD_DP16(sps, SPS, PRS0, 2);
+    sps = FIELD_DP16(sps, SPS, PRS1, 1);
+    qtest_writew(s, A_SPS0, sps);
+
+    // Use CK00
+    // 38400bps = 8Mhz / (SDR[15:9] + 1) / 2
+    // SDR[15:9] = (8 * 1000 * 1000) / 38400 / 2 - 1 = 103.xxxx = 103
+    qtest_writew(s, A_SDR00, 103 << 9);
+    qtest_writew(s, A_SDR01, 103 << 9);
+    setup_ss(s, 0);
+    setup_ss(s, 1);
+
+    send_byte(s, 0, actual, 1, 'a');
+    g_assert_cmpuint(FIELD_EX16(qtest_readb(s, A_SSR01), SSR, FEF), ==, 0);
+    g_assert_cmpuint(FIELD_EX16(qtest_readb(s, A_SSR01), SSR, PEF), ==, pef);
+}
+
+static void test_rl78_sau_ssr_rx_stopbit_mismatch(void) 
+{
+    test_rl78_sau_ssr_rx_stopbit_test(1, 2, 1);
+    test_rl78_sau_ssr_rx_stopbit_test(1, 1, 0);
+    test_rl78_sau_ssr_rx_stopbit_test(1, 0, 1);
+
+    test_rl78_sau_ssr_rx_stopbit_test(2, 2, 0);
+    test_rl78_sau_ssr_rx_stopbit_test(2, 1, 1);
+    test_rl78_sau_ssr_rx_stopbit_test(2, 0, 1);
+}
+
+static void test_rl78_sau_ssr_rx_paritybit_mismatch(void)
+{
+    test_rl78_sau_ssr_rx_paritybit_test(0, 3, 1);
+    test_rl78_sau_ssr_rx_paritybit_test(0, 2, 1);
+    test_rl78_sau_ssr_rx_paritybit_test(0, 1, 1);
+    test_rl78_sau_ssr_rx_paritybit_test(0, 0, 0);
+
+    test_rl78_sau_ssr_rx_paritybit_test(1, 3, 1);
+    test_rl78_sau_ssr_rx_paritybit_test(1, 2, 1);
+    test_rl78_sau_ssr_rx_paritybit_test(1, 1, 0);
+    test_rl78_sau_ssr_rx_paritybit_test(1, 0, 1);
+
+    test_rl78_sau_ssr_rx_paritybit_test(2, 3, 1);
+    test_rl78_sau_ssr_rx_paritybit_test(2, 2, 0);
+    test_rl78_sau_ssr_rx_paritybit_test(2, 1, 1);
+    test_rl78_sau_ssr_rx_paritybit_test(2, 0, 1);
+
+    test_rl78_sau_ssr_rx_paritybit_test(3, 3, 0);
+    test_rl78_sau_ssr_rx_paritybit_test(3, 2, 1);
+    test_rl78_sau_ssr_rx_paritybit_test(3, 1, 1);
+    test_rl78_sau_ssr_rx_paritybit_test(3, 0, 1);
 }
 
 int main(int argc, char **argv)
@@ -909,6 +997,10 @@ int main(int argc, char **argv)
 
     qtest_add_func("/rl78/sau/receive_byte", test_rl78_sau_receive_byte);
     qtest_add_func("/rl78/sau/receive_multiple_bytes", test_rl78_sau_receive_multiple_bytes);
+
+    qtest_add_func("/rl78/sau/ssr_rx_stopbit_mismatch", test_rl78_sau_ssr_rx_stopbit_mismatch);
+    qtest_add_func("/rl78/sau/ssr_rx_paritybit_mismatch", test_rl78_sau_ssr_rx_paritybit_mismatch);
+
     ret = g_test_run();
 
     qtest_end();

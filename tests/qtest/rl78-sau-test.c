@@ -251,7 +251,7 @@ static bool get_irq_flag(QTestState *s, const IRQSource source) {
         case IRQ_STIF1:
             return !!extract16(qtest_readw(s, A_IF1), 0, 1);
         case IRQ_SRIF1:
-            return !!extract16(qtest_readw(s, A_IF1), 1, 0);
+            return !!extract16(qtest_readw(s, A_IF1), 1, 1);
         case IRQ_SREIF1:
             return !!extract16(qtest_readw(s, A_IF1), 2, 1);
         case IRQ_STIF2:
@@ -798,9 +798,80 @@ static void test_rl78_sau_receive_byte(void)
     setup_ss(s, 1);
 
     g_assert_cmpuint(qtest_readb(s, A_SDR01), ==, 0);
+    g_assert_cmpuint(get_irq_flag(s, IRQ_SRIF0), ==, 0);
+
     send_byte(s, 0, 0, 1, 'a');
     g_assert_cmpuint(qtest_readb(s, A_SDR01), ==, 'a');
+    g_assert_cmpuint(get_irq_flag(s, IRQ_SRIF0), ==, 1);
+
+    set_irq_flag(s, IRQ_SRIF0, false);
+    send_byte(s, 0, 0, 1, 'b');
+    g_assert_cmpuint(qtest_readb(s, A_SDR01), ==, 'b');
+    g_assert_cmpuint(get_irq_flag(s, IRQ_SRIF0), ==, 1);
+
 }
+
+static void test_rl78_sau_receive_multiple_bytes(void)
+{
+    const uint64_t period = (CLOCK_PERIOD_FROM_HZ(38461) * 10) >> 32;
+
+    QTestState *s = qtest_init("-M qtest -nographic");
+    qtest_system_reset(s);
+
+    setup_smr(s, A_SMR00, 0, 0);
+    setup_smr(s, A_SMR01, 0, 0);
+    setup_scr(s, A_SCR01, false, true, 0, 1, 8);
+    setup_sau(s);
+
+    // SPS: CK00 = 8MHz, CK01 = 16MHz
+    uint16_t sps = 0x0000;
+    sps = FIELD_DP16(sps, SPS, PRS0, 2);
+    sps = FIELD_DP16(sps, SPS, PRS1, 1);
+    qtest_writew(s, A_SPS0, sps);
+
+    // Use CK00
+    // 38400bps = 8Mhz / (SDR[15:9] + 1) / 2
+    // SDR[15:9] = (8 * 1000 * 1000) / 38400 / 2 - 1 = 103.xxxx = 103
+    qtest_writew(s, A_SDR00, 103 << 9);
+    qtest_writew(s, A_SDR01, 103 << 9);
+    setup_ss(s, 0);
+    setup_ss(s, 1);
+
+    g_assert_cmpuint(FIELD_EX16(qtest_readb(s, A_SSR01), SSR, TSF), ==, 0);
+    g_assert_cmpuint(FIELD_EX16(qtest_readb(s, A_SSR01), SSR, BFF), ==, 0);
+
+    send_byte(s, 0, 0, 1, 'a');
+    g_assert_cmpuint(FIELD_EX16(qtest_readb(s, A_SSR01), SSR, TSF), ==, 0);
+    g_assert_cmpuint(FIELD_EX16(qtest_readb(s, A_SSR01), SSR, BFF), ==, 1);
+
+    send_byte(s, 0, 0, 1, 'b');
+    g_assert_cmpuint(FIELD_EX16(qtest_readb(s, A_SSR01), SSR, TSF), ==, 1);
+    g_assert_cmpuint(FIELD_EX16(qtest_readb(s, A_SSR01), SSR, BFF), ==, 1);
+
+    g_assert_cmpuint(qtest_readb(s, A_SDR01), ==, 'a');
+    g_assert_cmpuint(FIELD_EX16(qtest_readb(s, A_SSR01), SSR, TSF), ==, 1);
+    g_assert_cmpuint(FIELD_EX16(qtest_readb(s, A_SSR01), SSR, BFF), ==, 0);
+
+    qtest_clock_step(s, period - 1);
+    g_assert_cmpuint(qtest_readb(s, A_SDR01), ==, 'a');
+    g_assert_cmpuint(FIELD_EX16(qtest_readb(s, A_SSR01), SSR, TSF), ==, 1);
+
+    qtest_clock_step(s, 1);
+    g_assert_cmpuint(FIELD_EX16(qtest_readb(s, A_SSR01), SSR, TSF), ==, 0);
+    g_assert_cmpuint(FIELD_EX16(qtest_readb(s, A_SSR01), SSR, BFF), ==, 1);
+
+    g_assert_cmpuint(qtest_readb(s, A_SDR01), ==, 'b');
+    g_assert_cmpuint(FIELD_EX16(qtest_readb(s, A_SSR01), SSR, TSF), ==, 0);
+    g_assert_cmpuint(FIELD_EX16(qtest_readb(s, A_SSR01), SSR, BFF), ==, 0);
+
+    qtest_clock_step_next(s);
+
+    send_byte(s, 0, 0, 1, 'c');
+    send_byte(s, 0, 0, 1, 'd');
+    qtest_clock_step_next(s);    
+    g_assert_cmpuint(FIELD_EX16(qtest_readb(s, A_SSR01), SSR, OVF), ==, 1);
+}
+
 
 G_GNUC_UNUSED
 static void test_rl78_sau_ssr_rx(void)
@@ -835,6 +906,7 @@ int main(int argc, char **argv)
     qtest_add_func("/rl78/sau/continuous_send_byte_irq", test_rl78_sau_continueous_send_byte_irq);
 
     qtest_add_func("/rl78/sau/receive_byte", test_rl78_sau_receive_byte);
+    qtest_add_func("/rl78/sau/receive_multiple_bytes", test_rl78_sau_receive_multiple_bytes);
     ret = g_test_run();
 
     qtest_end();

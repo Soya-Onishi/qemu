@@ -805,7 +805,9 @@ static void test_rl78_sau_receive_byte(void)
     g_assert_cmpuint(get_irq_flag(s, IRQ_SRIF0), ==, 1);
 
     set_irq_flag(s, IRQ_SRIF0, false);
+
     send_byte(s, 0, 0, 1, 'b');
+    qtest_clock_step_next(s);
     g_assert_cmpuint(qtest_readb(s, A_SDR01), ==, 'b');
     g_assert_cmpuint(get_irq_flag(s, IRQ_SRIF0), ==, 1);
 
@@ -813,7 +815,7 @@ static void test_rl78_sau_receive_byte(void)
 
 static void test_rl78_sau_receive_multiple_bytes(void)
 {
-    const uint64_t period = (CLOCK_PERIOD_FROM_HZ(38461) * 10) >> 32;
+    const uint64_t period = (CLOCK_PERIOD_FROM_HZ(38461) >> 32) * 10;
 
     QTestState *s = qtest_init("-M qtest -nographic");
     qtest_system_reset(s);

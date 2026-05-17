@@ -73,6 +73,7 @@ typedef struct RL78SAUClock RL78SAUClock;
 
 struct RL78SAUChannel {
     QEMUTimer interval_timer;
+    QEMUTimer interval_rx_timer;
     GQueue *rx_data_queue;
 
     RL78SAUClock clock; 

@@ -549,7 +549,7 @@ static void rl78_sau_write0(void *opaque, hwaddr offset, uint64_t value,
     case 0:
         rl78_sau_update_sdr(s, value, 0);
         break;
-    case 1:
+    case 2:
         rl78_sau_update_sdr(s, value, 1);
         break;
     default:
@@ -566,7 +566,7 @@ static void rl78_sau_write1(void *opaque, hwaddr offset, uint64_t value,
     case 0:
         rl78_sau_update_sdr(s, value, 2);
         break;
-    case 1:
+    case 2:
         rl78_sau_update_sdr(s, value, 3);
         break;
     default:
@@ -740,17 +740,7 @@ static uint16_t rl78_sau_read_sdr(RL78SAUState *s, uint channel)
     }
 
     if(ch->enabled && ch->rx_enabled) {
-        ch->status.is_sdr_dirty = false;
-
-        if(!g_queue_is_empty(ch->rx_data_queue)) {
-            uint16_t* data = g_queue_pop_head(ch->rx_data_queue);
-
-            ch->status.is_sdr_dirty = true;
-            ch->data = *data;
-            qemu_set_irq(s->irqs[channel], 1);
-
-            g_free(data);
-        }
+        ch->status.is_sdr_dirty = false;        
     }
 
     return sdr;
@@ -1015,6 +1005,32 @@ static void rl78_sau_tx_timer_up(RL78SAUState *s, int channel)
     }
 }
 
+static void rl78_sau_rx_timer_up(RL78SAUState *s, int channel)
+{
+    RL78SAUChannel *ch = &s->channels[channel];
+    const uint64_t bitlength = rl78_sau_send_bitlength(ch);
+    const uint64_t clock_ns = CLOCK_PERIOD_FROM_HZ(ch->clock.fTCLK_hz) >> 32;
+    const uint64_t rx_period = clock_ns * bitlength;
+    const uint64_t expire_time = qemu_clock_get_ns(QEMU_CLOCK_VIRTUAL) + rx_period;
+
+    if(g_queue_is_empty(ch->rx_data_queue))  {
+        return;
+    }
+
+    uint16_t* data = g_queue_pop_head(ch->rx_data_queue);
+    ch->data = *data;
+    g_free(data);
+
+    qemu_set_irq(s->irqs[channel], 1); 
+    if(ch->status.is_sdr_dirty) {
+        ch->status.has_overflow_error = true;
+    }
+    ch->status.is_sdr_dirty = true; 
+
+    timer_mod(&ch->interval_rx_timer, expire_time);
+    ch->status.is_busy = false; 
+}
+
 #define RL78SAU_TX_TIMER_UP_CALLBACK(channel_num)                              \
     static void rl78_sau_tx_timer_up_channel##channel_num(void *opaque)        \
     {                                                                          \
@@ -1026,6 +1042,18 @@ RL78SAU_TX_TIMER_UP_CALLBACK(0)
 RL78SAU_TX_TIMER_UP_CALLBACK(1)
 RL78SAU_TX_TIMER_UP_CALLBACK(2)
 RL78SAU_TX_TIMER_UP_CALLBACK(3)
+
+#define RL78SAU_RX_TIMER_UP_CALLBACK(channel_num) \
+    static void rl78_sau_rx_timer_up_channel##channel_num(void *opaque) \
+    { \
+        RL78SAUState *s = RL78_SAU(opaque); \
+        rl78_sau_rx_timer_up(s, channel_num); \
+    }
+
+RL78SAU_RX_TIMER_UP_CALLBACK(0)
+RL78SAU_RX_TIMER_UP_CALLBACK(1)
+RL78SAU_RX_TIMER_UP_CALLBACK(2)
+RL78SAU_RX_TIMER_UP_CALLBACK(3)
 
 static void rl78_sau_rx_irq(Object* instance, uint64_t index, const void* payload)
 {
@@ -1063,17 +1091,13 @@ static void rl78_sau_rx_irq(Object* instance, uint64_t index, const void* payloa
 
     // Actual MCU, TSF bit is asserted when receiving data, 
     // but QEMU receives byte data at once, so TSF bit is not asserted.
-    
-    const uint16_t rxdata = p->serial.uart.payload;
+    uint16_t* data = g_new(uint16_t, 1); 
+    *data = p->serial.uart.payload;
+    g_queue_push_tail(ch1->rx_data_queue, data);
 
-    if(ch1->status.is_sdr_dirty) {
-        uint16_t* data = g_new(uint16_t, 1);
-        *data = rxdata;
-        g_queue_push_tail(ch1->rx_data_queue, data);
-    } else { 
-        ch1->status.is_sdr_dirty = true;
-        ch1->data = rxdata;
-        qemu_set_irq(s->irqs[index], 1);
+    ch1->status.is_busy = true;
+    if(!timer_pending(&ch1->interval_rx_timer)) {
+        rl78_sau_rx_timer_up(s, index);
     }
 }
 
@@ -1087,6 +1111,12 @@ static void rl78_sau_init(Object *obj)
         rl78_sau_tx_timer_up_channel1,
         rl78_sau_tx_timer_up_channel2,
         rl78_sau_tx_timer_up_channel3,
+    };
+    void (*rx_timer_up_callbacks[RL78_SAU_CHANNEL_NUM])(void *) = {
+        rl78_sau_rx_timer_up_channel0,
+        rl78_sau_rx_timer_up_channel1,
+        rl78_sau_rx_timer_up_channel2,
+        rl78_sau_rx_timer_up_channel3,
     };
 
     memory_region_init_io(&s->mmio[0], OBJECT(s), &rl78_sau_ops0, s,
@@ -1109,6 +1139,8 @@ static void rl78_sau_init(Object *obj)
     for (int ch = 0; ch < RL78_SAU_CHANNEL_NUM; ch++) {
         timer_init_ns(&s->channels[ch].interval_timer, QEMU_CLOCK_VIRTUAL,
                       tx_timer_up_callbacks[ch], s);
+        timer_init_ns(&s->channels[ch].interval_rx_timer, QEMU_CLOCK_VIRTUAL,
+                      rx_timer_up_callbacks[ch], s);
     }
 
     transmit_port_add(obj, "tx", s->tx_ports, RL78_SAU_CHANNEL_NUM);

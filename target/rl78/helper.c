@@ -44,7 +44,7 @@ bool rl78_cpu_exec_interrupt(CPUState *cs, int interrupt_request)
 
     if(interrupt_request & CPU_INTERRUPT_HARD) {
         // interrupt is enabled ?
-        if(!env->psw.ie) {
+        if(!env->psw.ie || env->skip_en) {
             return false;
         }
 

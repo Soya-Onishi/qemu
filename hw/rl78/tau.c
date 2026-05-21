@@ -62,15 +62,16 @@ static double rl78_tau_clock_duration(RL78TAUState *s, const uint8_t channel)
     const uint32_t ck_select = s->tmr[channel].clock_select;
     const double clock_hz    = inclk_hz / s->clk_divider[ck_select];
     const double clock_sec   = 1.0 / clock_hz;
-
+    
     return clock_sec;
 }
 
 static uint16_t rl78_tau_remain_count(QEMUTimer *timer,
                                       const double clock_duration)
 {
-    const uint64_t remain_ns =
+    uint64_t remain_ns =
         timer_expire_time_ns(timer) - qemu_clock_get_ns(QEMU_CLOCK_VIRTUAL);
+    remain_ns = remain_ns == 0 ? 0 : remain_ns - 1;
     const double clock_ns       = clock_duration * 1000 * 1000 * 1000;
     const uint16_t remain_count = (uint16_t)((double)remain_ns / clock_ns);
 
@@ -697,7 +698,7 @@ static void rl78_tau_write1(void *opaque, hwaddr offset, uint64_t data,
                             unsigned size)
 {
     RL78TAUState *s = RL78_TAU(opaque);
-    rl78_tau_write_tdr(s, offset, data, size);
+    rl78_tau_write_tdr(s, offset + 4, data, size);
 }
 
 static uint64_t rl78_tau_read1(void *opaque, hwaddr offset, unsigned size)

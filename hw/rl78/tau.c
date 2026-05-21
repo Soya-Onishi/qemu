@@ -223,6 +223,10 @@ static void rl78_tau_start_timer(RL78TAUState *s, const uint8_t channel,
 {
     const double clock_duration = rl78_tau_clock_duration(s, channel);
     const double clock_ns       = clock_duration * 1000 * 1000 * 1000;
+
+    // TODO: inspect actual MCU behavior. 
+    // When TS bit is asserted, TCR load 16bit TDR data even if SPLIT == 1.
+    s->channel[channel].tcr.word = s->channel[channel].tdr.word; 
     if (is_high) {
         const uint64_t count    = s->channel[channel].tdr.bytes[1];
         const uint64_t timer_ns = (uint64_t)(clock_ns * (count + 1));
@@ -241,7 +245,7 @@ static void rl78_tau_start_timer(RL78TAUState *s, const uint8_t channel,
                                       : s->channel[channel].tdr.word;
         const uint64_t timer_ns = (uint64_t)(clock_ns * (count + 1));
         const uint64_t expire_time =
-            qemu_clock_get_ns(QEMU_CLOCK_VIRTUAL) + timer_ns;
+            qemu_clock_get_ns(QEMU_CLOCK_VIRTUAL) + timer_ns; 
 
         s->channel[channel].last_timer_expire = expire_time;
         timer_mod(&s->channel[channel].timer, expire_time);
@@ -646,7 +650,8 @@ static void rl78_tau_write_tdr(RL78TAUState *s, hwaddr offset, uint64_t data,
         } else {
             rl78_tau_update_tdr_8bit_lo(s, (uint8_t)data, ch);
         }
-    } break;
+        break;
+    } 
     case 2: {
         const uint8_t ch = offset / 2;
         rl78_tau_update_tdr_16bit(s, (uint16_t)data, ch);
@@ -902,8 +907,8 @@ static const MemoryRegionOps rl78_tau_ops0 = {
     .read                  = rl78_tau_read0,
     .valid.max_access_size = 2,
     .valid.min_access_size = 1,
-    .impl.min_access_size  = 2,
-    .impl.max_access_size  = 1,
+    .impl.max_access_size  = 2,
+    .impl.min_access_size  = 1,
 };
 
 // for TDRm2-7
@@ -912,8 +917,8 @@ static const MemoryRegionOps rl78_tau_ops1 = {
     .read                  = rl78_tau_read1,
     .valid.max_access_size = 2,
     .valid.min_access_size = 1,
-    .impl.min_access_size  = 2,
-    .impl.max_access_size  = 1,
+    .impl.max_access_size  = 2,
+    .impl.min_access_size  = 1,
 };
 
 // for other TAU registers
@@ -922,8 +927,8 @@ static const MemoryRegionOps rl78_tau_ops2 = {
     .read                  = rl78_tau_read2,
     .valid.max_access_size = 2,
     .valid.min_access_size = 1,
-    .impl.min_access_size  = 2,
-    .impl.max_access_size  = 1,
+    .impl.max_access_size  = 2,
+    .impl.min_access_size  = 1,
 };
 
 // for TISx registers

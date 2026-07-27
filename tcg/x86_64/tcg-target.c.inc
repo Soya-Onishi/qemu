@@ -130,12 +130,13 @@ static TCGReg tcg_target_call_oarg_reg(TCGCallReturnKind kind, int slot)
 /* Registers used with L constraint. */
 #define TCG_REG_L0 tcg_target_call_iarg_regs[0]
 #define TCG_REG_L1 tcg_target_call_iarg_regs[1]
+#define TCG_REG_L2 tcg_target_call_iarg_regs[2]
 
 #define ALL_GENERAL_REGS      0x0000ffffu
 #define ALL_VECTOR_REGS       0xffff0000u
 #define ALL_BYTEL_REGS        ALL_GENERAL_REGS
 #define SOFTMMU_RESERVE_REGS \
-    (tcg_use_softmmu ? (1 << TCG_REG_L0) | (1 << TCG_REG_L1) : 0)
+    (tcg_use_softmmu ? (1 << TCG_REG_L0) | (1 << TCG_REG_L1) | (1 << TCG_REG_L2) : 0)
 
 #define have_bmi2       (cpuinfo & CPUINFO_BMI2)
 #define have_lzcnt      (cpuinfo & CPUINFO_LZCNT)
@@ -233,6 +234,7 @@ static bool tcg_target_const_match(int64_t val, int ct,
 #define OPC_ANDN        (0xf2 | P_EXT38)
 #define OPC_ADD_GvEv	(OPC_ARITH_GvEv | (ARITH_ADD << 3))
 #define OPC_AND_GvEv    (OPC_ARITH_GvEv | (ARITH_AND << 3))
+#define OPC_OR_GvEv     (OPC_ARITH_GvEv | (ARITH_OR << 3))
 #define OPC_BLENDPS     (0x0c | P_EXT3A | P_DATA16)
 #define OPC_BSF         (0xbc | P_EXT)
 #define OPC_BSR         (0xbd | P_EXT)
@@ -1937,6 +1939,8 @@ static TCGLabelQemuLdst *prepare_host_addr(TCGContext *s, HostAddress *h,
     h->aa = atom_and_align_for_opc(s, opc, MO_ATOM_IFALIGN, s_bits == MO_128);
     a_mask = (1 << h->aa.align) - 1;
 
+    tcg_debug_assert(h->aa.align <= TARGET_PAGE_BITS);
+
     if (tcg_use_softmmu) {
         int cmp_ofs = is_ld ? offsetof(CPUTLBEntry, addr_read)
                             : offsetof(CPUTLBEntry, addr_write);
@@ -1946,7 +1950,6 @@ static TCGLabelQemuLdst *prepare_host_addr(TCGContext *s, HostAddress *h,
         unsigned mem_index = get_mmuidx(oi);
         unsigned s_mask = (1 << s_bits) - 1;
         int fast_ofs = tlb_mask_table_ofs(s, mem_index);
-        int tlb_mask;
 
         ldst = new_ldst_label(s);
         ldst->is_ld = is_ld;
@@ -1972,9 +1975,15 @@ static TCGLabelQemuLdst *prepare_host_addr(TCGContext *s, HostAddress *h,
                              fast_ofs + offsetof(CPUTLBDescFast, table));
 
         /*
+         * Fast path hit condition:
+         *   (tlb | (addr & a_mask)) == (addr_adj & TARGET_PAGE_MASK)
+         *
+         * Low bits of the RHS are clear, so any TLB flag or misalignment
+         * forces a mismatch.  TLB flags no longer need to sit above a_mask.
+         *
          * If the required alignment is at least as large as the access,
-         * simply copy the address and mask.  For lesser alignments,
-         * check that we don't cross pages for the complete access.
+         * addr_adj is addr.  For lesser alignments, add (s_mask - a_mask)
+         * so a page-crossing access also misses.
          */
         if (a_mask >= s_mask) {
             tcg_out_mov(s, ttype, TCG_REG_L1, addr);
@@ -1982,12 +1991,20 @@ static TCGLabelQemuLdst *prepare_host_addr(TCGContext *s, HostAddress *h,
             tcg_out_modrm_offset(s, OPC_LEA + trexw, TCG_REG_L1,
                                  addr, s_mask - a_mask);
         }
-        tlb_mask = TARGET_PAGE_MASK | a_mask;
-        tgen_arithi(s, ARITH_AND + trexw, TCG_REG_L1, tlb_mask, 0);
+        tgen_arithi(s, ARITH_AND + trexw, TCG_REG_L1, TARGET_PAGE_MASK, 0);
 
-        /* cmp 0(TCG_REG_L0), TCG_REG_L1 */
-        tcg_out_modrm_offset(s, OPC_CMP_GvEv + trexw,
-                             TCG_REG_L1, TCG_REG_L0, cmp_ofs);
+        if (a_mask) {
+            tcg_out_mov(s, ttype, TCG_REG_L2, addr);
+            tgen_arithi(s, ARITH_AND + trexw, TCG_REG_L2, a_mask, 0);
+            /* L2 = tlb | (addr & a_mask) */
+            tcg_out_modrm_offset(s, OPC_OR_GvEv + trexw,
+                                 TCG_REG_L2, TCG_REG_L0, cmp_ofs);
+            tcg_out_modrm(s, OPC_CMP_GvEv + trexw, TCG_REG_L1, TCG_REG_L2);
+        } else {
+            /* cmp tlb, (addr_adj & TARGET_PAGE_MASK) */
+            tcg_out_modrm_offset(s, OPC_CMP_GvEv + trexw,
+                                 TCG_REG_L1, TCG_REG_L0, cmp_ofs);
+        }
 
         /* jne slow_path */
         tcg_out_opc(s, OPC_JCC_long + JCC_JNE, 0, 0, 0);

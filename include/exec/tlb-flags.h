@@ -43,15 +43,15 @@
  */
 
 /* Set if TLB entry requires byte swap.  */
-#define TLB_BSWAP            (1 << 0)
+#define TLB_BSWAP            (1 << 4)
 /* Set if TLB entry contains a watchpoint.  */
-#define TLB_WATCHPOINT       (1 << 1)
+#define TLB_WATCHPOINT       (1 << 5)
 /* Set if TLB entry requires aligned accesses.  */
-#define TLB_CHECK_ALIGNED    (1 << 2)
+#define TLB_CHECK_ALIGNED    (1 << 6)
 /* Set if TLB entry writes ignored.  */
-#define TLB_DISCARD_WRITE    (1 << 3)
+#define TLB_DISCARD_WRITE    (1 << 7)
 /* Set if TLB entry is an IO callback.  */
-#define TLB_MMIO             (1 << 4)
+#define TLB_MMIO             (1 << 8)
 
 #define TLB_SLOW_FLAGS_MASK \
     (TLB_BSWAP | TLB_WATCHPOINT | TLB_CHECK_ALIGNED | \
@@ -59,17 +59,14 @@
 
 /*
  * Flags stored in CPUTLBEntry.addr_idx[x].
- * These must be above the largest alignment (64 bytes),
- * and below the smallest page size (1024 bytes).
- * This leaves bits [9:6] available for use.
  */
 
 /* Zero if TLB entry is valid.  */
-#define TLB_INVALID_MASK     (1 << 6)
+#define TLB_INVALID_MASK     (1 << 0)
 /* Set if TLB entry references a clean RAM page.  */
-#define TLB_NOTDIRTY         (1 << 7)
+#define TLB_NOTDIRTY         (1 << 1)
 /* Set if the slow path must be used; more flags in CPUTLBEntryFull. */
-#define TLB_FORCE_SLOW       (1 << 8)
+#define TLB_FORCE_SLOW       (1 << 2)
 
 /*
  * Use this mask to check interception with an alignment mask

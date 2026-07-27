@@ -738,7 +738,7 @@ static void rl78_gen_store_operand(DisasContext *ctx, const RL78Operand op,
 
 static RL78BitData rl78_gen_load_bit(DisasContext *ctx, const RL78OperandBit op)
 {
-    TCGv_i32 data;
+    TCGv_i32 data = tcg_constant_i32(0);
     TCGv_i32 bit = tcg_temp_new_i32();
 
     switch (op.kind) {
